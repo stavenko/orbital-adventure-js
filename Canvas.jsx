@@ -5,6 +5,7 @@ import {WebGLRenderer} from 'three/src/renderers/WebGLRenderer';
 import {OrthographicCamera} from 'three/src/cameras/OrthographicCamera';
 import {Raycaster} from 'three/src/core/Raycaster';
 import {Vector2} from 'three/src/math/Vector2';
+import {Vector3} from 'three/src/math/Vector3';
 
 
 export class CanvasBase extends React.Component{
@@ -16,12 +17,14 @@ export class CanvasBase extends React.Component{
         this.rayCaster = new Raycaster;
     }
     renderCanvas(){}
+    initEvents(){}
     fixSize(){
         if(this.node.width != this.node.clientWidth || this.node.height != this.node.clientHeight){
             this.node.width = this.node.clientWidth;
             this.node.height = this.node.clientHeight;
         }
     }
+
     render(){
         return <canvas style={{width:'100%', height:'100%'}} />
 
