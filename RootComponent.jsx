@@ -20,7 +20,7 @@ export function RootComponent(){
   return <Provider store={storeState} >
     <Router history={history} >
       <Route path="/" component={Root}>
-        <Route path="editor" component={ObjectEditor} />
+        <Route path="editor" component={CurveEditor} />
         <Route path="bar" component={Bar} />
       </Route>
     </Router>

@@ -17,6 +17,8 @@ export function CurveEditorWidget(props){
     </div>
 
 }
+const CircleWeight = 0.5522539464083382;
+let cw = CircleWeight;
 
 
 class CurveEditorWidgetImpl extends CanvasBase{
@@ -24,17 +26,17 @@ class CurveEditorWidgetImpl extends CanvasBase{
         super(props);
         this.curve = new Curve([
             0, 1,  // a
-            0.5, 1,
-            1, 0.5,
+            cw, 1,
+            1, cw,
             1, 0,  // b
-            1, -0.5,
-            0.5, -1,
+            1, -cw,
+            cw, -1,
             0, -1, // c
-            -0.5, -1,
-            -1, -0.5,
+            -cw, -1,
+            -1, -cw,
             -1, 0,  // d
-            -1, 0.5,
-            -0.5, 1,
+            -1, cw,
+            -cw, 1,
             0, 1  //e
         ].map(x=>x*100), 2);
     }
