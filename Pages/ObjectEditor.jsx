@@ -6,36 +6,56 @@ import {MeshBasicMaterial} from 'three/src/materials/MeshBasicMaterial'
 
 
 export function ObjectEditor(props) {
-    return <div style={{width:500, height:400}}>
-        <ObjectEditorImpl {...props} />
-    </div>
+  return <div style={{width:500, height:400}}>
+    <ObjectEditorImpl {...props} />
+  </div>
 }
 
 let EditedObject = {
-    mainAxis: {
-        curve:[0, 0,
-            0, 0.1,
-            0, 0.9,
-            0, 1],
-        plane: {p: [0,0,0], n:[0,0,1]}
-    },
+  id:Date.now(),
+  hull:{
+    axis:'bezier', // all control points between 0.0 and 1.0
+    crossSections: '[(bezier, t)]',  // all control points between 0.0 and 1.0
+    length:'in-meters', // this is where actual width: from 0.0 to 1.0 there's length;
+    hullPlanes:[{n:'n0',p:'p0'}]
+  },
 
-    slices:[
-        {t:0, curve:{curve:[0.0]}},
-        {t:0.3, curve:{curve:[ 0, 1,  0.5, 1, 1, 0.5, 1, 0,  1, -0.5, 0.5, -1, 0, -1, -0.5, -1, -1, -0.5, -1, 0, -1, 0.5, -0.5, 1, 0, 1]}},
-        {t:1.0, curve:{curve:[ 0, 1,  0.5, 1, 1, 0.5, 1, 0,  1, -0.5, 0.5, -1, 0, -1, -0.5, -1, -1, -0.5, -1, 0, -1, 0.5, -0.5, 1, 0, 1]}}
-    ]
+  weilds:[{
+    hullPoint: 'hull-oriented-point',
+    part: 'part-id',
+    shift: 'part-shift',
+    rotation: 'part-rotation'
+  }],
+
+  sinks:[{
+    hullPoint: 'hull-oriented-point',
+    diameter: 'in-meters'
+  }],
+
+  sources:[{
+    hullPoint: 'hull-oriented-point',
+    diameter: 'in-meters'
+  }],
+
+
+  connectedParts:[{
+      weidlId: 'weilded-connector',
+      partId: 'partId',
+      partConnector: 'part-weild-connector'
+    } // connector is a part with connection point
+  ]
+
 };
 
 
 class ObjectEditorImpl extends CanvasBase{
-    constructor(props){
-        super(props);
-        let mesh = new Mesh(new BoxBufferGeometry(1,1,1), new MeshBasicMaterial({color:0xff0000}));
-        this.scene.add(mesh);
-    }
-    renderCanvas(){
+  constructor(props){
+    super(props);
+    let mesh = new Mesh(new BoxBufferGeometry(1,1,1), new MeshBasicMaterial({color:0xff0000}));
+    this.scene.add(mesh);
+  }
+  renderCanvas(){
 
-        this.renderer.render(this.scene, this.camera);
-    }
+    this.renderer.render(this.scene, this.camera);
+  }
 }
