@@ -44,7 +44,6 @@ let EditedObject = {
       partConnector: 'part-weild-connector'
     } // connector is a part with connection point
   ]
-
 };
 
 
@@ -54,6 +53,7 @@ class ObjectEditorImpl extends CanvasBase{
     let mesh = new Mesh(new BoxBufferGeometry(1,1,1), new MeshBasicMaterial({color:0xff0000}));
     this.scene.add(mesh);
   }
+
   renderCanvas(){
 
     this.renderer.render(this.scene, this.camera);
