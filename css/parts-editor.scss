@@ -1,0 +1,19 @@
+.parts-editor{
+  display: flex;
+  flex-direction: row;
+  justify-content: stretch;
+  align-items: stretch;
+  
+  .main-view{
+    width: 50%;
+  }
+  .browser{
+    width:30%;
+  }
+  .detail-editor{
+    height:50%;
+  }
+  
+
+}
+

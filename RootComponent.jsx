@@ -8,7 +8,10 @@ import { Router, Route, IndexRoute, browserHistory, hashHistory } from 'react-ro
 import reducers from './reducers.js';
 import { syncHistoryWithStore, routerReducer } from 'react-router-redux'
 import {CurveEditorWidget} from './Pages/CurveEditor.jsx';
+import {PartsEditor as PartsEditorWidget} from './Pages/PartsEditor.jsx';
 import {ObjectEditor as ObjectEditorWidget} from './Pages/ObjectEditor.jsx';
+
+import './css/style.scss';
 
 let storeState = createStore(combineReducers(Object.assign({
       routing: routerReducer
@@ -20,7 +23,7 @@ export function RootComponent(){
   return <Provider store={storeState} >
     <Router history={history} >
       <Route path="/" component={Root}>
-        <Route path="editor" component={CurveEditor} />
+        <Route path="editor" component={PartsEditor} />
         <Route path="bar" component={Bar} />
       </Route>
     </Router>
@@ -34,6 +37,7 @@ const Root = connect(
 
 const CurveEditor = connect(mapStateToProps, mapDispatchToProps)(CurveEditorWidget);
 const ObjectEditor = connect(mapStateToProps, mapDispatchToProps)(ObjectEditorWidget);
+const PartsEditor = connect(mapStateToProps, mapDispatchToProps)(PartsEditorWidget);
 
 function Bar(props){
   return <div> Im bar </div>
