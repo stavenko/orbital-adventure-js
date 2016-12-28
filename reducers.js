@@ -1,11 +1,16 @@
+import {combineReducers} from 'redux';
 import {List, Map, fromJS} from 'immutable';
-import {} from './actions.js';
+import {partsEditor} from './reducers/parts.js';
+import {routerReducer} from 'react-router-redux'
+import {applyMiddleware} from 'redux';
+import thunk from 'redux-thunk';
 
 let defaultState={pageName:'page-name'};
 
-export function state(state = fromJS(defaultState), action) {
+function state(state = fromJS(defaultState), action) {
   return state;
 };
-export default {state}
 
-// export const rootReducer = combineReducers({state});
+export const rootReducer = combineReducers({
+  state, partsEditor, routing:routerReducer
+}, applyMiddleware(thunk));

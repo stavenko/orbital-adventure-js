@@ -1,21 +1,19 @@
 import React,{Component} from 'react';
-import {combineReducers} from 'redux';
 import {Page} from './MainPage.jsx';
-import {createStore, applyMiddleware} from 'redux';
-import thunk from 'redux-thunk';
+import {createStore} from 'redux';
 import {Provider, connect} from 'react-redux';
 import { Router, Route, IndexRoute, browserHistory, hashHistory } from 'react-router'
-import reducers from './reducers.js';
-import { syncHistoryWithStore, routerReducer } from 'react-router-redux'
+import {rootReducer} from './reducers.js';
+import { syncHistoryWithStore } from 'react-router-redux'
 import {CurveEditorWidget} from './Pages/CurveEditor.jsx';
 import {PartsEditor as PartsEditorWidget} from './Pages/PartsEditor.jsx';
 import {ObjectEditor as ObjectEditorWidget} from './Pages/ObjectEditor.jsx';
+import * as PartsEditorActions from './actions/parts.js';
+import set from 'lodash/set'
 
 import './css/style.scss';
 
-let storeState = createStore(combineReducers(Object.assign({
-      routing: routerReducer
-    },reducers), applyMiddleware(thunk)));
+let storeState = createStore(rootReducer);
 
 const history = syncHistoryWithStore(hashHistory, storeState);
 
@@ -46,11 +44,18 @@ function mapStateToProps(state){
   return state;
 }
 function mapDispatchToProps(dispatch){
-  let o = {/* put action functions here */};
+  let o = {partsEditor: PartsEditorActions}
   let actions = {};
-  for(let k in o){
-    let fn = o[k];
-    actions[k] = function(){return dispatch(fn.apply(null, arguments));}
+  for(let actionCollection in o){
+    let actionsObj = o[actionCollection];
+    for(let name in actionsObj){
+      let fn = actionsObj[name];
+      if(typeof(fn) === 'function'){ 
+        set(actions, [actionCollection, name], function(){
+          return dispatch(fn.apply(null, arguments));
+        })
+      }
+    }
   }
-  return actions;
+  return {actions};
 }
