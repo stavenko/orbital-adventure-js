@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import {ContextualBrowser} from '../Widgets/ContextualBrowser.jsx'
+import {ContextualBrowser} from '../Widgets/PartEditor/ContextualBrowser.jsx'
 
 
 export class PartsEditor extends React.Component{

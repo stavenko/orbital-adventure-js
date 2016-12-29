@@ -8,10 +8,50 @@
     width: 50%;
   }
   .browser{
-    width:30%;
+    width:300px;
   }
   .detail-editor{
     height:50%;
+  }
+
+  .part-contents{
+    width:100%;
+  }
+
+  .hull-properties{
+    display: flex;
+    flex-direction:row;
+    align-items: stretch;
+    width:100%;
+    .structural{
+      width:5%;
+      background-color: green;
+    }
+    .rotational{
+      flex: 1 1 auto;
+      background-color: #300;
+    }
+    .rough-structure{
+      display:flex;
+      flex-direction: row;
+      div{
+        display:flex;
+        flex-direction: row;
+        input{
+          width: 60px;
+        }
+      }
+    }
+    .symmetry-mode{
+      display: flex;
+      flex-direction: flex-wrap;
+      .symmetry{
+        width:32px;
+        height:32px;
+        background-color: #000;
+      }
+    }
+
   }
   
 

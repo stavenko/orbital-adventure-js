@@ -8,7 +8,7 @@ export function ContextualBrowser({state,actions}){
     state={state} 
     actions={actions} />
   else  return <PartContents 
-    part={state.currentPart} 
+    part={state.get('currentPart').toJS()} 
     actions={actions} />
 }
 

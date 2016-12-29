@@ -4,6 +4,7 @@
   "description": "",
   "main": "actions.js",
   "dependencies": {
+    "classnames": "^2.2.5",
     "lodash": "^4.17.3"
   },
   "devDependencies": {

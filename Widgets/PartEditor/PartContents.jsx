@@ -1,13 +1,11 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import {HullWidget} from './HullWidget.jsx';
 
-export function PartContents({part}){
-
+export function PartContents({part, editorState, actions}){
+  console.log(part);
 
   return <div className='part-contents' > 
-    <div className='hull-properties'>
-      hull properties;
-    </div>
+    <HullWidget hull={part.hull} {...{editorState, actions}} />
 
     <div className='weilding'>
       weilds

@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import {ExistPartsList} from '../Widgets/ExistPartList.jsx';
+import {ExistPartsList} from './ExistPartList.jsx';
 
 export function PartsBrowser({state, actions}){
   return <div className='parts-browser'>
