@@ -16,7 +16,7 @@ export class Curve{
         if(pointsForNodes - weHaveNodes == 1) this.isClosed = true;
 
 
-        console.log('segments', console.log(this.points.length, pointsForNodes));
+        console.log('segments', weHaveNodes, pointsForNodes, this.isClosed);
     }
 
     getNodeAmount(){
@@ -25,7 +25,7 @@ export class Curve{
     }
 
     getClosedNodes(){
-        let nodesAmount = this.getNodeAmount();
+        let nodesAmount = Math.floor(this.getNodeAmount());
         let lastPoint = this.points.length / this.pointSize - 1;
         let nodes = [];
         for(let i = 0; i < nodesAmount; ++i){
@@ -49,7 +49,7 @@ export class Curve{
             let pointId = i * 3;
             let p = {};
             if(i != 0) p.left = this.get(pointId - 1);
-            p.point = this.get(pointId );
+            p.point = this.get(pointId);
             if(i != last) p.right = this.get(pointId + 1);
             nodes.push(p);
         }
@@ -113,9 +113,8 @@ export class Curve{
         return beziers;
     }
 
-    getGeometry(PerBezier = 10){
+    getRawGeometry(PerBezier = 10){
         let beziers = this.getBeziersArray();
-        console.log(beziers);
         let totalPoints = PerBezier * beziers.length;
         let vertices = new Float32Array((totalPoints+1) * 3);
         let currentPoint = 0;
@@ -134,9 +133,14 @@ export class Curve{
 
             }
         });
-        let geometry = new BufferGeometry();
-        geometry.addAttribute('position', new BufferAttribute(vertices, 3));
-        return geometry;
+        return {array: vertices, size: 3};
+    }
+
+    getGeometry(PerBezier = 10){
+      let rawGeometry = this.getRawGeometry(PerBezier);
+      let geometry = new BufferGeometry();
+      geometry.addAttribute('position', new BufferAttribute(rawGeometry.array, rawGeometry.size));
+      return geometry;
     }
 }
 

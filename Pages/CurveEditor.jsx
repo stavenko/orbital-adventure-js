@@ -5,6 +5,7 @@ import {Line} from 'three/src/objects/Line';
 import {LineBasicMaterial} from 'three/src/materials/LineBasicMaterial';
 
 import {Vector3} from 'three/src/math/Vector3';
+import {Color} from 'three/src/math/Color';
 import {Mesh} from 'three/src/objects/Mesh';
 import {MeshBasicMaterial} from 'three/src/materials/MeshBasicMaterial';
 import {BoxBufferGeometry} from 'three/src/geometries/BoxBufferGeometry';
@@ -39,21 +40,78 @@ class CurveEditorWidgetImpl extends CanvasBase{
             -cw, 1,
             0, 1  //e
         ].map(x=>x*100), 2);
+        this.state = {};
     }
 
-    renderCanvas(){
-        this.renderCurve();
+    renderScene(){
+      let lineMesh = { 
+        type:Line, 
+        geometry:{position: this.curve.getRawGeometry()}, 
+        material:{type:LineBasicMaterial, 
+          properties:{color:new Color(0x00ff00)}
+        }
+      }
+      return [ lineMesh, ...this.getNodeMeshes()];
     }
 
-    initEvents(){
-        this._events.push({e:'mousemove', t:this.node, f:this.mouseMove.bind(this)});
-        this._events.push({e:'mousedown', t:this.node, f:this.mouseDown.bind(this)});
-        this._events.push({e:'mouseup', t:this.node, f:this.mouseUp.bind(this)});
-        this._events.push({e:'resize', t:window, f:this.resizeWindow.bind(this)});
+    updateCurvePoint(controlPointId, coords){
+      console.log('update curve point', controlPointId);
+      this.curve.set(controlPointId, [coords.x, coords.y]);
+      this.setState({});
     }
+
+    dragControlPoint(controlPointId){
+      return (event, diff)=> {
+        let mouse = new Vector3;
+        let nmouse = this.eventToNormalizedCanvas(event);
+        mouse.x = nmouse.x;
+        mouse.y = nmouse.y;
+        mouse.z = 0;
+        let coords  = mouse.unproject(this.camera);
+        this.updateCurvePoint(controlPointId, coords);
+      }
+    }
+
+    getNodeMeshes(){
+      let state = this.state;
+      let setState = this.setState.bind(this);
+      let dcp = this.dragControlPoint.bind(this);
+      return this.curve.getNodes().map(node=>{
+        let nodes = [];
+        nodes.push(mesh(node.point));
+        if(node.left) nodes.push(mesh(node.left));
+        if(node.right) nodes.push(mesh(node.right));
+        return nodes;
+      }).reduce((arr,a)=>{arr.push(...a); return arr},[]);
+
+
+      function mesh(point){
+        let color = point.id === state.hoveredPoint?
+          new Color(0xff0000):
+          new Color(0x0000ff);
+        return {
+          type:Mesh,
+          geometry:{type:BoxBufferGeometry, arguments:[20,20,20]},
+          material:{type:MeshBasicMaterial, properties:{color}},
+          position:new Vector3(point.x, 
+                               point.y, 
+                               point.z?point.z: -1.0),
+          onEnter:()=>{setState({hoveredPoint: point.id})},
+          onLeave:()=>{setState({hoveredPoint: null})},
+          onDrag: dcp(point.id)
+        }
+      }
+    }
+
+    //renderCanvas(){
+    //console.error('wrong call');
+    //this.renderCurve();
+    //}
+
 
 
     mouseMove(event){
+      console.log("ALALALA");
         if(this.trackingMesh) return this.handleControlling(event);
 
         this.normalizedMouse.x = ( (event.clientX - this.nodeRect.left) / this.node.width ) * 2 - 1;
@@ -120,7 +178,6 @@ class CurveEditorWidgetImpl extends CanvasBase{
             right = meshForNode(forNode.right, 0x0000ff);
 
         return {left, mesh, right, id};
-
     }
 
     updateLine(){
@@ -130,7 +187,6 @@ class CurveEditorWidgetImpl extends CanvasBase{
     renderCurve(){
         if(!this.line) this.createLine();
         else this.updateLine();
-        console.log(this.node.width, this.node.height);
         this.renderer.render(this.scene, this.camera);
     }
 
