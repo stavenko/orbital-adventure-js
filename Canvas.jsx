@@ -256,25 +256,29 @@ export class CanvasBase extends React.Component{
       return <canvas ref='node' style={{width:'100%', height:'100%'}} />
     }
 
+    setupCamera(){
+      this.camera.position.z = -10;
+      this.camera.lookAt(new Vector3);
+    }
+
     componentDidMount(){
-        this._events = [
-          {e:'mousemove', t:this.refs.node, f:this.onMouseMove},
-          {e:'mousedown', t:this.refs.node, f:this.onMouseDown.bind(this)},
-          {e:'mouseup', t:this.refs.node, f:this.onMouseUp.bind(this)},
-          {e:'resize', t:window, f:this.resizeWindow.bind(this)}
-        ];
-        this.bindEvents();
-        this.fixSize();
-        let width = this.refs.node.width;
-        let height = this.refs.node.height;
-        this.nodeRect = this.refs.node.getBoundingClientRect();
+      this._events = [
+        {e:'mousemove', t:this.refs.node, f:this.onMouseMove},
+        {e:'mousedown', t:this.refs.node, f:this.onMouseDown.bind(this)},
+        {e:'mouseup', t:this.refs.node, f:this.onMouseUp.bind(this)},
+        {e:'resize', t:window, f:this.resizeWindow.bind(this)}
+      ];
+      this.bindEvents();
+      this.fixSize();
+      let width = this.refs.node.width;
+      let height = this.refs.node.height;
+      this.nodeRect = this.refs.node.getBoundingClientRect();
 
-        this.renderer = new WebGLRenderer({canvas: this.refs.node});
-        this.camera = new OrthographicCamera(width/2 , -width/2, height/2, -height/2, 1, 100);
+      this.renderer = new WebGLRenderer({canvas: this.refs.node});
+      this.camera = new OrthographicCamera(width/2 , -width/2, height/2, -height/2, 1, 100);
 
-        this.camera.position.z = 10;
-        this.camera.lookAt(new Vector3);
-        this.setState({});
+      this.setupCamera();
+      this.setState({});
     }
 
     componentWillUnmount(){

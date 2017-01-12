@@ -7,6 +7,7 @@ import {rootReducer} from './reducers.js';
 import { syncHistoryWithStore } from 'react-router-redux'
 import {CurveEditorWidget} from './Pages/CurveEditor.jsx';
 import {PartsEditor as PartsEditorWidget} from './Pages/PartsEditor.jsx';
+import {PathEditor as PathEditorWidget} from './Pages/PathEditor.jsx';
 import {ObjectEditor as ObjectEditorWidget} from './Pages/ObjectEditor.jsx';
 import * as PartsEditorActions from './actions/parts.js';
 import set from 'lodash/set'
@@ -21,7 +22,7 @@ export function RootComponent(){
   return <Provider store={storeState} >
     <Router history={history} >
       <Route path="/" component={Root}>
-        <Route path="editor" component={CurveEditor} />
+        <Route path="editor" component={PathEditor} />
         {/*<Route path="editor" component={PartsEditor} />*/}
         <Route path="bar" component={Bar} />
       </Route>
@@ -34,6 +35,7 @@ const Root = connect(
   mapDispatchToProps
 )(Page);
 
+const PathEditor = connect(mapStateToProps, mapDispatchToProps)(PathEditorWidget);
 const CurveEditor = connect(mapStateToProps, mapDispatchToProps)(CurveEditorWidget);
 const ObjectEditor = connect(mapStateToProps, mapDispatchToProps)(ObjectEditorWidget);
 const PartsEditor = connect(mapStateToProps, mapDispatchToProps)(PartsEditorWidget);

@@ -10,14 +10,19 @@ export function HullWidget({hull, editorState, actions}){
     <div className='rotational'> 
       <div className='rough-structure'> 
         <div> radial: 
-          <input value={getValue('radial')}
-            onChange={onChange('radial')}
+          <input value={getValue('radialSegments')}
+            onChange={onChange('radialSegments')}
           />
-          </div>
-          <div> length: <input  
+        </div>
+        <div> length: <input  
+              value={getValue('lengthSegments')}
+              onChange={onChange('lengthSegments')}
+        /></div>
+
+        <div> length: <input  
               value={getValue('length')}
               onChange={onChange('length')}
-/></div>
+        /></div>
         <div className='reset-structure btn btn-small btn-warning' 
           onClick={()=>actions.resetRoughGeometry(savedHullSettings)} >
           Reset

@@ -5,7 +5,7 @@ import Bezier from 'bezier-js';
 
 // const pointSize = 3;
 export class Curve{
-    constructor(points, pointSize = 3){
+    constructor(points, pointSize = 3) {
         if(!points) points = new Float32Array(0);
         if(!points.subarray) points = new Float32Array(points);
         this.points = points || new Float32Array(0);
@@ -78,6 +78,7 @@ export class Curve{
         let points = this.points.length / this.pointSize;
         return (points - 1) / 3;
     }
+
     getClosedBezierArray(){
         let segments = this.getSegmentAmount();
         let points = this.points.length / this.pointSize;
