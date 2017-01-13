@@ -274,7 +274,7 @@ export class CanvasBase extends React.Component{
       let height = this.refs.node.height;
       this.nodeRect = this.refs.node.getBoundingClientRect();
 
-      this.renderer = new WebGLRenderer({canvas: this.refs.node});
+      this.renderer = new WebGLRenderer({canvas: this.refs.node, antialias:true});
       this.camera = new OrthographicCamera(width/2 , -width/2, height/2, -height/2, 1, 100);
 
       this.setupCamera();
