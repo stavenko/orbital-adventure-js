@@ -5,7 +5,7 @@ export function createRotationalPart(props){
   let newPart = {_initialProps:props};
   createMainAxis(newPart,props);
   createSlices(newPart, props);
-  createInterpolatedPatchPoints(newPart, props);
+  createVirtualSlices(newPart, props);
   return newPart;
 }
 
@@ -24,6 +24,23 @@ function createMainAxis(part, props){
     {command:'moveto', x:0,y:0,z:0},
     {command:'lineto', x:0,y:length,z:0}
   ];
+}
+
+function createVirtualSlices(part, props){
+  let {slices} = part;
+  let mixedSlices = slices.map((slice,ix)=>{
+    if(ix == slices.length - 2) return;
+
+    let nextSlice = slices[ix+1];
+    let vSlicePoints = slice.path.map((cmd,ix) => {
+      if(cmd.command == 'moveTo')
+
+
+
+    }
+
+  })
+
 }
 
 function createSlices(part, props){
@@ -54,14 +71,17 @@ function createSlices(part, props){
   }
   part.slices = []
   for(let i = 0; i < lengthSegments; ++i){
+    let t = (i+1)/lengthSegments;
+    let lastFirst = i == 0? 'first':i == (lengthSegments-1)?'last':''
     part.slices
-    .push(createSliceAt(part, radialSegments, orientation, radius, (i+1)/lengthSegments));
+    .push(createSliceAt(part, radialSegments, orientation, radius, lastFirst, t));
   }
 
 }
 
-function createSliceAt(part, radialSegments, orientation, sliceRadius, t){
+function createSliceAt(part, radialSegments, orientation, sliceRadius, lastFirst, t){
   let plane = getSlicePlane(part, orientation, t);
+  let {normal} = plane;
   let lastWeight = null;
   let prevWeight = null;
   let points = [...circleInPlane(plane, radialSegments)]
@@ -82,7 +102,7 @@ function createSliceAt(part, radialSegments, orientation, sliceRadius, t){
     let cmd = {command:'curveto', cp1, cp2, end}
     path.push(cmd);
   }
-  return path;
+  return {path};
 }
 
 function getWeightForCircleWith(steps){
