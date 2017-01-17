@@ -180,11 +180,16 @@ export class CanvasBase extends React.Component{
 
     createBufferGeometry(props){
       let geometry = new BufferGeometry();
+
       for(let key in props){
         let attr = props[key];
         let attribute = new BufferAttribute(attr.array, attr.size)
-        geometry.addAttribute(key, attribute);
+        if(key == 'index')
+          geometry.setIndex(attribute);
+        else
+          geometry.addAttribute(key, attribute);
       }
+      console.log(geometry);
       return geometry;
     }
 

@@ -1,7 +1,7 @@
 export const NEW_PART = 'NEW_PART';
 
-export function newPart(){
-  return {type:NEW_PART}
+export function newPart(withProps){
+  return {type:NEW_PART, props: withProps}
 }
 
 export const LOAD_PART = 'LOAD_PART';

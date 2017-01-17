@@ -22,8 +22,8 @@ export function RootComponent(){
   return <Provider store={storeState} >
     <Router history={history} >
       <Route path="/" component={Root}>
-        <Route path="editor" component={PathEditor} />
-        {/*<Route path="editor" component={PartsEditor} />*/}
+        {/*<Route path="editor" component={PathEditor} />*/}
+        <Route path="editor" component={PartsEditor} />
         <Route path="bar" component={Bar} />
       </Route>
     </Router>

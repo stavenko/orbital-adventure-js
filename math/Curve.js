@@ -1,4 +1,5 @@
 // import {Vector3} from 'three/src/math/Vector3';
+import {Sphere} from 'three/src/math/Sphere.js';
 import {BufferGeometry} from 'three/src/core/BufferGeometry';
 import {BufferAttribute} from 'three/src/core/BufferAttribute';
 import Bezier from 'bezier-js';

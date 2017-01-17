@@ -1,20 +1,45 @@
 import Bezier from 'bezier-js';
 import set from 'lodash/set';
+import {Vector3} from 'three/src/math/Vector3';
+
+export function getNormal(commands, t){
+  let d = 0.0001;
+  let p1, p2;
+  if( t< 1){
+    p1 = get(commands, t);
+    p2 = get(commands, t + d);
+  }else{
+    p1 = get(commands, t - d);
+    p2 = get(commands, t);
+  }
+
+  return p2.sub(p1). normalize();
+
+
+}
 
 export function get(commands, t){
   let paths = commandsToCurves(commands);
   let perCommand = 1/paths.length;
-  let commandId = Math.floor(t / perCommand);
-  let inCommand = t - (command * perCommand);
-  let curve = paths[commandId];
+  let curve;
+  let inCommand;
+  if(t < 1){
+    let commandsT = t / perCommand;
+    let commandId = Math.floor(commandsT);
+    inCommand = commandsT - commandId;
+    curve = paths[commandId];
+  }else {
+    curve = paths[paths.length - 1];
+    inCommand = 1;
+  }
   if(curve.type == 'line') {
     let f = new Vector3(curve.from.x, curve.from.y, curve.from.z);
     let to = new Vector3(curve.to.x, curve.to.y, curve.to.z);
-    let v = new Vector3().lerpVectors(f,to, t)
+    let v = new Vector3().lerpVectors(f,to, inCommand)
     return v;
   }
   if(curve.type == 'curve'){
-    let p = createBezier(curve.from, curve.curve.cp1, curve.curve.cp2, curve.curve.end).get(t);
+    let p = createBezier(curve.from, curve.curve.cp1, curve.curve.cp2, curve.curve.end).get(inCommand);
     return new Vector3(p.x, p.y, p.z);
   }
 
@@ -31,9 +56,9 @@ function createBezier(cp0, cp1, cp2, end){
     bezierCurve[index++] = x;
     bezierCurve[index++] = y;
     bezierCurve[index++] = z;
-    let node = {x,y,z, commandId, key: keys[i]};
-    if(i === 1 || i === 2) node.control = true;
-    if(i !== 0) this.nodes.push(node);
+    let node = {x,y,z};
+    // if(i === 1 || i === 2) node.control = true;
+    // if(i !== 0) this.nodes.push(node);
     cp0 = {x,y,z};
   })
   return new Bezier(bezierCurve);
@@ -60,7 +85,7 @@ function commandsToCurves(commands){
         cc = Object.assign({}, cmd.end);
         break;
     }
-  }
+  })
   return curves;
 }
 
