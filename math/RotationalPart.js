@@ -4,8 +4,7 @@ import {Path} from 'Curve';
 export function createRotationalPart(props){
   let newPart = {_initialProps:props};
   createMainAxis(newPart,props);
-  createSlices(newPart, props);
-  createVirtualSlices(newPart, props);
+  createPatches(newPart, props);
   return newPart;
 }
 
@@ -14,8 +13,195 @@ export function recalculateSlices(part, props){
 }
 
 
-export function getRotationalGeometry(props){
-  let bezierPatches = _createBezierPatches();
+export function getRotationalGeometry(part){
+  let geometries = [];
+  if(part.topCone) {
+    geometries.push(createGeometryForPatches(geometry, part.topCone));
+  }
+  return geometries;
+}
+
+function createGeometryForPatches(patchesCollection){
+  let geometry = {
+    indices:[],
+    positions: [],
+    faces:[],
+    pointIx: {}
+  }
+
+  patchesCollection.forEach((patch, ix)=>{
+    if(patch.length > 10){
+      renderQuadPatch(geometry, patchesCollection, ix)
+    }else{
+      renderTrianglePatch(geometry, patchesCollection, ix)
+    }
+  })
+  let indices = new Uint16Array(geometry.indices.length);
+  geometry.indices.forEach((i,ix)=>{indices[ix]=i})
+  let positions = new Float32Array(geometry.positions.length);
+  geometry.positions.forEach((f,ix)=>{positions[ix]=f})
+  return {
+    indices, positions
+  }
+
+}
+
+function renderTrianglePatch(geometry, collection, patchId, steps =10){
+  let w=0, u=0, v=0;
+  let points = [];
+  let lastPointId = 0;
+  let patch = patchesCollection[patchId];
+  for(let i =0; i < steps; ++i){
+    for(let j=0; j < steps; ++j){
+      let lb = getPoint(i,j);
+      let lt = getPoint(i,j+1);
+      let rb = getPoint(i+1,j);
+      let rt = getPoint(i+1,j+1);
+      let face1 = [lb, lt, rt];
+      let face2 = [lb, rt, rb];
+      collection.indices.push(...face1, ...face2);
+    }
+  }
+
+  function getPoint(i,j, patch){
+    let key = `${i}${j}`;
+    if(geometry.pointsIx[key]) {
+      return geometry.pointsIx[key];
+    }
+
+    let point = getPointBezier(...uvw(i,j), patch);
+    geometry.positions.push(...[point.x, point.y, point.z]);
+    let pointId = lastPointId++;
+    geometry.pointsIx[key] = pointId;
+    return pointId;
+  }
+
+  function uvw(i,j){
+    u = (i / steps);
+    v = 1.0 - (j/steps);
+    w = 1.0 - (u+v);
+    return [u,v,w]
+  }
+
+  function getPointBezier(u,v,w, patch){
+    let point = new Vector3;
+    for(let key in patch){
+      let pp = patch[key].clone();
+      let i=parseInt(key[0]),
+          j=parseInt(key[1]),
+          k=parseInt(key[2]);
+      let n = i+j+k;
+      let B = pow(u,i)* pow(v,j) * pow(w,k) * fact(n) / (fact(i)*fact(j)*fact(k));
+      point.add(pp.multiplyScalar(B));
+    }
+    return point;
+  }
+
+  function pow(a,p){
+    return Math.pow(a,p);
+  }
+
+  function fact(n){
+    let F = 1;
+    for(let i = n; i == 1; --i){
+      F*=i
+    }
+    return F;
+  }
+}
+
+function createPatches(part, props){
+  let {topCone, bottomCone, lengthSegments, radialSegments} = props;
+  if(bottomCone)
+    part.bottomCone = createConeAt(part, props, 0);
+  if(topCone)
+    part.topCone = createConeAt(part, props, 1);
+}
+
+
+function createConeAt(part, props,tCone){
+  if( !(tCone== 0 || tCone == 1)) {
+    console.error('t for cone is incorrect');
+    return;
+  }
+  let way = tCone == 0?1:-1;
+
+  let {orientation, radialSegments, lengthSegments, length} = props;
+  let lengthSegmentLength = 1/(lengthSegments+2);
+  let coneBaseWeight1 = lengthSegmentLength * 0.25 * length;
+  let coneBaseWeight2 = lengthSegmentLength * 0.333 * length;
+  let circularWeight = getWeightForCircleWith(radialSegments);
+  let tipPlane = getSlicePlane({mainAxis}, orientation, tCone);
+  let nextT = tCone + way * lengthSegmentLength;
+  let coneBasePlane = getSlicePlane({mainAxis}, orientation, nextT);
+  let points = [...circleInPlane(tipPlane, radialSegments)];
+  let basePoints = [...circleInPlane(coneBasePlane, radialSegments)];
+  let trianglePatches = [];
+  let lengthIndex = tCone * lengthSegments;
+  points.forEach(({point, tangent}, ix)=>{
+    let nextIndex = ix+1 == points.length?0:ix+1;
+    let nextPoint = points[nextIndex];
+    let bp1 = basePoints[ix];
+    let bp1w = bp1.point.clone().add(bp1.tangent.clone().multiplyScalar(circularWeight));
+    let bp2 = basePoints[nextIndex];
+    let bp2w = bp2.point.clone().add(bp2.tangent.clone().multiplyScalar(-circularWeight));
+    let pathCentral = Path.get([
+      {command:'moveTo', ...bp1.point}, 
+      {command:'curveTo', cp1: bp1w, cp2: bp2w, end: bp2.point.clone()}], 0.5);
+
+    let p210 = tipPlane.clone().add(point);
+    let p201 = tipPlane.clone().add(nextPoint.point);
+    let p120 = pb1.point.clone().add(coneBasePlane.normal.clone().multiplyScalar(coneBaseWeight1)) ;
+    let p102 = pb2.point.clone().add(coneBasePlane.normal.clone().multiplyScalar(coneBaseWeight1));
+    let p111 = pathCentral.clone().add(coneBasePlane.normal.clone().multiplyScalar(coneBaseWeight2));
+    let p030 = bp1.point.clone();
+    let p021 = bp1w.clone();
+    let p012 = bp2w.clone();
+    let p003 = bp2.point.clone();
+    pushPoint(part, `${lengthIndex}` , tipPlane.origin),
+    pushPoint(part, `${lengthIndex}${sign(way)},${ix}`, p210), // TODO: Correct sum
+    pushPoint(part, `${lengthIndex}${sign(way)},${nextIndex}`,p201), // TODO: Correct sum
+    pushPoint(part, `${lengthIndex+way}${sign(-way)},${ix}`, p120),
+    pushPoint(part, `${lengthIndex}:111,${ix}`, p111),
+    pushPoint(part, `${lengthIndex+way}${sign(-way)},${nextIndex}`, p120),
+    pushPoint(part, `${lengthIndex+way},${ix}`, p030),
+    pushPoint(part, `${lengthIndex+way},${ix}+`, p021),
+    pushPoint(part, `${lengthIndex+way},${nextIndex}-`, p012),
+    pushPoint(part, `${lengthIndex+way},${nextIndex}`, p003)
+
+    let controlPoints = {
+      '300': `${lengthIndex}` ,
+
+      '210': `${lengthIndex}${sign(way)},${ix}`,
+      '201': `${lengthIndex}${sign(way)},${nextIndex}`,
+      
+      '120': `${lengthIndex+way}${sign(-way)},${ix}`,
+      '111': `${lengthIndex}:111,${ix}`,
+      '102': `${lengthIndex+way}${sign(-way)},${nextIndex}`,
+
+      '030': `${lengthIndex+way},${ix}`,
+      '021': `${lengthIndex+way},${ix}+`,
+      '012': `${lengthIndex+way},${nextIndex}-`,
+      '003': `${lengthIndex+way},${nextIndex}`,
+    }
+    trianglePatches.push(controlPoints);
+  });
+  return trianglePatches;
+
+  function sign(t){
+    return t > 0?'+':'-'
+  }
+
+}
+
+function pushPoint(part, index, point){
+  part.pointIndex[index] = point;
+}
+
+function getPoint(part, index, setDefault= null){
+  // points indexation - 'N,M', where N = length number [0; lengthSegments]
+  // M = radialNumber [0; radialSegments * 2]
+
 }
 
 function createMainAxis(part, props){
@@ -114,13 +300,13 @@ function createConetipContolPoints(part, radialSegments, orientation, t){
   let {length} = part;
   let cps = [];
   let plane = getSlicePlane(part, orientation, t)
-  for({point} of curcleInPlane(plane, radialSegments){
+  for({point} of circleInPlane(plane, radialSegments){
     cps.push(point.multiplyScalar(defaultTipWeight * length);
   }
   return cps;
 }
 
-function* curcleInPlane({normal, origin}, steps){
+function* circleInPlane({normal, origin}, steps){
   let z = new Vector3(0,0,1);
   let y = new Vector3(0,1,0);
   let x = new Vector3(1,0,0);

@@ -1,6 +1,69 @@
 import Bezier from 'bezier-js';
 import set from 'lodash/set';
 
+export function get(commands, t){
+  let paths = commandsToCurves(commands);
+  let perCommand = 1/paths.length;
+  let commandId = Math.floor(t / perCommand);
+  let inCommand = t - (command * perCommand);
+  let curve = paths[commandId];
+  if(curve.type == 'line') {
+    let f = new Vector3(curve.from.x, curve.from.y, curve.from.z);
+    let to = new Vector3(curve.to.x, curve.to.y, curve.to.z);
+    let v = new Vector3().lerpVectors(f,to, t)
+    return v;
+  }
+  if(curve.type == 'curve'){
+    let p = createBezier(curve.from, curve.curve.cp1, curve.curve.cp2, curve.curve.end).get(t);
+    return new Vector3(p.x, p.y, p.z);
+  }
+
+}
+
+function createBezier(cp0, cp1, cp2, end){
+  if(!end) return createQuadBezier(cp0,cp1,cp2);
+
+  let bezierCurve = new Float32Array(4 * 3);
+  let index = 0;
+  let keys = [null,'cp1', 'cp2', 'end'];
+  [cp0, cp1, cp2, end].forEach(({x,y,z, relative},i)=>{
+    if(relative) {x += cp0.x; y+= cp0.y; z+= cp0.z}
+    bezierCurve[index++] = x;
+    bezierCurve[index++] = y;
+    bezierCurve[index++] = z;
+    let node = {x,y,z, commandId, key: keys[i]};
+    if(i === 1 || i === 2) node.control = true;
+    if(i !== 0) this.nodes.push(node);
+    cp0 = {x,y,z};
+  })
+  return new Bezier(bezierCurve);
+
+}
+
+function createQuadBezier(cp0, cp2, cp3){
+  console.error('implement me');
+}
+function commandsToCurves(commands){
+  let cc = {x:0, y:0, z:0};
+  let curves = [];
+  commands.forEach((cmd,ix) => {
+    switch(cmd.command){
+      case 'moveTo': 
+        cc = Object.assign({}, cmd);
+        break;
+      case 'lineTo':
+        curves.push({type:'line', from:cc, to:cmd});
+        cc = Object.assign({}, cmd);
+        break;
+      case 'curveTo':
+        curves.push({type:'curve', from:cc, curve: cmd});
+        cc = Object.assign({}, cmd.end);
+        break;
+    }
+  }
+  return curves;
+}
+
 export class Path{
   constructor(commands){
     this.commands = commands;
@@ -12,6 +75,8 @@ export class Path{
     this.nodes = [];
     this.currentCoords = {x:0, y:0, z:0};
   }
+
+
 
   moveTo({x,y,z}){
     if(this.points.length > 0){
