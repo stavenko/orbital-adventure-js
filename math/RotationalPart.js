@@ -18,12 +18,12 @@ export function getRotationalGeometry(part){
   console.log("PART", part);
   let geometries = [];
   if(part.topCone) {
-    geometries.push(createGeometryForPatches(part.topCone));
+    geometries.push(createGeometryForPatches(part.pointIndex, part.topCone));
   }
   return geometries;
 }
 
-function createGeometryForPatches(patchesCollection){
+function createGeometryForPatches(pointIndex, patchesCollection){
   let geometry = {
     indices:[],
     positions: [],
@@ -33,15 +33,18 @@ function createGeometryForPatches(patchesCollection){
 
   patchesCollection.forEach((patch, ix)=>{
     if(patch.length > 10){
-      renderQuadPatch(geometry, patchesCollection, ix)
+      renderQuadPatch(pointIndex, geometry, patchesCollection, ix)
     }else{
-      renderTrianglePatch(geometry, patchesCollection, ix)
+      renderTrianglePatch(pointIndex, geometry, patchesCollection, ix)
     }
   })
   let indices = new Uint16Array(geometry.indices.length);
   geometry.indices.forEach((i,ix)=>{indices[ix]=i})
   let positions = new Float32Array(geometry.positions.length);
-  geometry.positions.forEach((f,ix)=>{positions[ix]=f})
+  geometry.positions.forEach((f,ix)=>{
+    console.log(f);
+    positions[ix]=f;
+  })
   return {
     indices: {array:indices, size:1}, 
     positions: {array:positions, size:3}
@@ -49,17 +52,17 @@ function createGeometryForPatches(patchesCollection){
 
 }
 
-function renderTrianglePatch(geometry, collection, patchId, steps =10){
+function renderTrianglePatch(pointIndex, geometry, collection, patchId, steps =10){
   let w=0, u=0, v=0;
   let points = [];
   let lastPointId = 0;
   let patch = collection[patchId];
   for(let i =0; i < steps; ++i){
     for(let j=0; j < steps; ++j){
-      let lb = getPoint(i,j);
-      let lt = getPoint(i,j+1);
-      let rb = getPoint(i+1,j);
-      let rt = getPoint(i+1,j+1);
+      let lb = getPoint(i,j, patch);
+      let lt = getPoint(i,j+1, patch);
+      let rb = getPoint(i+1,j, patch);
+      let rt = getPoint(i+1,j+1, patch);
       let face1 = [lb, lt, rt];
       let face2 = [lb, rt, rb];
       geometry.indices.push(...face1, ...face2);
@@ -89,7 +92,8 @@ function renderTrianglePatch(geometry, collection, patchId, steps =10){
   function getPointBezier(u,v,w, patch){
     let point = new Vector3;
     for(let key in patch){
-      let pp = patch[key].clone();
+      let pointId = patch[key];
+      let pp = pointIndex[pointId].clone();
       let i=parseInt(key[0]),
           j=parseInt(key[1]),
           k=parseInt(key[2]);

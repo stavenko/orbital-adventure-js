@@ -14,7 +14,7 @@ export class PartDisplay extends CanvasBase{
   }
 
   setupCamera(){
-    let ratio = 0.2;
+    let ratio = 0.02/3;
     
     this.camera.left *= ratio;
     this.camera.right *= ratio;
