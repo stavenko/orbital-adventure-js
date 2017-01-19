@@ -8,6 +8,10 @@ import {BufferGeometry} from 'three/src/core/BufferGeometry';
 import {BufferAttribute} from 'three/src/core/BufferAttribute';
 import {Vector2} from 'three/src/math/Vector2';
 import {Vector3} from 'three/src/math/Vector3';
+import {AxisHelper} from 'three/src/extras/helpers/AxisHelper';
+import {Quaternion} from 'three/src/math/Quaternion';
+import {Matrix4} from 'three/src/math/Matrix4';
+import {Vector4} from 'three/src/math/Vector4';
 import isEqual from 'lodash/isEqual';
 
 
@@ -22,6 +26,7 @@ export class CanvasBase extends React.Component{
         this.onMouseMove = this.onMouseMove.bind(this);
         this.onMouseDown = this.onMouseDown.bind(this);
         this.onMouseUp = this.onMouseUp.bind(this);
+        this.onMouseWheel = this.onMouseWheel.bind(this);
     }
 
     pickMesh(event){
@@ -47,7 +52,6 @@ export class CanvasBase extends React.Component{
             this.pickedMesh.userData.onLeave(event);
             this.pickedMesh = null;
         }
-
     }
 
     eventToNormalizedCanvas({clientX, clientY}){
@@ -58,21 +62,88 @@ export class CanvasBase extends React.Component{
       return normalizedMouse;
     }
 
+    onMouseWheel(e){
+      console.log("wheel", e);
+      let delta = e.wheelDelta ? e.wheelDelta : (-e.detail * 100.0);
+      this.zoomCamera(delta);
+      e.preventDefault();
+    }
+
+
     onMouseMove(e){
       if(this.draggable){
         let diff = [
           e.clientX - this._lastMouseEvent.clientX, 
           e.clientY - this._lastMouseEvent.clientY 
         ];
-        
         this.draggable.userData.onDrag(e, diff);
-        this._lastMouseEvent = e;
-        return;
+      }else{
+        if(this._lastMouseDown){
+          this.rotateCamera(this._lastMouseDown, e, this._lastMouseEvent);
+        }
       }
       this.pickMesh(e);
+      this._lastMouseEvent = e;
+    }
+
+    toArcRot(event){
+      let projected = this.toWorldNoRotation(event);
+      let len = projected.x * projected.x + projected.y * projected.y;
+      let arcRadius = 5;
+      let sz = arcRadius * arcRadius - len;
+      if(sz > 0)
+        return  new Vector3(projected.x, projected.y, Math.sqrt(sz));
+      else{
+        return new Vector3(
+          arcRadius *projected.x / Math.sqrt(len), 
+          arcRadius * projected.y/ Math.sqrt(len),
+          0);
+      }
+    }
+
+    toWorldNoRotation(evt){
+      let m = this.camera.matrix.clone();
+      let i = new Matrix4().getInverse(m.clone());
+      let mm = new Matrix4().makeTranslation(...this.camera.position.clone().negate().toArray());
+      let mmm = new Matrix4().multiplyMatrices(mm, m);
+      let v = new Vector4(0,0,0,1).applyMatrix4(mmm);
+
+      v.x = (2 * (evt.clientX-this.nodeRect.left) / this.nodeRect.width - 1) * v.w;
+      v.y = (2 * (evt.clientY-this.nodeRect.top) / this.nodeRect.height - 1) *v.w;
+      v.applyMatrix4(i);
+      return v;
+    }
+
+    zoomCamera(delta){
+      this.camera.zoom *= Math.pow(1.001, delta);
+      this.camera.updateProjectionMatrix();
+      this.renderCanvas();
+    }
+    
+
+    rotateCamera(firstMouseDown, currentMouseMove, prevMouseMove){
+
+      let p1 = this.toArcRot(firstMouseDown); 
+      let p2 = this.toArcRot(currentMouseMove);
+
+      let axis = new Vector3().crossVectors(p1,p2).normalize();
+      let angle = p2.angleTo(p1);
+      
+      let q = new Quaternion().setFromAxisAngle(axis,angle)
+      let p = this.cameraInitials.position.clone();
+      let u = this.cameraInitials.up.clone();
+      p.applyQuaternion(q);
+      u.applyQuaternion(q)
+      this.camera.position.set(...p.toArray());
+      this.camera.up.set(...u.toArray());
+      
+      this.camera.lookAt(new Vector3);
+      this.renderCanvas();
+
     }
 
     onMouseUp(e){
+      this._lastMouseDown = null;
       if(!this.pickedMesh) return;
       if(this.pickedMesh.userData.onMouseUp)
         this.pickedMesh.userData.onMouseUp(e);
@@ -80,13 +151,18 @@ export class CanvasBase extends React.Component{
     }
 
     onMouseDown(e){
+      this._lastMouseDown = e;
+      this._lastMouseEvent = e;
+      this.cameraInitials = {
+        position: this.camera.position.clone(),
+        up: this.camera.up.clone()
+      }
       if(!this.pickedMesh) return;
       if(this.pickedMesh.userData.onMouseDown)
         this.pickedMesh.userData.onMouseDown(e);
 
       if(this.pickedMesh.userData.onDrag){
         this.draggable = this.pickedMesh;
-        this._lastMouseEvent = e;
       }
 
     }
@@ -94,6 +170,7 @@ export class CanvasBase extends React.Component{
     renderCanvas(){
       let components = this.renderScene();
       this.updateMeshes(this.scene, components);
+      this.scene.add(new AxisHelper(1));
       this.renderer.render(this.scene, this.camera);
 
     }
@@ -114,8 +191,9 @@ export class CanvasBase extends React.Component{
       }
       // ix stands on meshComponents.length;
       if( ix < rootMesh.children.length){
-        rootMesh.childre.splice(ix).forEach(mesh=>{});
+        rootMesh.children.splice(ix).forEach(mesh=>{});
       }
+
     }
 
 
@@ -189,7 +267,6 @@ export class CanvasBase extends React.Component{
         else
           geometry.addAttribute(key, attribute);
       }
-      console.log(geometry);
       return geometry;
     }
 
@@ -268,6 +345,7 @@ export class CanvasBase extends React.Component{
 
     componentDidMount(){
       this._events = [
+        {e:'mousewheel', t:this.refs.node, f:this.onMouseWheel},
         {e:'mousemove', t:this.refs.node, f:this.onMouseMove},
         {e:'mousedown', t:this.refs.node, f:this.onMouseDown.bind(this)},
         {e:'mouseup', t:this.refs.node, f:this.onMouseUp.bind(this)},

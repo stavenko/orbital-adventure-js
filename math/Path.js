@@ -39,8 +39,88 @@ export function get(commands, t){
     return v;
   }
   if(curve.type == 'curve'){
+    console.log('bezier', curve, inCommand);
     let p = createBezier(curve.from, curve.curve.cp1, curve.curve.cp2, curve.curve.end).get(inCommand);
     return new Vector3(p.x, p.y, p.z);
+  }
+}
+
+export function getGeometry(path, bezierSteps = 10){
+    let points = [];
+    let geometries = [];
+    let nodes = [];
+    let currentCoords = {x:0, y:0, z:0};
+    for(let i =0; i< path.length; ++i){
+      let command = path[i]
+      switch(command.command){
+        case 'lineTo': lineTo(command,i); break;
+        case 'curveTo': curveTo(command,i); break;
+        case 'moveTo' : moveTo(command, i); break;
+      }
+    }
+    geometries.push(points);
+    points = [];
+
+    return geometries.map(pts=>{
+      console.log(points);
+      let array = new Float32Array(pts.length *3);
+      let ix = 0;
+      pts.forEach(({x,y,z})=>{
+        array[ix++] = x;
+        array[ix++] = y;
+        array[ix++] = z;
+      })
+      return {array, size:3};
+    });
+
+  function moveTo({x,y,z}){
+    if(points.length > 0){
+      geometries.push(points);
+      points = [];
+    }
+    currentCoords = {x,y,z};
+  }
+
+  function lineTo({x,y,z, relative}, commandId){
+    if(relative){
+      x += currentCoords.x;
+      y += currentCoords.y;
+      z += currentCoords.z;
+    }
+    if(points.length == 0){
+      points.push(currentCoords);
+      let node = {...currentCoords, commandId: commandId-1 }
+      nodes.push(node);
+    }
+    points.push({x,y,z});
+    currentCoords = {x,y,z};
+    nodes.push({x,y,z, commandId});
+  }
+
+  function curveTo({cp1, cp2, end }, commandId){
+    let cp0 = Object.assign({}, currentCoords);
+    let bezierCurve = new Float32Array(4 * 3);
+    let index = 0;
+    let keys = [null,'cp1', 'cp2', 'end'];
+    [cp0, cp1, cp2, end].forEach(({x,y,z, relative},i)=>{
+      if(relative) {x += cp0.x; y+= cp0.y; z+= cp0.z}
+      bezierCurve[index++] = x;
+      bezierCurve[index++] = y;
+      bezierCurve[index++] = z;
+      //let node = {x,y,z, commandId, key: keys[i]};
+      //if(i === 1 || i === 2) node.control = true;
+      //if(i !== 0) this.nodes.push(node);
+      cp0 = {x,y,z};
+    })
+    let bezier = new Bezier(bezierCurve);
+    let From = 0;
+    if(points.length > 0) From = 1;
+    for(let i = From; i <= bezierSteps; ++i){
+      let t = i / bezierSteps;
+      let point = bezier.get(t);
+      points.push(point);
+    }
+    currentCoords = cp0;
   }
 
 }
@@ -59,7 +139,7 @@ function createBezier(cp0, cp1, cp2, end){
     let node = {x,y,z};
     // if(i === 1 || i === 2) node.control = true;
     // if(i !== 0) this.nodes.push(node);
-    cp0 = {x,y,z};
+    //cp0 = {x,y,z};
   })
   return new Bezier(bezierCurve);
 

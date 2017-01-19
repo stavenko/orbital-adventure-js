@@ -1,6 +1,6 @@
 import React from 'react';
 import {CanvasBase} from '../Canvas.jsx'
-import {Path} from '../math/Path.js';
+import * as Path from '../math/Path.js';
 import {Line} from 'three/src/objects/Line';
 import {LineBasicMaterial} from 'three/src/materials/LineBasicMaterial';
 import {Color} from 'three/src/math/Color';

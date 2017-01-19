@@ -4,9 +4,13 @@ import {Color} from 'three/src/math/Color';
 import {CanvasBase} from '../../Canvas.jsx'
 import {Mesh} from 'three/src/objects/Mesh';
 import {MeshBasicMaterial} from 'three/src/materials/MeshBasicMaterial';
+import {Line} from 'three/src/objects/Line';
+import {LineBasicMaterial} from 'three/src/materials/LineBasicMaterial';
 import {Vector3} from 'three/src/math/Vector3';
+import {BoxBufferGeometry} from 'three/src/geometries/BoxBufferGeometry';
 import * as RotationalPart from '../../math/RotationalPart.js'
 import * as THREE from 'three/src/constants'
+import * as Path from '../../math/Path.js';
 
 export class PartDisplay extends CanvasBase{
   constructor(props){
@@ -14,24 +18,57 @@ export class PartDisplay extends CanvasBase{
   }
 
   setupCamera(){
-    let ratio = 0.02/3;
+    this.cameraZoom = 0.02/10;
     
-    this.camera.left *= ratio;
-    this.camera.right *= ratio;
-    this.camera.top *= ratio;
-    this.camera.bottom *= ratio;
+    this.camera.left *= this.cameraZoom;
+    this.camera.right *= this.cameraZoom;
+    this.camera.top *= this.cameraZoom;
+    this.camera.bottom *= this.cameraZoom;
     this.camera.position.z = -10;
 
     this.camera.lookAt(new Vector3);
     this.camera.updateProjectionMatrix();
   }  
 
+  getPath(){
+    let part = this.props.state.get('currentPart').toJS();
+    let pointList = ['1,0', '1,0+', '1,1-', '1,1'];
+    let points = RotationalPart.getPoints(part, pointList)
+      .map(p=>p.clone())
+    return Path.getGeometry([
+      {command: 'moveTo', ...points[0]},
+      {command: 'curveTo', cp1:points[1], cp2:points[2], end:points[3]},
+    ])
+  }
+
+  getControlPoints(){
+    let part = this.props.state.get('currentPart').toJS();
+    let pointList = ['1,0', '1,0+', '1,1-', '1,1', '2:111,0'];
+    return RotationalPart.getPoints(part, pointList).map((p,ix)=>{
+      let color
+      if(ix == 4) color = new Color(0xf0ff00);
+      else if(ix == 1 || ix == 2) color = new Color(0xff00ff);
+
+      else color = new Color(0xff0000);
+      return {
+        type: Mesh,
+        geometry: {type: BoxBufferGeometry, arguments:[0.05,0.05,0.05]},
+        material: {
+          type: MeshBasicMaterial, properties:{
+            color
+          }
+        },
+
+        position: new Vector3(p.x, p.y, p.z)
+      }
+
+    })
+  }
+
   renderScene(){
-    console.log('---------------', THREE);
     if(!this.props.state.has('currentPart')) return [];
     let part = this.props.state.get('currentPart').toJS();
     let faces = RotationalPart.getRotationalGeometry(part);
-    console.log(faces);
     let meshes = faces.map(({positions, indices})=>{
       return {
         type: Mesh,
@@ -39,13 +76,20 @@ export class PartDisplay extends CanvasBase{
         material: {
           type: MeshBasicMaterial, properties:{
             color: new Color(0xeeeeee),
-            side: THREE.DoubleSide
+            side: THREE.DoubleSide,
+            wireframe: true
           }
         }
       }
-    })
-    console.log(meshes);
-    return meshes;
+    });
+    let cps = this.getControlPoints();
+    let color = new Color(0x0000ff);
+
+    return [...meshes, ...cps, ...this.getPath().map(geometry=>({
+      type:Line,
+      geometry:{position: geometry},
+      material: {type:LineBasicMaterial, properties:{color}} 
+    }))];
   }
 
 }
