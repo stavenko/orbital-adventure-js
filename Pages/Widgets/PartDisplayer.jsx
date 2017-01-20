@@ -34,6 +34,7 @@ export class PartDisplay extends CanvasBase{
     let part = this.props.state.get('currentPart').toJS();
     let pointList = ['1,0', '1,0+', '1,1-', '1,1'];
     let points = RotationalPart.getPoints(part, pointList)
+      .filter(p=>p)
       .map(p=>p.clone())
     return Path.getGeometry([
       {command: 'moveTo', ...points[0]},
@@ -44,15 +45,15 @@ export class PartDisplay extends CanvasBase{
   getControlPoints(){
     let part = this.props.state.get('currentPart').toJS();
     let pointList = ['1,0', '1,0+', '1,1-', '1,1', '2:111,0'];
-    return RotationalPart.getPoints(part, pointList).map((p,ix)=>{
-      let color
+    return RotationalPart.getPoints(part, pointList).filter(p=>p).map((p,ix)=>{
+      let color;
       if(ix == 4) color = new Color(0xf0ff00);
       else if(ix == 1 || ix == 2) color = new Color(0xff00ff);
 
       else color = new Color(0xff0000);
       return {
         type: Mesh,
-        geometry: {type: BoxBufferGeometry, arguments:[0.05,0.05,0.05]},
+        geometry: {type: BoxBufferGeometry, arguments:[1,1,1].map(x=>x*0.01)},
         material: {
           type: MeshBasicMaterial, properties:{
             color
@@ -85,11 +86,12 @@ export class PartDisplay extends CanvasBase{
     let cps = this.getControlPoints();
     let color = new Color(0x0000ff);
 
-    return [...meshes, ...cps, ...this.getPath().map(geometry=>({
+    return [...meshes, ...cps]; 
+    /* ...this.getPath().map(geometry=>({
       type:Line,
       geometry:{position: geometry},
       material: {type:LineBasicMaterial, properties:{color}} 
-    }))];
+      }))];*/
   }
 
 }

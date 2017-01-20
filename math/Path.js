@@ -62,7 +62,6 @@ export function getGeometry(path, bezierSteps = 10){
     points = [];
 
     return geometries.map(pts=>{
-      console.log(points);
       let array = new Float32Array(pts.length *3);
       let ix = 0;
       pts.forEach(({x,y,z})=>{

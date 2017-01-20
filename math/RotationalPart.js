@@ -20,20 +20,18 @@ export function getRotationalGeometry(part){
     geometries.push(...createGeometryForPatches(part.pointIndex, part.topCone));
   }
   if(part.bottomCone) {
-    //geometries.push(...createGeometryForPatches(part.pointIndex, part.bottomCone));
+    geometries.push(...createGeometryForPatches(part.pointIndex, part.bottomCone));
   }
   return geometries;
 }
 
 function createGeometryForPatches(pointIndex, patchesCollection){
   let geometries = [];
-
   patchesCollection.forEach((patch, ix)=>{
     if(patch.length > 10){
       geometries.push(renderQuadPatch(pointIndex, patchesCollection, ix))
     }else{
-      if(ix == 0)
-        geometries.push(renderTrianglePatch(pointIndex, patchesCollection, ix))
+      geometries.push(renderTrianglePatch(pointIndex, patchesCollection, ix))
     }
   });
   return geometries.map(geometry=>{
@@ -59,7 +57,6 @@ function renderTrianglePatch(pointIndex, collection, patchId, steps =10){
   let lastPointId = 0;
   let patch = collection[patchId];
   for(let i =0; i < steps; ++i){
-    if(i == 5) break;
     let to = steps - i;
 
     let first = getPoint(i  ,0, patch);
@@ -105,7 +102,6 @@ function renderTrianglePatch(pointIndex, collection, patchId, steps =10){
     let w = i / steps;
     let v = j / steps;
     let u = 1.0 - v - w;
-    //console.log(`[${i},${j}]`,u,v,w)
     return [u,v,w]
   }
 
@@ -118,7 +114,8 @@ function renderTrianglePatch(pointIndex, collection, patchId, steps =10){
           j=parseInt(key[1]),
           i=parseInt(key[2]);
       let n = i+j+k;
-      let B = pow(u,i)* pow(v,j) * pow(w,k) * fact(n) / (fact(i)*fact(j)*fact(k));
+      let pows = pow(u,i)* pow(v,j) * pow(w,k);
+      let B =  pows * fact(n) / (fact(i)*fact(j)*fact(k));
       point.add(pp.multiplyScalar(B));
     }
     return point;
@@ -130,8 +127,8 @@ function renderTrianglePatch(pointIndex, collection, patchId, steps =10){
 
   function fact(n){
     let F = 1;
-    for(let i = n; i == 1; --i){
-      F*=i
+    for(let i = n; i >= 1; --i){
+      F*=i;
     }
     return F;
   }
@@ -142,8 +139,8 @@ function createPatches(part, props){
   part.pointIndex = {};
   if(bottomCone)props.lengthSegments+=1;
   if(topCone) props.lengthSegments+=1
-  //if(bottomCone)
-    //part.bottomCone = createConeAt(part, props, 0);
+  if(bottomCone)
+    part.bottomCone = createConeAt(part, props, 0);
   if(topCone)
     part.topCone = createConeAt(part, props, 1);
 }
@@ -165,29 +162,26 @@ function createConeAt(part, props,tCone){
   let {orientation, radialSegments, lengthSegments, length} = props;
   
   let lengthSegmentLength = 1/(lengthSegments);
-  let coneBaseWeight1 = lengthSegmentLength * 0.25 * length;
-  let coneBaseWeight2 = lengthSegmentLength * 0.333 * length;
-  let circularWeight = getWeightForCircleWith(radialSegments);
   let radius = length / 3;
+  let coneBaseWeight1 = lengthSegmentLength * 0.25 * length;
+  let coneBaseWeight2 = lengthSegmentLength * 0.35 * length;
+  let circularWeight = getWeightForCircleWith(radialSegments, radius);
   let tipPlane = getSlicePlane(part, orientation, tCone);
   let nextT = tCone + way * lengthSegmentLength;
   let coneBasePlane = getSlicePlane(part, orientation, nextT);
-  let points = [...circleInPlane(tipPlane, radialSegments, radius*2)];
+  let points = [...circleInPlane(tipPlane, radialSegments, radius*0.1)];
   let basePoints = [...circleInPlane(coneBasePlane, radialSegments,radius)];
   let trianglePatches = [];
   let lengthIndex = tCone * lengthSegments;
   points.forEach(({point, tangent}, ix)=>{
-    //point = point.clone().multiplyScalar(radius);
     let nextIndex = ix+1 == points.length?0:ix+1;
     let nextPoint = Object.assign({},points[nextIndex]);
-    //nextPoint.point = nextPoint.point.multiplyScalar(radius);
-    //nextPoint.tangent = nextPoint.tangent.clone();
     let bp1 = {...basePoints[ix]};
     let bp1w = bp1.point.clone() 
-      .add(bp1.tangent.clone().multiplyScalar(-circularWeight));
+      .add(bp1.tangent.clone().multiplyScalar(+circularWeight));
     let bp2 = {...basePoints[nextIndex]};
     let bp2w = bp2.point.clone()
-      //.add(bp2.tangent.clone().multiplyScalar(+circularWeight));
+      .add(bp2.tangent.clone().multiplyScalar(-circularWeight));
     let pathCentral = Path.get([
       {command:'moveTo', ...bp1.point.clone()}, 
       {command:'curveTo', cp1: bp1w.clone(), 
@@ -199,18 +193,14 @@ function createConeAt(part, props,tCone){
 
     let p120 = bp1.point.clone().add(coneBasePlane.normal.clone().multiplyScalar(-way*coneBaseWeight1)) ;
     let p102 = bp2.point.clone().add(coneBasePlane.normal.clone().multiplyScalar(-way*coneBaseWeight1));
-    let p111 = pathCentral.clone();//.add(coneBasePlane.normal.clone().multiplyScalar(-way*coneBaseWeight2));
-    ///p111.multiply(new Vector3(3,3,3));
+    let p111 = pathCentral.clone().add(coneBasePlane.normal.clone().multiplyScalar(-way*coneBaseWeight2));
 
     let p030 = bp1.point.clone();
 
-
-    //let p021 = p030.clone()
     let p021 = bp1w.clone();
     let p012 = bp2w.clone();
 
     let p003 = bp2.point.clone();
-    //let p012 = p003.clone ();
     pushPoint(part, `${lengthIndex}` , tipPlane.origin),
     pushPoint(part, `${lengthIndex}${sign(way)},${ix}`, p210), 
     pushPoint(part, `${lengthIndex}${sign(way)},${nextIndex}`,p201), 
@@ -220,8 +210,8 @@ function createConeAt(part, props,tCone){
     pushPoint(part, `${lengthIndex+way}${sign(-way)},${nextIndex}`, p102),
 
     pushPoint(part, `${lengthIndex+way},${ix}`, p030),
-    pushPoint(part, `${lengthIndex+way},${ix}${sign(way)}`, p021),
-    pushPoint(part, `${lengthIndex+way},${nextIndex}${sign(-way)}`, p012),
+    pushPoint(part, `${lengthIndex+way},${ix}+`, p021),
+    pushPoint(part, `${lengthIndex+way},${nextIndex}-`, p012),
     pushPoint(part, `${lengthIndex+way},${nextIndex}`, p003)
 
 
@@ -236,12 +226,13 @@ function createConeAt(part, props,tCone){
       '102': `${lengthIndex+way}${sign(-way)},${nextIndex}`,
 
       '030': `${lengthIndex+way},${ix}`,
-      '021': `${lengthIndex+way},${ix}${sign(way)}`,
-      '012': `${lengthIndex+way},${nextIndex}${sign(-way)}`,
+      '021': `${lengthIndex+way},${ix}+`,
+      '012': `${lengthIndex+way},${nextIndex}-`,
       '003': `${lengthIndex+way},${nextIndex}`,
     }
     trianglePatches.push(controlPoints);
   });
+  console.log('---pointList', part.pointIndex);
   return trianglePatches;
 
   function sign(t){
@@ -343,7 +334,7 @@ function createSliceAt(part, radialSegments, orientation, sliceRadius, lastFirst
   let prevWeight = null;
   let points = [...circleInPlane(plane, radialSegments)]
   let path = [{command:'moveto', ...points[0].point}]
-  let weight = getWeightForCircleWith(radialSegments) * sliceRadius;
+  let weight = getWeightForCircleWith(radialSegments, sliceRadius);
   for(let i = 1; i <= points.length; ++i){
     let isLast = i == points.length;
     let prev = points[i-1];
@@ -362,8 +353,8 @@ function createSliceAt(part, radialSegments, orientation, sliceRadius, lastFirst
   return {path};
 }
 
-function getWeightForCircleWith(steps){
-  return 0.4;
+function getWeightForCircleWith(steps, radius = 1){
+  return 0.4 * radius;
 }
 
 function createConetipContolPoints(part, radialSegments, orientation, t){

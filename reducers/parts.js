@@ -5,9 +5,9 @@ import * as RotationalPart from '../math/RotationalPart.js'
 const initialPartConfig = {
   length:1,
   lengthSegments: 0,
-  radialSegments: 4,
+  radialSegments: 8,
   topCone: true,
-  bottomCone: true,
+  //bottomCone: true,
   type: 'rotational'
 }
 const createInitialNewPart = state => ({
