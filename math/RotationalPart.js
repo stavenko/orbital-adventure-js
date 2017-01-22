@@ -6,6 +6,7 @@ export function createRotationalPart(props){
   let newPart = {_initialProps:props};
   createMainAxis(newPart,props);
   createPatches(newPart, props);
+  newPart.calculated = true;
   return newPart;
 }
 
@@ -22,6 +23,8 @@ export function getRotationalGeometry(part){
   if(part.bottomCone) {
     geometries.push(...createGeometryForPatches(part.pointIndex, part.bottomCone));
   }
+  geometries.push(...createGeometryForPatches(part.pointIndex, part.cylindrycal));
+
   return geometries;
 }
 
@@ -46,6 +49,62 @@ function createGeometryForPatches(pointIndex, patchesCollection){
       positions: {array:positions, size:3}
     }
   })
+}
+
+function renderQuadPatch(pointIndex, collection, patchId, steps = 10){
+  let patch = collection[patchId];
+  let geometry = {indices:[], positions:[], pointsIx:{}}
+  let lastPointId = 0;
+  for(let i = 0; i < steps; ++i){
+    for(let j = 0; j< steps; ++j){
+      let lb = getPoint(i,j);
+      let lt = getPoint(i,j+1);
+      let rb = getPoint(i+1,j);
+      let rt = getPoint(i+1,j+1);
+      let face1 = [lb, lt, rt];
+      let face2 = [lb, rt, rb];
+      geometry.indices.push(...face1, ...face2);
+    }
+  }
+
+  return geometry;
+  function getPoint(i,j){
+    let key = `${i}${j}`;
+    if(geometry.pointsIx[key]) {
+      return geometry.pointsIx[key];
+    }
+
+    let point = getPointBezier(...ts(i,j));
+    geometry.positions.push(...[point.x, point.y, point.z]);
+    let pointId = lastPointId++;
+    geometry.pointsIx[key] = pointId;
+    return pointId;
+  }
+  function ts(i,j){
+    return [i/steps, j/steps];
+  }
+
+  function getPointBezier(t,s){
+    let p = new Vector3;
+    for(let i = 0; i < 4; ++i){
+      for(let j=0;j<4; ++j){
+        let key = `${i}${j}`;
+        let pointId = patch[key];
+        let pp = pointIndex[pointId].clone();
+        let bi = Bernstein(4, i, t);
+        let bj = Bernstein(4, j, s); 
+        p.add(pp.clone().multiplyScalar(bi*bj));
+      }
+    }
+    return p;
+  }
+
+  function Bernstein(n,i,z){
+    n=n-1;
+    let ni = fact(n) / (fact(i) * fact(n-i))
+    let B = ni * Math.pow(z, i) * Math.pow(1-z, n-i); 
+    return B;
+  }
 
 }
 
@@ -80,9 +139,7 @@ function renderTrianglePatch(pointIndex, collection, patchId, steps =10){
       let face2 = [lb, rt, rb];
       geometry.indices.push(...face1, ...face2);
     }
-
   }
-
   return geometry;
 
   function getPoint(i,j, patch){
@@ -108,6 +165,7 @@ function renderTrianglePatch(pointIndex, collection, patchId, steps =10){
   function getPointBezier(u,v,w, patch){
     let point = new Vector3;
     for(let key in patch){
+      if(key == 'length') continue;
       let pointId = patch[key];
       let pp = pointIndex[pointId].clone();
       let k=parseInt(key[0]),
@@ -125,13 +183,14 @@ function renderTrianglePatch(pointIndex, collection, patchId, steps =10){
     return Math.pow(a,p);
   }
 
-  function fact(n){
-    let F = 1;
-    for(let i = n; i >= 1; --i){
-      F*=i;
-    }
-    return F;
+}
+
+function fact(n){
+  let F = 1;
+  for(let i = n; i >= 1; --i){
+    F*=i;
   }
+  return F;
 }
 
 function createPatches(part, props){
@@ -143,12 +202,106 @@ function createPatches(part, props){
     part.bottomCone = createConeAt(part, props, 0);
   if(topCone)
     part.topCone = createConeAt(part, props, 1);
+  part.cylindrycal = createCylinders(part, props);
 }
 
 export function getPoints(part, pointList){
   if(pointList)
     return pointList.map(ix=>part.pointIndex[ix]);
   return [];
+}
+
+function createCylinders(part, props){
+  let coneSegments = (props.topCone? 1:0) + (props.bottomCone?1:0);
+  let hasBottomCone = props.bottomCone;
+  let hasTopCone = props.topCone;
+  let segmentLength = props.length / props.lengthSegments;
+  let totalPatches = [];
+
+
+  for(let i = 0; i < props.lengthSegments - coneSegments; ++i){
+    let segmentStart = (hasBottomCone?1:0) + i;
+    let lowerT = segmentStart * segmentLength;
+    let upperT = (segmentStart+1) * segmentLength;
+
+    let lowerSlice = getLengthSlice(part, props.orientation, lowerT);
+    let upperSlice = getLengthSlice(part, props.orientation, upperT);
+    const lerpLower = 0.25;
+    const lerpUpper = 0.75;
+
+    for(let ix =0; ix < props.radialSegments; ++ix){
+      let nx = (ix + 1)%props.radialSegments;
+      let l = lowerSlice.points[`${ix}`]
+      let t = upperSlice.points[`${ix}`]
+      let controlPoints = {};
+      controlPoints['00'] = mkPoint(`${segmentStart},${ix}`,l.clone());
+      controlPoints['10'] = mkPoint(`${segmentStart}+,${ix}`,new Vector3().lerpVectors(l,t,lerpLower));
+      controlPoints['20'] = mkPoint(`${segmentStart+1}-,${ix}`,new Vector3().lerpVectors(l,t,lerpUpper));
+      controlPoints['30'] = mkPoint(`${segmentStart+1},${ix}`,t.clone());
+
+      let lp = lowerSlice.points[`${ix}+`];
+      let tp = upperSlice.points[`${ix}+`];
+
+      controlPoints['01'] = mkPoint(`${segmentStart},${ix}+`, lp.clone());
+      controlPoints['11'] = mkPoint(`${segmentStart}+,${ix}+`,new Vector3().lerpVectors(lp,tp,lerpLower))
+      controlPoints['21'] = mkPoint(`${segmentStart+1}-,${ix}+`, new Vector3().lerpVectors(lp,tp,lerpUpper));
+      controlPoints['31'] = mkPoint(`${segmentStart+1},${ix}+`, tp.clone());
+
+      let lm = lowerSlice.points[`${nx}-`];
+      let tm = upperSlice.points[`${nx}-`];
+
+      controlPoints['02'] = mkPoint(`${segmentStart},${nx}-`, lm.clone());
+      controlPoints['12'] = mkPoint(`${segmentStart}+,${nx}-`,new Vector3().lerpVectors(lm,tm,lerpLower))
+      controlPoints['22'] = mkPoint(`${segmentStart+1}-,${nx}-`, new Vector3().lerpVectors(lm,tm,lerpUpper));
+      controlPoints['32'] = mkPoint(`${segmentStart+1},${nx}-`, tm.clone());
+
+      let le = lowerSlice.points[`${nx}`];
+      let te = upperSlice.points[`${nx}`];
+
+      controlPoints['03'] = mkPoint(`${segmentStart},${nx}`, le.clone());
+      controlPoints['13'] = mkPoint(`${segmentStart}+,${nx}`,new Vector3().lerpVectors(le,te,lerpLower))
+      controlPoints['23'] = mkPoint(`${segmentStart+1}-,${nx}`, new Vector3().lerpVectors(le,te,lerpUpper));
+      controlPoints['33'] = mkPoint(`${segmentStart+1},${nx}`, te.clone());
+      controlPoints.length = 16;
+      totalPatches.push(controlPoints);
+    }
+  }
+  return totalPatches;
+
+  function mkPoint(index, point){
+    pushPoint(part, index, point);
+    return index;
+  }
+}
+
+function getLengthSlice(part, orientation, t){
+  if(!part.lengthSlices) part.lengthSlices = {};
+  let key = t.toFixed(5);
+  if(part.lengthSlices[key] && part.lengthSlices[key].orientation == orientation)
+    return part.lengthSlices[key];
+
+  if(!part.calculated) {
+    part.lengthSlices[key] = createSliceFromRadialSegments(part, orientation, t);
+    return part.lengthSlices[key];
+  }
+
+  part.lengthSlices[key] = calculateSliceFromSurface(part, orientation, t);
+  return part.lengthSlices[key];
+}
+
+function createSliceFromRadialSegments(part, orientation, t){
+  let {_initialProps:{radialSegments, radius}} = part;
+  let plane = getSlicePlane(part, orientation, t);
+  let circle = [...circleInPlane(plane, radialSegments, radius) ]
+  let slice = {orientation, t, points:{}}
+  let circularWeight = getWeightForCircleWith(radialSegments, radius);
+  circle.forEach(({point, tangent}, i)=>{
+    let ix = `${i}`;
+    slice.points[ix] = point.clone();
+    slice.points[ix + '-'] = point.clone().add(tangent.clone().multiplyScalar(-circularWeight))
+    slice.points[ix + '+'] = point.clone().add(tangent.clone().multiplyScalar(circularWeight))
+  })
+  return slice;
 }
 
 
@@ -159,10 +312,9 @@ function createConeAt(part, props,tCone){
   }
   let way = tCone == 0?1:-1;
 
-  let {orientation, radialSegments, lengthSegments, length} = props;
+  let {orientation, radialSegments, lengthSegments, length, radius} = props;
   
-  let lengthSegmentLength = 1/(lengthSegments);
-  let radius = length / 3;
+  let lengthSegmentLength = length/(lengthSegments);
   let coneBaseWeight1 = lengthSegmentLength * 0.25 * length;
   let coneBaseWeight2 = lengthSegmentLength * 0.35 * length;
   let circularWeight = getWeightForCircleWith(radialSegments, radius);
@@ -230,9 +382,9 @@ function createConeAt(part, props,tCone){
       '012': `${lengthIndex+way},${nextIndex}-`,
       '003': `${lengthIndex+way},${nextIndex}`,
     }
+    controlPoints.length = 10;
     trianglePatches.push(controlPoints);
   });
-  console.log('---pointList', part.pointIndex);
   return trianglePatches;
 
   function sign(t){

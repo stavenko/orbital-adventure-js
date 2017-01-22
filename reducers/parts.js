@@ -4,11 +4,13 @@ import * as RotationalPart from '../math/RotationalPart.js'
 
 const initialPartConfig = {
   length:1,
-  lengthSegments: 0,
-  radialSegments: 8,
+  radius: 0.13,
+  lengthSegments: 5,
+  radialSegments: 4,
   topCone: true,
-  //bottomCone: true,
-  type: 'rotational'
+  bottomCone: true,
+  type: 'rotational',
+  orientation: 'path-tangent'
 }
 const createInitialNewPart = state => ({
   id:Date.now().toString(36),
