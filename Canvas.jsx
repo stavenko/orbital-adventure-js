@@ -14,6 +14,11 @@ import {Matrix4} from 'three/src/math/Matrix4';
 import {Vector4} from 'three/src/math/Vector4';
 import isEqual from 'lodash/isEqual';
 
+const defaultParameters = {
+  position: new Vector3,
+  rotation: new Quaternion,
+  scale: new Vector3(1,1,1)
+};
 
 export class CanvasBase extends React.Component{
     constructor(props) {
@@ -175,7 +180,6 @@ export class CanvasBase extends React.Component{
     }
 
     updateMeshes(rootMesh, meshConponents){
-      console.log('was', rootMesh.children.length);
       let ix = 0;
       for(; ix < meshConponents.length; ++ix){
         let item = meshConponents[ix];
@@ -192,11 +196,8 @@ export class CanvasBase extends React.Component{
       // ix stands on meshComponents.length;
       if( ix < rootMesh.children.length){
         rootMesh.children.splice(ix).forEach(mesh=>{
-          console.log("delete" ,mesh);
         });
       }
-      console.log('become', rootMesh.children.length);
-      console.log('become', rootMesh.children);
 
     }
 
@@ -248,15 +249,16 @@ export class CanvasBase extends React.Component{
 
     createGeometry(props){
       let geometry = new props.type(...props.arguments);
-      this.geometryCache[geometry.UUID] = props;
+      this.geometryCache[geometry.uuid] = props;
       return geometry;
     }
 
     replaceGeometryIfNeeded(props, oldGeometry){
-      let cached = this.geometryCache[oldGeometry.UUID] || {};
+      console.log('replace with', props.type);
+      let cached = this.geometryCache[oldGeometry.uuid] || {};
       if(props.type == cached.type && isEqual(props.arguments, cached.arguments))
         return oldGeometry;
-      delete this.geometryCache[oldGeometry.UUID];
+      delete this.geometryCache[oldGeometry.uuid];
       return this.createGeometry(props);
     }
 
@@ -285,6 +287,7 @@ export class CanvasBase extends React.Component{
 
     updateMeshProperties(mesh, props){
       let events = ['onMouseMove', 'onMouseUp', 'onMouseDown', 'onEnter', 'onLeave','onDrag'];
+
       for(let key in props){
         if(key === 'material') {
           this.updateMeshMaterial(mesh, props[key]);
@@ -306,6 +309,7 @@ export class CanvasBase extends React.Component{
         else 
           mesh[key] = value;
       }
+
       events.forEach(evt=>{
         if(props[evt]) {
           mesh.userData[evt] = props[evt];

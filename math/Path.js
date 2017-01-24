@@ -39,7 +39,6 @@ export function get(commands, t){
     return v;
   }
   if(curve.type == 'curve'){
-    console.log('bezier', curve, inCommand);
     let p = createBezier(curve.from, curve.curve.cp1, curve.curve.cp2, curve.curve.end).get(inCommand);
     return new Vector3(p.x, p.y, p.z);
   }

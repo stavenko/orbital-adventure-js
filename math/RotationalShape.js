@@ -216,16 +216,18 @@ function createCylinders(part, props){
   let hasBottomCone = props.bottomCone;
   let hasTopCone = props.topCone;
   let segmentLength = props.length / props.lengthSegments;
+  let segmentNormalizedLength = 1.0 / props.lengthSegments;
   let totalPatches = [];
 
 
   for(let i = 0; i < props.lengthSegments - coneSegments; ++i){
     let segmentStart = (hasBottomCone?1:0) + i;
-    let lowerT = segmentStart * segmentLength;
-    let upperT = (segmentStart+1) * segmentLength;
+    let lowerT = segmentStart * segmentNormalizedLength;
+    let upperT = (segmentStart+1) * segmentNormalizedLength;
 
     let lowerSlice = getLengthSlice(part, props.orientation, lowerT);
     let upperSlice = getLengthSlice(part, props.orientation, upperT);
+    console.log(upperSlice);
     const lerpLower = 0.25;
     const lerpUpper = 0.75;
 

@@ -76,6 +76,7 @@ export class PartDisplay extends CanvasBase{
         type: Mesh,
         onEnter: e=>{},
         geometry: {position: positions, index: indices},
+        position: new Vector3,
         material: {
           type: MeshBasicMaterial, properties:{
             color: new Color(0xeeeeee),
@@ -88,7 +89,7 @@ export class PartDisplay extends CanvasBase{
     let cps = this.getControlPoints();
     let color = new Color(0x0000ff);
 
-    return [...meshes]; //, ...cps]; 
+    return [...meshes, ...cps]; 
     /* ...this.getPath().map(geometry=>({
       type:Line,
       geometry:{position: geometry},
