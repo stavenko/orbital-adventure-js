@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import {ContextualBrowser} from './Widgets/ContextualBrowser.jsx'
 import {PartDisplay} from './Widgets/PartDisplayer.jsx'
-import * as RotationalPart from '../math/RotationalPart.js'
+import './parts-editor.scss';
 
 
 export class PartsEditor extends React.Component{

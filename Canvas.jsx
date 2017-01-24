@@ -63,7 +63,6 @@ export class CanvasBase extends React.Component{
     }
 
     onMouseWheel(e){
-      console.log("wheel", e);
       let delta = e.wheelDelta ? e.wheelDelta : (-e.detail * 100.0);
       this.zoomCamera(delta);
       e.preventDefault();
@@ -176,6 +175,7 @@ export class CanvasBase extends React.Component{
     }
 
     updateMeshes(rootMesh, meshConponents){
+      console.log('was', rootMesh.children.length);
       let ix = 0;
       for(; ix < meshConponents.length; ++ix){
         let item = meshConponents[ix];
@@ -191,8 +191,12 @@ export class CanvasBase extends React.Component{
       }
       // ix stands on meshComponents.length;
       if( ix < rootMesh.children.length){
-        rootMesh.children.splice(ix).forEach(mesh=>{});
+        rootMesh.children.splice(ix).forEach(mesh=>{
+          console.log("delete" ,mesh);
+        });
       }
+      console.log('become', rootMesh.children.length);
+      console.log('become', rootMesh.children);
 
     }
 
@@ -360,6 +364,7 @@ export class CanvasBase extends React.Component{
       this.renderer = new WebGLRenderer({canvas: this.refs.node, antialias:true});
       this.camera = new OrthographicCamera(width/2 , -width/2, height/2, -height/2, 1, 100);
 
+      this.renderer.setClearColor(0x096dc7);
       this.setupCamera();
       this.setState({});
     }

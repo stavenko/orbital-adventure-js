@@ -8,7 +8,7 @@ import {Line} from 'three/src/objects/Line';
 import {LineBasicMaterial} from 'three/src/materials/LineBasicMaterial';
 import {Vector3} from 'three/src/math/Vector3';
 import {BoxBufferGeometry} from 'three/src/geometries/BoxBufferGeometry';
-import * as RotationalPart from '../../math/RotationalPart.js'
+import * as RotationalShape from '../../math/RotationalShape.js'
 import * as THREE from 'three/src/constants'
 import * as Path from '../../math/Path.js';
 
@@ -33,7 +33,7 @@ export class PartDisplay extends CanvasBase{
   getPath(){
     let part = this.props.state.get('currentPart').toJS();
     let pointList = ['1,0', '1,0+', '1,1-', '1,1'];
-    let points = RotationalPart.getPoints(part, pointList)
+    let points = RotationalShape.getPoints(part, pointList)
       .filter(p=>p)
       .map(p=>p.clone())
     return Path.getGeometry([
@@ -45,7 +45,7 @@ export class PartDisplay extends CanvasBase{
   getControlPoints(){
     let part = this.props.state.get('currentPart').toJS();
     let pointList = ['1,0', '1,0+', '1,1-', '1,1', '2:111,0'];
-    return RotationalPart.getPoints(part, pointList).filter(p=>p).map((p,ix)=>{
+    return RotationalShape.getPoints(part.calculated, pointList).filter(p=>p).map((p,ix)=>{
       let color;
       if(ix == 4) color = new Color(0xf0ff00);
       else if(ix == 1 || ix == 2) color = new Color(0xff00ff);
@@ -69,10 +69,12 @@ export class PartDisplay extends CanvasBase{
   renderScene(){
     if(!this.props.state.has('currentPart')) return [];
     let part = this.props.state.get('currentPart').toJS();
-    let faces = RotationalPart.getRotationalGeometry(part);
+    if(!part.calculated) return [];
+    let faces = RotationalShape.getRotationalGeometry(part.calculated);
     let meshes = faces.map(({positions, indices})=>{
       return {
         type: Mesh,
+        onEnter: e=>{},
         geometry: {position: positions, index: indices},
         material: {
           type: MeshBasicMaterial, properties:{
@@ -86,7 +88,7 @@ export class PartDisplay extends CanvasBase{
     let cps = this.getControlPoints();
     let color = new Color(0x0000ff);
 
-    return [...meshes, ...cps]; 
+    return [...meshes]; //, ...cps]; 
     /* ...this.getPath().map(geometry=>({
       type:Line,
       geometry:{position: geometry},

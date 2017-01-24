@@ -9,6 +9,7 @@ export function ContextualBrowser({state,actions}){
     actions={actions} />
   else  return <PartContents 
     part={state.get('currentPart').toJS()} 
+    editorState={state}
     actions={actions} />
 }
 

@@ -2,7 +2,7 @@ import {Vector3} from 'three/src/math/Vector3';
 import {Curve} from './Curve.js';
 import * as Path from './Path.js';
 
-export function createRotationalPart(props){
+export function createRotationalShape(props){
   let newPart = {_initialProps:props};
   createMainAxis(newPart,props);
   createPatches(newPart, props);

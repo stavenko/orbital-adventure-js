@@ -1,0 +1,97 @@
+$dark-blue: #096dc7;
+$light-blue: #17d;
+$text-color: #ddd;
+.parts-editor{
+  display: flex;
+  flex-direction: row;
+  justify-content: stretch;
+  align-items: stretch;
+  background-color: $dark-blue;
+  canvas{
+    border: 1px solid white;
+    border-radius: 3px;
+  }
+  
+  .main-view{
+    width: 50%;
+  }
+  .browser{
+    width:300px;
+  }
+  .detail-editor{
+    height:50%;
+  }
+
+  .part-contents{
+    width:100%;
+  }
+
+  .hull-properties{
+    display: flex;
+    flex-direction:column;
+    align-items: stretch;
+    width:100%;
+    .structural{
+      width:5%;
+      background-color: green;
+    }
+    .rotational{
+      flex: 1 1 auto;
+      flex-direction:column;
+      padding: 1em;
+
+      .row-flex{
+        display:flex;
+        flex-direction: column;
+        &>div{
+          flex-direction: row;
+          display:flex;
+          justify-content:space-between;
+        }
+        width: 100%;
+        label{
+          flex: 0 0 6em;;
+          min-width: 5em;
+          color: $text-color;
+        }
+      }
+    }
+    .field-group-label{
+      color: $text-color;
+      font-size: 13pt;
+      font-weight:bold;
+      padding: 0.2em 0.1em 0;
+    }
+
+    input{
+      &[type='checkbox']{
+        flex: 0 0 auto;
+        width: 1em;
+        margin: auto auto;
+      }
+      flex: 0 1 auto;
+      border-radius:3px;
+      margin: 0.2em 50% 0.2em 0;
+      width: 5em;
+      border: 1px solid white;
+      background-color: $dark-blue;
+      color: white;
+      &::selection{
+        background: white;
+      }
+    }
+    .symmetry-mode{
+      display: flex;
+      flex-direction: flex-wrap;
+      .symmetry{
+        width:32px;
+        height:32px;
+        background-color: #000;
+      }
+    }
+
+  }
+  
+
+}
+
