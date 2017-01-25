@@ -5,7 +5,7 @@ import {changeInitialPartSettings} from '../../actions/parts.js';
 
 const Symmetry = ['mirror', 'two', 'three', 'four', 'five', 'six', 'eight'];
 
-let savedHullSettings = null;
+let userInput = null;
 export function HullWidget(props){
   console.log(props);
   
@@ -93,19 +93,19 @@ function ShapeCreator(props){
 
 function onChangeCreator(state){
   let changeInitialPartSettings = state.actions.changeInitialPartSettings;
+  if(!userInput) userInput = Object.assign({}, state.shape);
   return (label,ch)=>event=>{
     let value;
     if(ch) value = event.currentTarget.checked;
     else value = event.currentTarget.value;
+    userInput[label] = value;
     changeInitialPartSettings(label, value)
-    
   }
 }
 
 function getValueCreator(props){
   return label=>{
-    let v = props.shape[label];
-    console.log(v)
+    let v = userInput[label];
     return v; 
   }
 }

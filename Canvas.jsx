@@ -150,7 +150,6 @@ export class CanvasBase extends React.Component{
     }
 
     onWindowMouseUp(e) {
-      console.log('wmu');
       this.onMouseUp(e);
     }
 
