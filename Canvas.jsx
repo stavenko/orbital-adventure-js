@@ -12,6 +12,7 @@ import {AxisHelper} from 'three/src/extras/helpers/AxisHelper';
 import {Quaternion} from 'three/src/math/Quaternion';
 import {Matrix4} from 'three/src/math/Matrix4';
 import {Vector4} from 'three/src/math/Vector4';
+import {Camera} from './Camera.js';
 import isEqual from 'lodash/isEqual';
 
 const defaultParameters = {
@@ -86,7 +87,9 @@ export class CanvasBase extends React.Component{
         this.draggable.userData.onDrag(e, diff);
       }else{
         if(this._lastMouseDown){
-          this.rotateCamera(this._lastMouseDown, e, this._lastMouseEvent);
+          this.cameraHandler.rotate(e);
+          this.renderCanvas();
+          //this.rotateCamera(this._lastMouseDown, e, this._lastMouseEvent);
         }
       }
       this.pickMesh(e);
@@ -96,16 +99,16 @@ export class CanvasBase extends React.Component{
     toArcRot(event){
       let projected = this.toWorldNoRotation(event);
       let len = projected.x * projected.x + projected.y * projected.y;
-      let arcRadius = 5;
+      let arcRadius = 0.1;
       let sz = arcRadius * arcRadius - len;
-      if(sz > 0)
+      //if(sz > 0)
         return  new Vector3(projected.x, projected.y, Math.sqrt(sz));
-      else{
-        return new Vector3(
-          arcRadius *projected.x / Math.sqrt(len), 
-          arcRadius * projected.y/ Math.sqrt(len),
-          0);
-      }
+        //else{
+        //return new Vector3(
+        //arcRadius *projected.x / Math.sqrt(len), 
+        //arcRadius * projected.y/ Math.sqrt(len),
+        //0);
+        //}
     }
 
     toWorldNoRotation(evt){
@@ -121,12 +124,6 @@ export class CanvasBase extends React.Component{
       return v;
     }
 
-    zoomCamera(delta){
-      this.camera.zoom *= Math.pow(1.001, delta);
-      this.camera.updateProjectionMatrix();
-      this.renderCanvas();
-    }
-    
 
     rotateCamera(firstMouseDown, currentMouseMove, prevMouseMove){
 
@@ -146,9 +143,14 @@ export class CanvasBase extends React.Component{
       
       this.camera.lookAt(new Vector3);
       this.renderCanvas();
-
     }
 
+    zoomCamera(delta){
+      this.camera.zoom *= Math.pow(1.001, delta);
+      this.camera.updateProjectionMatrix();
+      this.renderCanvas();
+    }
+    
     onWindowMouseUp(e) {
       this.onMouseUp(e);
     }
@@ -169,6 +171,7 @@ export class CanvasBase extends React.Component{
         position: this.camera.position.clone(),
         up: this.camera.up.clone()
       }
+      this.cameraHandler.startRotation(e);
       if(!this.pickedMesh) return;
       if(this.pickedMesh.userData.onMouseDown)
         this.pickedMesh.userData.onMouseDown(e);
@@ -376,6 +379,7 @@ export class CanvasBase extends React.Component{
 
       this.renderer = new WebGLRenderer({canvas: this.refs.node, antialias:true});
       this.camera = new OrthographicCamera(width/2 , -width/2, height/2, -height/2, 1, 100);
+      this.cameraHandler = new Camera(this.camera, this.refs.node);
 
       this.renderer.setClearColor(0x096dc7);
       this.setupCamera();
