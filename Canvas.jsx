@@ -89,7 +89,6 @@ export class CanvasBase extends React.Component{
         if(this._lastMouseDown){
           this.cameraHandler.rotate(e);
           this.renderCanvas();
-          //this.rotateCamera(this._lastMouseDown, e, this._lastMouseEvent);
         }
       }
       this.pickMesh(e);
@@ -101,14 +100,7 @@ export class CanvasBase extends React.Component{
       let len = projected.x * projected.x + projected.y * projected.y;
       let arcRadius = 0.1;
       let sz = arcRadius * arcRadius - len;
-      //if(sz > 0)
-        return  new Vector3(projected.x, projected.y, Math.sqrt(sz));
-        //else{
-        //return new Vector3(
-        //arcRadius *projected.x / Math.sqrt(len), 
-        //arcRadius * projected.y/ Math.sqrt(len),
-        //0);
-        //}
+      return  new Vector3(projected.x, projected.y, Math.sqrt(sz));
     }
 
     toWorldNoRotation(evt){

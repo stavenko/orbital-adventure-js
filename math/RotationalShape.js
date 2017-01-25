@@ -317,11 +317,12 @@ function createConeAt(part, props,tCone){
   let {orientation, radialSegments, lengthSegments, length, radius} = props;
   
   let lengthSegmentLength = length/(lengthSegments);
-  let coneBaseWeight1 = lengthSegmentLength * 0.25 * length;
-  let coneBaseWeight2 = lengthSegmentLength * 0.35 * length;
+  let normalizedSegmentLength = 1 / lengthSegments;
+  let coneBaseWeight1 = lengthSegmentLength * 0.5;
+  let coneBaseWeight2 = lengthSegmentLength * 0.5;
   let circularWeight = getWeightForCircleWith(radialSegments, radius);
   let tipPlane = getSlicePlane(part, orientation, tCone);
-  let nextT = tCone + way * lengthSegmentLength;
+  let nextT = tCone + way * normalizedSegmentLength;
   let coneBasePlane = getSlicePlane(part, orientation, nextT);
   let points = [...circleInPlane(tipPlane, radialSegments, radius*0.1)];
   let basePoints = [...circleInPlane(coneBasePlane, radialSegments,radius)];
