@@ -2,6 +2,7 @@ $dark-blue: #096dc7;
 $light-blue: #17d;
 $text-color: #ddd;
 .parts-editor{
+  flex: 1 0 auto;
   display: flex;
   flex-direction: row;
   justify-content: stretch;
@@ -14,12 +15,21 @@ $text-color: #ddd;
   
   .main-view{
     width: 50%;
+    position: relative;
+    canvas{
+      position:absolute;
+      height: 100%;
+    }
   }
   .browser{
     width:300px;
   }
-  .detail-editor{
-    height:50%;
+  .additional-edtitors{
+    position:relative;
+    .detail-editor{
+      position:absolute;
+      height:100%;
+    }
   }
 
   .part-contents{

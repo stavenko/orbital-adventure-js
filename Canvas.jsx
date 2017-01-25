@@ -73,7 +73,10 @@ export class CanvasBase extends React.Component{
       e.preventDefault();
     }
 
-
+    onWindowMouseMove(e){
+      this.onMouseMove(e);
+      e.preventDefault();
+    }
     onMouseMove(e){
       if(this.draggable){
         let diff = [
@@ -146,7 +149,13 @@ export class CanvasBase extends React.Component{
 
     }
 
+    onWindowMouseUp(e) {
+      console.log('wmu');
+      this.onMouseUp(e);
+    }
+
     onMouseUp(e){
+      e.preventDefault();
       this._lastMouseDown = null;
       if(!this.pickedMesh) return;
       if(this.pickedMesh.userData.onMouseUp)
@@ -254,7 +263,6 @@ export class CanvasBase extends React.Component{
     }
 
     replaceGeometryIfNeeded(props, oldGeometry){
-      console.log('replace with', props.type);
       let cached = this.geometryCache[oldGeometry.uuid] || {};
       if(props.type == cached.type && isEqual(props.arguments, cached.arguments))
         return oldGeometry;
@@ -357,6 +365,8 @@ export class CanvasBase extends React.Component{
         {e:'mousemove', t:this.refs.node, f:this.onMouseMove},
         {e:'mousedown', t:this.refs.node, f:this.onMouseDown.bind(this)},
         {e:'mouseup', t:this.refs.node, f:this.onMouseUp.bind(this)},
+        {e:'mouseup', t:window, f:this.onWindowMouseUp.bind(this)},
+        {e:'mousemove', t:window, f:this.onWindowMouseMove.bind(this)},
         {e:'resize', t:window, f:this.resizeWindow.bind(this)}
       ];
       this.bindEvents();
