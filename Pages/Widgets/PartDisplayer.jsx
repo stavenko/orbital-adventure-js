@@ -25,6 +25,7 @@ export class PartDisplay extends CanvasBase{
     this.camera.top *= this.cameraZoom;
     this.camera.bottom *= this.cameraZoom;
     this.camera.position.z = -10;
+    this.camera.zoom = 0.5;
 
     this.camera.lookAt(new Vector3);
     this.camera.updateProjectionMatrix();

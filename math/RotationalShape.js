@@ -5,6 +5,7 @@ import * as Path from './Path.js';
 export function createRotationalShape(props){
   let newPart = {_initialProps:props};
   createMainAxis(newPart,props);
+  createInitialSlices(newPart, props);
   createPatches(newPart, props);
   newPart.calculated = true;
   return newPart;
@@ -13,6 +14,7 @@ export function createRotationalShape(props){
 export function recalculateSlices(part, props){
   return part;
 }
+
 
 
 export function getRotationalGeometry(part){
@@ -27,6 +29,7 @@ export function getRotationalGeometry(part){
 
   return geometries;
 }
+
 
 function createGeometryForPatches(pointIndex, patchesCollection){
   let geometries = [];
@@ -215,19 +218,19 @@ function createCylinders(part, props){
   let coneSegments = (props.topCone? 1:0) + (props.bottomCone?1:0);
   let hasBottomCone = props.bottomCone;
   let hasTopCone = props.topCone;
-  let segmentLength = props.length / props.lengthSegments;
-  let segmentNormalizedLength = 1.0 / props.lengthSegments;
+  //let segmentLength = props.length / props.lengthSegments;
+  //let segmentNormalizedLength = 1.0 / props.lengthSegments;
   let totalPatches = [];
 
 
-  for(let i = 0; i < props.lengthSegments - coneSegments; ++i){
+  for(let i = 0; i < part.sliceAmount - coneSegments-1; ++i){
+    let bottomConeSliceNum = (hasBottomCone?1:0);
     let segmentStart = (hasBottomCone?1:0) + i;
-    let lowerT = segmentStart * segmentNormalizedLength;
-    let upperT = (segmentStart+1) * segmentNormalizedLength;
+    let lowerSliceId = i + bottomConeSliceNum;
+    let upperSliceId = lowerSliceId + 1;
 
-    let lowerSlice = getLengthSlice(part, props.orientation, lowerT);
-    let upperSlice = getLengthSlice(part, props.orientation, upperT);
-    console.log(upperSlice);
+    let lowerSlice = getLengthSlice(part, lowerSliceId)
+    let upperSlice = getLengthSlice(part, upperSliceId);
     const lerpLower = 0.25;
     const lerpUpper = 0.75;
 
@@ -276,7 +279,13 @@ function createCylinders(part, props){
   }
 }
 
-function getLengthSlice(part, orientation, t){
+function getLengthSlice(part, id){
+  if(part.lengthSlices[id]) return part.lengthSlices[id];
+
+  console.error('slice not found', id);
+}
+
+function getOrCreateLengthSlice(sliceNumber, part, orientation, t){
   if(!part.lengthSlices) part.lengthSlices = {};
   let key = t.toFixed(5);
   if(part.lengthSlices[key] && part.lengthSlices[key].orientation == orientation)
@@ -306,8 +315,107 @@ function createSliceFromRadialSegments(part, orientation, t){
   return slice;
 }
 
+function createInitialSlices(part, props){
+  part.sliceAmount = props.lengthSegments+1;
 
-function createConeAt(part, props,tCone){
+
+  let noConeSliceAmount = part.sliceAmount;
+  if(props.topCone) ++part.sliceAmount;
+  if(props.bottomCone) ++part.sliceAmount;
+  let noConeLength = props.length - (props.topCone?props.topConeLength:0)
+                                  - (props.bottomCone?props.bottomConeLength:0);
+
+  let noConeT = noConeLength / props.length; 
+  let bottomConeT = (props.bottomCone?props.bottomConeLength:0) / props.length;
+  let ts = [0];
+  if(props.bottomCone) ts.push(bottomConeT);
+  for(let i = 1; i <= props.lengthSegments; ++i){
+    ts.push(bottomConeT + i * noConeT/props.lengthSegments);
+  }
+  ts.push(1);
+  part.lengthSlices = [];
+  ts.forEach((t, id)=>{
+    let slice = {id,
+      t,
+      orientation: props.orientation
+    };
+    if(id == 0 && props.bottomCone || id == part.sliceAmount -1 && props.topCone){
+      let plane = getSlicePlane(part, props.orientation, slice.t);
+      slice.weights = [...circleInPlane(plane,props.radialSegments, props.radius * 0.1)];
+      slice.plane = plane;
+    }else{
+      let plane = getSlicePlane(part, props.orientation, slice.t);
+      slice = {
+        ...createSliceFromRadialSegments(part, props.orientation, slice.t),
+        ...slice,
+        plane
+      };
+    }
+    part.lengthSlices.push(slice);
+  });
+}
+
+function createConeAt(part, props, tCone){
+  let way = tCone == 0?1:-1;
+  let tipSliceId = tCone == 0? 0: part.lengthSlices.length-1;
+  let coneLength = tCone?props.topConeLength:props.bottomConeLength;
+  let coneBaseWeight1 = coneLength * 0.5;
+  let coneBaseWeight2 = coneLength * 0.5;
+
+  let tipSlice = getLengthSlice(part, tipSliceId);
+  let baseSlice = getLengthSlice(part, tipSliceId + way);
+  let controlPoints = {};
+  let lengthIndex = tipSliceId; 
+  let trianglePatches = [];
+  for(let ix =0; ix < props.radialSegments; ++ix){
+    let nextIndex = (ix+1)%props.radialSegments;
+    let p210 = tipSlice.weights[ix].point.clone();
+    let p201 = tipSlice.weights[nextIndex].point.clone();
+    let pathCentral = Path.get([
+      {command:'moveTo', ...baseSlice.points[`${ix}`].clone()}, 
+      {command:'curveTo', cp1: baseSlice.points[`${ix}+`].clone(), 
+        cp2: baseSlice.points[`${nextIndex}-`].clone(), 
+        end: baseSlice.points[`${nextIndex}`]}], 0.5)
+
+    let triBaseTipWeight = baseSlice.plane.normal.clone()
+      .multiplyScalar(-way*coneBaseWeight1)
+    let tri111Weight = baseSlice.plane.normal.clone()
+      .multiplyScalar(-way*coneBaseWeight1)
+
+    let p120 = baseSlice.points[`${ix}`].clone().add(triBaseTipWeight);
+    let p102 = baseSlice.points[`${nextIndex}`].clone().add(triBaseTipWeight);
+    let p111 = pathCentral.add(tri111Weight); 
+    let controlPoints = {
+      '300': mkPoint(`${lengthIndex}`, tipSlice.plane.origin.clone()),
+
+      '210': mkPoint(`${lengthIndex}${sign(way)},${ix}`, p210),
+      '201': mkPoint(`${lengthIndex}${sign(way)},${nextIndex}`, p201),
+      
+      '120': mkPoint(`${lengthIndex+way}${sign(-way)},${ix}`, p120),
+      '111': mkPoint(`${lengthIndex}:111,${ix}`, p111),
+      '102': mkPoint(`${lengthIndex+way}${sign(-way)},${nextIndex}`, p102),
+
+      '030': mkPoint(`${lengthIndex+way},${ix}`, baseSlice.points[`${ix}`]),
+      '021': mkPoint(`${lengthIndex+way},${ix}+`,baseSlice.points[`${ix}+`] ),
+      '012': mkPoint(`${lengthIndex+way},${nextIndex}-`,baseSlice.points[`${nextIndex}-`]),
+      '003': mkPoint(`${lengthIndex+way},${nextIndex}`,baseSlice.points[`${nextIndex}`]),
+    }
+    controlPoints.length = 10;
+    trianglePatches.push(controlPoints);
+  }
+  return trianglePatches;
+
+  function mkPoint(index, point){
+    pushPoint(part, index, point);
+    return index;
+  }
+  function sign(t){
+    return t > 0?'+':'-'
+  }
+
+}
+
+function createConeAt_old(part, props,tCone){
   if( !(tCone== 0 || tCone == 1)) {
     console.error('t for cone is incorrect');
     return;

@@ -396,6 +396,14 @@ export class CanvasBase extends React.Component{
     }
 
     resizeWindow(){
+      this.nodeRect = this.refs.node.getBoundingClientRect();
+      let width = this.refs.node.width;
+      let height = this.refs.node.height;
+      this.camera.left = width/2;
+      this.camera.right = -width/2;
+      this.camera.top = height/2;
+      this.camera.bottom = -height/2;
+
         console.log('resize-rezise');
     }
 
