@@ -1,6 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import {Scene} from 'three/src/scenes/Scene';
+import {PointLight} from 'three/src/lights/PointLight';
+import {AmbientLight} from 'three/src/lights/AmbientLight';
 import {WebGLRenderer} from 'three/src/renderers/WebGLRenderer';
 import {OrthographicCamera} from 'three/src/cameras/OrthographicCamera';
 import {Raycaster} from 'three/src/core/Raycaster';
@@ -33,6 +35,11 @@ export class CanvasBase extends React.Component{
         this.onMouseDown = this.onMouseDown.bind(this);
         this.onMouseUp = this.onMouseUp.bind(this);
         this.onMouseWheel = this.onMouseWheel.bind(this);
+        this.lights = [];
+        this.lights.push(new AmbientLight(0xeeeeee));
+        this.lights.push(new PointLight(0xffffff, 10 ));
+        this.lights[1].position.set(0, 2, 0);
+        this.lights.forEach(l=>this.scene.add(l));
     }
 
     pickMesh(event){
@@ -42,6 +49,7 @@ export class CanvasBase extends React.Component{
         this.rayCaster.setFromCamera(normalizedMouse, this.camera);
 
         let intersects = this.rayCaster.intersectObject( this.scene, true );
+        this.currentIntersections = intersects;
 
         if(intersects.length>0){
           if(intersects[0].object != this.pickedMesh){
@@ -78,6 +86,7 @@ export class CanvasBase extends React.Component{
       this.onMouseMove(e);
       e.preventDefault();
     }
+
     onMouseMove(e){
       if(this.draggable){
         let diff = [
@@ -90,6 +99,9 @@ export class CanvasBase extends React.Component{
           this.cameraHandler.rotate(e);
           this.renderCanvas();
         }
+      }
+      if(this.pickedMesh && this.pickedMesh.userData.onMouseMove){
+        this.pickedMesh.userData.onMouseMove(e, this.currentIntersections)
       }
       this.pickMesh(e);
       this._lastMouseEvent = e;
@@ -173,22 +185,33 @@ export class CanvasBase extends React.Component{
       }
 
     }
+    updateLights(){
+
+      //this.lights.forEach((l,ix)=>{
+        //this.scene.children[ix] = l;
+      //});
+      //console.log(this.scene);
+    }
 
     renderCanvas(){
       let components = this.renderScene();
+      this.updateLights();
       this.updateMeshes(this.scene, components);
       this.scene.add(new AxisHelper(1));
       this.renderer.render(this.scene, this.camera);
 
     }
 
-    updateMeshes(rootMesh, meshConponents){
+    updateMeshes(rootMesh, meshComponents){
       let ix = 0;
-      for(; ix < meshConponents.length; ++ix){
-        let item = meshConponents[ix];
-        let mesh = rootMesh.children[ix];
+      let childrenOffset = this.lights.length
+      for(; ix < meshComponents.length; ++ix){
+        let item = meshComponents[ix];
+        let mesh = rootMesh.children[ix + childrenOffset];
         if(!mesh) {
-          rootMesh.children[ix] = this.createNewMesh(item);
+          let nm = this.createNewMesh(item);
+          rootMesh.children[ix + childrenOffset] = nm;
+          nm.dispatchEvent({type:'added'})
         }else{
           this.updateMesh(rootMesh, ix, item);
           if(item.children){
@@ -197,8 +220,8 @@ export class CanvasBase extends React.Component{
         }
       }
       // ix stands on meshComponents.length;
-      if( ix < rootMesh.children.length){
-        rootMesh.children.splice(ix).forEach(mesh=>{
+      if( ix+childrenOffset < rootMesh.children.length){
+        rootMesh.children.splice(ix+childrenOffset).forEach(mesh=>{
         });
       }
 
@@ -206,7 +229,6 @@ export class CanvasBase extends React.Component{
 
 
     createNewMesh(item){
-      console.log('create new mesh');
       let {geometry, material, ...rest} = item;
       let G, M;
 
@@ -236,6 +258,7 @@ export class CanvasBase extends React.Component{
         for(let p in properties) {
           mesh.material[p] = properties[p];
         }
+        mesh.material.needsUpdate=true;
       }
     }
 
@@ -327,12 +350,13 @@ export class CanvasBase extends React.Component{
 
 
     updateMesh(rootMesh, ix, item){
-      let oldMesh = rootMesh.children[ix];
+      let childrenOffset = this.lights.length;
+      let oldMesh = rootMesh.children[ix+childrenOffset];
       let type = item.type;
       if(oldMesh instanceof type){
         this.updateMeshProperties(oldMesh, item);
       }else{
-        rootMesh.children[ix] = this.createNewMesh(item);
+        rootMesh.children[ix+childrenOffset] = this.createNewMesh(item);
       }
     }
 

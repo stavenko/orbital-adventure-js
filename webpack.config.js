@@ -27,6 +27,8 @@ module.exports = {
       {test: /\.scss$/, loaders: ['style','css?-minimize', 'postcss', 'sass'] },
       {test: /\.(woff|woff2)$/, loader: "url-loader"},
       {test: /\.ttf$/, loader: "url-loader"},
+      {test: /\.jpe?g$/, loaders: ['url'] },
+
       {test: /\.eot$/, loader: "file-loader"},
       {test: /\.svg$/, loader: "file-loader"},
       {test: /\.glsl$/, loader: "raw"},

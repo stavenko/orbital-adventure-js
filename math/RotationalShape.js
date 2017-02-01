@@ -1,3 +1,4 @@
+import {Vector2} from 'three/src/math/Vector2';
 import {Vector3} from 'three/src/math/Vector3';
 import {Curve} from './Curve.js';
 import * as Path from './Path.js';
@@ -14,6 +15,32 @@ export function createRotationalShape(props){
 export function recalculateSlices(part, props){
   return part;
 }
+
+
+function trianleSpaceIteration(S){
+  let sts = [];
+  for(let i =0; i<=S; ++i){
+    let s = i / S;
+    let rest = 1.0 - s;
+    let I = S - i;
+    if(I == 0) {
+      push([s, 0, 0]);
+      continue;
+    }
+    for(let j=0; j <= I; ++j){
+      let t = j / I * rest;
+      if(1-s-t  < 0) {console.warn('ACHTUNG'); continue;}
+      push([s,t, 1-s-t]);
+      
+    }
+  }
+  return sts;
+
+  function push(a){
+    sts.push(a.map(b=>b.toFixed(2)));
+  }
+}
+
 
 
 
@@ -41,22 +68,29 @@ function createGeometryForPatches(pointIndex, patchesCollection){
     }
   });
   return geometries.map(geometry=>{
-    let indices = new Uint16Array(geometry.indices.length);
-    geometry.indices.forEach((i,ix)=>{indices[ix]=i})
-    let positions = new Float32Array(geometry.positions.length);
-    geometry.positions.forEach((f,ix)=>{
-      positions[ix]=f;
-    })
+    let indices = toArray(Uint16Array, geometry.indices);
+    let positions = toArray(Float32Array, geometry.positions);
+    let normals = toArray(Float32Array, geometry.normals || []);
+    let uvs = toArray(Float32Array, geometry.uvs || []);
     return {
       indices: {array:indices, size:1}, 
-      positions: {array:positions, size:3}
+      positions: {array:positions, size:3},
+      normals: {array:normals, size:3},
+      uvs: {array:uvs, size:2},
     }
   })
 }
 
+function toArray(type, fromArray){
+  let array = new type(fromArray.length);
+  fromArray.forEach((v,i)=>array[i]=v);
+  return array;
+}
+
 function renderQuadPatch(pointIndex, collection, patchId, steps = 10){
   let patch = collection[patchId];
-  let geometry = {indices:[], positions:[], pointsIx:{}}
+  let geometry = {indices:[], positions:[], pointsIx:{}, 
+    normals:[], tangentS:[], tangentT:[], uvs:[]}
   let lastPointId = 0;
   for(let i = 0; i < steps; ++i){
     for(let j = 0; j< steps; ++j){
@@ -77,8 +111,12 @@ function renderQuadPatch(pointIndex, collection, patchId, steps = 10){
       return geometry.pointsIx[key];
     }
 
-    let point = getPointBezier(...ts(i,j));
+    let {point, normal, tangentT, tangentS,uv} = getPointBezier(...ts(i,j));
     geometry.positions.push(...[point.x, point.y, point.z]);
+    geometry.normals.push(...[normal.x, normal.y, normal.z]);
+    geometry.tangentS.push(...[tangentS.x, tangentS.y, tangentS.z]);
+    geometry.tangentT.push(...[tangentT.x, tangentT.y, tangentT.z]);
+    geometry.uvs.push(...[uv.x, uv.y]);
     let pointId = lastPointId++;
     geometry.pointsIx[key] = pointId;
     return pointId;
@@ -88,18 +126,42 @@ function renderQuadPatch(pointIndex, collection, patchId, steps = 10){
   }
 
   function getPointBezier(t,s){
-    let p = new Vector3;
+    const delta = 0.0001;
+    let point = new Vector3;
+    let [uvFrom, uvTo] = patch.uv;
+    let uvDist = [0,1].map(i=>uvTo[i] - uvFrom[i]);
+    let ts = [t,s];
+    let pT = new Vector3;
+    let pS = new Vector3;
+    let t1 = t + delta,
+        s1 = s + delta;
+    if(t - 1 < delta) t1 = t - delta;
+    if(s - 1 < delta) s1 = s - delta;
+    
     for(let i = 0; i < 4; ++i){
       for(let j=0;j<4; ++j){
         let key = `${i}${j}`;
         let pointId = patch[key];
         let pp = pointIndex[pointId].clone();
         let bi = Bernstein(4, i, t);
+        let bi1 = Bernstein(4, i, t1);
         let bj = Bernstein(4, j, s); 
-        p.add(pp.clone().multiplyScalar(bi*bj));
+        let bj1 = Bernstein(4, j, s1); 
+        point.add(pp.clone().multiplyScalar(bi*bj));
+        pT.add(pp.clone().multiplyScalar(bi1*bj));
+        pS.add(pp.clone().multiplyScalar(bi*bj1));
       }
     }
-    return p;
+    let tangentS = pS.sub(point), 
+        tangentT = pT.sub(point);
+    if(t1 < t) tangentT.negate();
+    if(s1 < s) tangentS.negate();
+
+    let uv = new Vector2(...[1,0].map(i=>uvDist[i]*ts[i] + uvFrom[i]));
+
+    return {point, tangentS, tangentT, uv,
+      normal: new Vector3().crossVectors(tangentT, tangentS).normalize().negate()
+    };
   }
 
   function Bernstein(n,i,z){
@@ -111,16 +173,15 @@ function renderQuadPatch(pointIndex, collection, patchId, steps = 10){
 
 }
 
-function renderTrianglePatch(pointIndex, collection, patchId, steps =10){
+function renderTrianglePatch(pointIndex, collection, patchId, steps = 10){
   let geometry = { indices:[], positions: [],
-    faces:[], pointsIx: {} }
+    faces:[], pointsIx: {}, normals:[], uvs:[] }
   let w=0, u=0, v=0;
   let points = [];
   let lastPointId = 0;
   let patch = collection[patchId];
   for(let i =0; i < steps; ++i){
     let to = steps - i;
-
     let first = getPoint(i  ,0, patch);
     let top   = getPoint(i+1,0, patch);
     let second = getPoint(i, 1, patch);
@@ -131,15 +192,20 @@ function renderTrianglePatch(pointIndex, collection, patchId, steps =10){
     let preLast = getPoint(i, steps-i-1, patch);
     geometry.indices.push(last, preLast, topl);
 
-    for(let j=1; j < to-1; ++j){
+    for(let j=0; j < to-1; ++j){
       let ni = (i + 1)
       let nj = (j + 1)
       let lb = getPoint(i,j, patch);
       let lt = getPoint(i,nj, patch);
       let rb = getPoint(ni,j, patch);
       let rt = getPoint(ni,nj, patch);
-      let face1 = [lb, lt, rt];
-      let face2 = [lb, rt, rb];
+      let face1 = [lb, rt, lt];
+      let face2 = [lb, rb, rt];
+
+      let u = i / steps;
+      let v = j / steps;
+      let w = 1.0 - v - u;
+
       geometry.indices.push(...face1, ...face2);
     }
   }
@@ -151,35 +217,90 @@ function renderTrianglePatch(pointIndex, collection, patchId, steps =10){
       return geometry.pointsIx[key];
     }
 
-    let point = getPointBezier(...uvw(i,j), patch);
+    let {point, normal, uv} = getPointBezier(...uvw(i,j), patch);
     geometry.positions.push(...[point.x, point.y, point.z]);
+    geometry.normals.push(...[normal.x, normal.y, normal.z]);
+    geometry.uvs.push(...[uv.x, uv.y ]);
     let pointId = lastPointId++;
     geometry.pointsIx[key] = pointId;
     return pointId;
   }
 
   function uvw(i,j){
-    let w = i / steps;
+    let u = i / steps;
     let v = j / steps;
-    let u = 1.0 - v - w;
+    let w = 1.0 - v - u;
     return [u,v,w]
   }
 
   function getPointBezier(u,v,w, patch){
+    const delta = 0.0001;
     let point = new Vector3;
-    for(let key in patch){
-      if(key == 'length') continue;
+    let [uvFrom, uvTo] = patch.uv;
+
+    //let uvFrom = [0.25, 1/3];
+    //let uvTo = [0.5, 1];
+    let uvDiff = [0,1].map(i=>uvTo[i] - uvFrom[i]);
+
+    let uvt = [[1,1], [0,0.66], [0.25,0.66]].map(v=> new Vector2(...v));
+    //let uvt = [uvTo, uvFrom,   [uvTo[0], uvFrom[1]]].map(v=> new Vector2(...v));
+
+    let uvDist = [0,1].map(i=>uvTo[i] - uvFrom[i]);
+    let pT = new Vector3;
+    let pS = new Vector3;
+    let u1 = u + delta,
+        v1 = v + delta;
+    if(u - 1 < delta) u1 = u - delta;
+    if(v - 1 < delta) v1 = v - delta;
+
+    let keys = ['300', '210', '201', '120', '111', '102', '030', '021', '012', '003'];
+
+    keys.forEach(key=>{
       let pointId = patch[key];
       let pp = pointIndex[pointId].clone();
       let k=parseInt(key[0]),
           j=parseInt(key[1]),
           i=parseInt(key[2]);
-      let n = i+j+k;
-      let pows = pow(u,i)* pow(v,j) * pow(w,k);
-      let B =  pows * fact(n) / (fact(i)*fact(j)*fact(k));
-      point.add(pp.multiplyScalar(B));
-    }
-    return point;
+
+      point.add(pp.clone().multiplyScalar(Bernstein([i,j,k], [u,v,w])));
+      pT.add(pp.clone().multiplyScalar(Bernstein([i,j,k], [u, v1, 1. -u-v1])));
+      pS.add(pp.clone().multiplyScalar(Bernstein([i,j,k], [u1, v, 1.0-u1-v])));
+    })
+    let tangentS = pS.sub(point), 
+        tangentT = pT.sub(point);
+    if(u1 < u) tangentT.negate();
+    if(v1 < v) tangentS.negate();
+    let vuw = [u, v, w];
+
+    //let uv = [0,1,2].map(i=>uvt[i].clone().multiplyScalar(vuw[i]))
+      //.reduce((v1,v2)=>v1.add(v2), new Vector2)
+    let MaxR = 1-u; 
+    let uT = w/MaxR;
+    let vt = u;
+    let uv = new Vector2(uT * uvDiff[0] + uvFrom[0],
+                         vt * uvDiff[1] + uvFrom[1]);
+    //if(u > 0 && u < 0.2) console.log(u, uv);
+
+
+    return {point ,tangentS, tangentT, uv, 
+      normal: new Vector3().crossVectors(tangentT, tangentS).normalize().negate() };
+  }
+
+  function Bernstein(ijk, uvw){
+    //let [i,j,k] = ijk;
+    // let [i,k,j] = ijk;
+
+    //let [j,i,k] = ijk;
+    //let [j,k,i] = ijk;
+
+    let [k,j,i] = ijk;
+    //let [k,i,j] = ijk;
+
+    let [u,v,w] = uvw;
+    let n = i+j+k;
+    let pows = pow(u,i)* pow(v,j) * pow(w,k);
+    return pows * fact(n) / (fact(i)*fact(j)*fact(k));
+
   }
 
   function pow(a,p){
@@ -218,10 +339,7 @@ function createCylinders(part, props){
   let coneSegments = (props.topCone? 1:0) + (props.bottomCone?1:0);
   let hasBottomCone = props.bottomCone;
   let hasTopCone = props.topCone;
-  //let segmentLength = props.length / props.lengthSegments;
-  //let segmentNormalizedLength = 1.0 / props.lengthSegments;
   let totalPatches = [];
-
 
   for(let i = 0; i < part.sliceAmount - coneSegments-1; ++i){
     let bottomConeSliceNum = (hasBottomCone?1:0);
@@ -268,6 +386,11 @@ function createCylinders(part, props){
       controlPoints['23'] = mkPoint(`${segmentStart+1}-,${nx}`, new Vector3().lerpVectors(le,te,lerpUpper));
       controlPoints['33'] = mkPoint(`${segmentStart+1},${nx}`, te.clone());
       controlPoints.length = 16;
+      let ls = part.sliceAmount - 1;
+      controlPoints.uv = [
+        [segmentStart/ls, ix / props.radialSegments],
+        [(segmentStart+1)/ls, (ix+1) / props.radialSegments]
+      ];
       totalPatches.push(controlPoints);
     }
   }
@@ -399,7 +522,15 @@ function createConeAt(part, props, tCone){
       '021': mkPoint(`${lengthIndex+way},${ix}+`,baseSlice.points[`${ix}+`] ),
       '012': mkPoint(`${lengthIndex+way},${nextIndex}-`,baseSlice.points[`${nextIndex}-`]),
       '003': mkPoint(`${lengthIndex+way},${nextIndex}`,baseSlice.points[`${nextIndex}`]),
+
     }
+    let ls = part.sliceAmount - 1;
+    let upperU = (ls - 1)/(ls);
+    let lowerU = 1/ls
+
+    let fromUV = [ ix / props.radialSegments, Math.min(upperU, tCone)];
+    let toUV = [(ix+1) / props.radialSegments, Math.max(lowerU,tCone) ];
+    controlPoints.uv = [fromUV, toUV]; 
     controlPoints.length = 10;
     trianglePatches.push(controlPoints);
   }
@@ -585,19 +716,3 @@ function getSlicePlane({mainAxis}, orientation, t){
   return {normal, origin};
 
 }
-
-function _createBezierPatches(props){
-  // We have slices, each of them will have four conrtol points
-  // This gives us 12 CP for each point in slice
-  // We need 4 more control points per patch, which initially should 
-  // be interpolated from slices in pitch-yaw plane at 0.25 
-  // of they's distance from each neibour slice
-  // *  *  *  *
-  // *  0  0  *
-  // *  0  0  *
-  // *  *  *  *
-  // 0 - are interpolated points;
-}
-
-
-

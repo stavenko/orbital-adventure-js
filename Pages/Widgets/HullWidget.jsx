@@ -14,9 +14,24 @@ export function HullWidget(props){
 
 }
 
+function ShapeControls(props){
+  let {symmetryMode}= props.state.get('editorState').toJS() || {};
+  return <div className='hull-properties'>
+      <div className='symmetry-mode'>
+        {Symmetry.map(m=><div 
+          key={m}
+          className={classnames('symmetry',m)} 
+          onClick={()=>actions.selectSymmetryMode(m)}/>
+        )} 
+      </div>
+
+  </div>
+}
+
 function ShapeCreator(props){
   let onChange = onChangeCreator(props);
   let getValue = getValueCreator(props);
+  let {actions} = props;
 
   return <div className='hull-properties'>
     <div className='rotational'> 
@@ -74,18 +89,11 @@ function ShapeCreator(props){
         </div>
       </div>
 
-      <div className='symmetry-mode'>
-        {Symmetry.map(m=><div 
-          key={m}
-          className={classnames('symmetry',m)} 
-          onClick={()=>actions.selectSymmetryMode(m)}/>
-        )} 
-      </div>
     </div>
     <div className='structural'></div>
     <div className='reset-structure btn btn-small btn-warning' 
-      onClick={()=>actions.resetRoughGeometry(savedHullSettings)} >
-      Reset
+      onClick={()=>actions.roughGeometryReady()} >
+      I'm happy
     </div>
   </div>
 

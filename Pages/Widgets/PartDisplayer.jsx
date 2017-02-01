@@ -4,6 +4,7 @@ import {Color} from 'three/src/math/Color';
 import {CanvasBase} from '../../Canvas.jsx'
 import {Mesh} from 'three/src/objects/Mesh';
 import {MeshBasicMaterial} from 'three/src/materials/MeshBasicMaterial';
+import {MeshLambertMaterial} from 'three/src/materials/MeshLambertMaterial';
 import {Line} from 'three/src/objects/Line';
 import {LineBasicMaterial} from 'three/src/materials/LineBasicMaterial';
 import {Vector3} from 'three/src/math/Vector3';
@@ -11,6 +12,7 @@ import {BoxBufferGeometry} from 'three/src/geometries/BoxBufferGeometry';
 import * as RotationalShape from '../../math/RotationalShape.js'
 import * as THREE from 'three/src/constants'
 import * as Path from '../../math/Path.js';
+import {Textures} from '../../Utils/TextureCache.js';
 
 export class PartDisplay extends CanvasBase{
   constructor(props){
@@ -29,6 +31,7 @@ export class PartDisplay extends CanvasBase{
 
     this.camera.lookAt(new Vector3);
     this.camera.updateProjectionMatrix();
+    this.onMeshMouseMove = this.onMeshMouseMove.bind(this);
   }  
 
   getPath(){
@@ -67,22 +70,27 @@ export class PartDisplay extends CanvasBase{
     })
   }
 
+  onMeshMouseMove(e, intersects){
+    console.log("moving on mesh", intersects);
+  }
+
   renderScene(){
     if(!this.props.state.has('currentPart')) return [];
     let part = this.props.state.get('currentPart').toJS();
     if(!part.calculated) return [];
     let faces = RotationalShape.getRotationalGeometry(part.calculated);
-    let meshes = faces.map(({positions, indices})=>{
+    let meshes = faces.map(({positions, indices, uvs, normals})=>{
       return {
         type: Mesh,
         onEnter: e=>{},
-        geometry: {position: positions, index: indices},
+        onMouseMove: this.onMeshMouseMove,
+        geometry: {position: positions, index: indices, uv:uvs, normal:normals},
         position: new Vector3,
         material: {
-          type: MeshBasicMaterial, properties:{
-            color: new Color(0xeeeeee),
-            side: THREE.DoubleSide,
-            wireframe: true
+          type: MeshLambertMaterial, properties:{
+            color: new Color(0xffffff),
+            map: Textures.earthMap,
+            side: THREE.FrontSide
           }
         }
       }

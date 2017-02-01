@@ -1,3 +1,9 @@
+export const ROUGH_GEOMETRY_READY = 'ROUGH_GEOMETRY_READY';
+
+export function roughGeometryReady(){
+  return {type:ROUGH_GEOMETRY_READY}
+}
+
 export const NEW_PART = 'NEW_PART';
 export function newPart(withProps){
   return {type:NEW_PART, props: withProps}
