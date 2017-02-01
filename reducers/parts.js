@@ -3,14 +3,14 @@ import * as A from '../actions/parts.js';
 import * as RotationalShape from '../math/RotationalShape.js'
 
 const initialPartConfig = {
-  length:1.5,
+  length:1,
   radius: 0.23,
   lengthSegments: 1,
   radialSegments: 4,
   topCone: true,
-  topConeLength: 1.0,
-  bottomCone: false,
-  bottomConeLength: 0.10,
+  topConeLength: 0.33,
+  bottomCone: true,
+  bottomConeLength: 0.33,
   type: 'rotational',
   orientation: 'path-tangent'
 }

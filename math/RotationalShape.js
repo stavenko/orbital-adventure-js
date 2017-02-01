@@ -180,6 +180,7 @@ function renderTrianglePatch(pointIndex, collection, patchId, steps = 10){
   let points = [];
   let lastPointId = 0;
   let patch = collection[patchId];
+  let way = patch.way;
   for(let i =0; i < steps; ++i){
     let to = steps - i;
     let first = getPoint(i  ,0, patch);
@@ -190,7 +191,10 @@ function renderTrianglePatch(pointIndex, collection, patchId, steps = 10){
     let last = getPoint(i,  steps-i, patch);
     let topl = getPoint(i+1,steps-(i+1),patch);
     let preLast = getPoint(i, steps-i-1, patch);
-    geometry.indices.push(last, preLast, topl);
+    if(way < 0)
+      geometry.indices.push(last, preLast, topl);
+    else
+      geometry.indices.push(last, topl, preLast);
 
     for(let j=0; j < to-1; ++j){
       let ni = (i + 1)
@@ -199,8 +203,14 @@ function renderTrianglePatch(pointIndex, collection, patchId, steps = 10){
       let lt = getPoint(i,nj, patch);
       let rb = getPoint(ni,j, patch);
       let rt = getPoint(ni,nj, patch);
-      let face1 = [lb, rt, lt];
-      let face2 = [lb, rb, rt];
+      let face1, face2;
+      if(way> 0){
+        face1 = [lb, lt, rt];
+        face2 = [lb, rt, rb];
+      }else{
+        face1 = [lb, rt, lt];
+        face2 = [lb, rb, rt];
+      }
 
       let u = i / steps;
       let v = j / steps;
@@ -277,6 +287,7 @@ function renderTrianglePatch(pointIndex, collection, patchId, steps = 10){
     let MaxR = 1-u; 
     let uT = w/MaxR;
     let vt = u;
+    if(way > 0) vt = 1.0-u;
     let uv = new Vector2(uT * uvDiff[0] + uvFrom[0],
                          vt * uvDiff[1] + uvFrom[1]);
     //if(u > 0 && u < 0.2) console.log(u, uv);
@@ -528,10 +539,12 @@ function createConeAt(part, props, tCone){
     let upperU = (ls - 1)/(ls);
     let lowerU = 1/ls
 
+
     let fromUV = [ ix / props.radialSegments, Math.min(upperU, tCone)];
     let toUV = [(ix+1) / props.radialSegments, Math.max(lowerU,tCone) ];
     controlPoints.uv = [fromUV, toUV]; 
     controlPoints.length = 10;
+    controlPoints.way = way;
     trianglePatches.push(controlPoints);
   }
   return trianglePatches;
