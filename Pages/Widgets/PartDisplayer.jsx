@@ -82,7 +82,7 @@ export class PartDisplay extends CanvasBase{
     let meshes = faces.map(({positions, indices, uvs, normals})=>{
       return {
         type: Mesh,
-        onEnter: e=>{},
+        onEnter: e=>{ console.log('enter');},
         onMouseMove: this.onMeshMouseMove,
         geometry: {position: positions, index: indices, uv:uvs, normal:normals},
         position: new Vector3,

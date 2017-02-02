@@ -48,7 +48,8 @@ export class CanvasBase extends React.Component{
       normalizedMouse.y = - ( (event.clientY - this.nodeRect.top )/ this.refs.node.height ) * 2 + 1;
         this.rayCaster.setFromCamera(normalizedMouse, this.camera);
 
-        let intersects = this.rayCaster.intersectObject( this.scene, true );
+        let intersects = this.rayCaster.intersectObject( this.scene, true )
+        .filter(m=>!(m.object instanceof AxisHelper))
         this.currentIntersections = intersects;
 
         if(intersects.length>0){
@@ -100,10 +101,11 @@ export class CanvasBase extends React.Component{
           this.renderCanvas();
         }
       }
+      this.pickMesh( e);
+      // console.log('mm', this.pickedMesh, this.currentIntersections);
       if(this.pickedMesh && this.pickedMesh.userData.onMouseMove){
         this.pickedMesh.userData.onMouseMove(e, this.currentIntersections)
       }
-      this.pickMesh(e);
       this._lastMouseEvent = e;
     }
 
