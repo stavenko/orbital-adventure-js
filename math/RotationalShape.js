@@ -20,32 +20,6 @@ export function recalculateSlices(part, props){
 }
 
 
-function trianleSpaceIteration(S){
-  let sts = [];
-  for(let i =0; i<=S; ++i){
-    let s = i / S;
-    let rest = 1.0 - s;
-    let I = S - i;
-    if(I == 0) {
-      push([s, 0, 0]);
-      continue;
-    }
-    for(let j=0; j <= I; ++j){
-      let t = j / I * rest;
-      if(1-s-t  < 0) {console.warn('ACHTUNG'); continue;}
-      push([s,t, 1-s-t]);
-      
-    }
-  }
-  return sts;
-
-  function push(a){
-    sts.push(a.map(b=>b.toFixed(2)));
-  }
-}
-
-
-
 
 export function getRotationalGeometry(part){
   let geometries = [];
@@ -58,6 +32,26 @@ export function getRotationalGeometry(part){
   geometries.push(...createGeometryForPatches(part.pointIndex, part.cylindrycal));
 
   return geometries;
+}
+
+function getRadialLineAt(part,t){
+
+}
+
+function getCircleLineAt(part, t){
+
+}
+
+
+
+export function getLinesOnUV(part, uv){
+  let st = uv2st(part, uv)
+}
+
+export function getControllingLines(part){
+  // export all length-slices as curves with closed shape;
+  //  Make those lines three-layer lines. + - for surface control points
+  // export all 
 }
 
 
@@ -133,6 +127,48 @@ export function getPoints(part, pointList){
   if(pointList)
     return pointList.map(ix=>part.pointIndex[ix]);
   return [];
+}
+
+export function getLengthSliceControls(part){
+  let props = part._initialProps;
+  let coneSegments = (props.topCone? 1:0) + (props.bottomCone?1:0);
+  let hasBottomCone = props.bottomCone;
+  let hasTopCone = props.topCone;
+  let slices = [];
+  for(let i = 0; i < part.sliceAmount - coneSegments; ++i){
+    let bottomConeSliceNum = (hasBottomCone?1:0);
+    let slice = getLengthSlice(part, i+ bottomConeSliceNum);
+    console.log(slice);
+    let points = slice.points;
+    let path = [
+      {command:'moveTo', ...points['0']}
+    ]
+    let controlPoints = [];
+    for(let j =0; j <slice.curves; ++j){
+      let nj = (j+1) % slice.curves;
+      controlPoints.push({slice:i+bottomConeSliceNum, ix: `${j}`, ...points[`${j}`]})
+      controlPoints.push({slice:i+bottomConeSliceNum, ix: `${j}-`, ...points[`${j}-`]})
+      controlPoints.push({slice:i+bottomConeSliceNum, ix: `${j}+`, ...points[`${j}+`]})
+      path.push({
+        command:'curveTo', 
+        cp1:points[`${j}+`], 
+        cp2:points[`${nj}-`], 
+        end:points[`${nj}`]
+      });
+
+    }
+
+    let geometry = Path.getGeometry(path);
+    let plane;
+
+    slices.push({
+      plane, controlPoints, geometry
+    })
+  }
+
+  return slices
+
+
 }
 
 function createCylinders(part, props){
@@ -235,6 +271,7 @@ function createSliceFromRadialSegments(part, orientation, t){
     slice.points[ix + '-'] = point.clone().add(tangent.clone().multiplyScalar(-circularWeight))
     slice.points[ix + '+'] = point.clone().add(tangent.clone().multiplyScalar(circularWeight))
   })
+  slice.curves = radialSegments;
   return slice;
 }
 

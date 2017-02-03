@@ -71,7 +71,35 @@ export class PartDisplay extends CanvasBase{
   }
 
   onMeshMouseMove(e, intersects){
-    console.log("moving on mesh", intersects);
+    //console.log("moving on mesh", intersects);
+  }
+   
+  getControls(controlsArray){
+    return controlsArray.map(({geometry, plane, controlPoints})=>{
+      return [{
+        type: Line,
+        onMouseMove:(i,j)=>{console.log('CURVE',i,j);},
+        geometry:{position: geometry[0]},
+        material: {
+          type: LineBasicMaterial, 
+          properties:{
+            color:new Color(0xff0000)
+          }
+        }
+      },
+      ...controlPoints.map(p=>({
+        type: Mesh,
+        geometry: {type: BoxBufferGeometry, arguments:[1,1,1].map(x=>x*0.01)},
+        material: {
+          type: MeshBasicMaterial, properties:{
+            color: new Color(0xff9900)
+          }
+        },
+
+        position: new Vector3(p.x, p.y, p.z)
+      }))
+      ]
+    }).reduce((a,b)=>{a.push(...b);return a;}, []);
   }
 
   renderScene(){
@@ -82,7 +110,7 @@ export class PartDisplay extends CanvasBase{
     let meshes = faces.map(({positions, indices, uvs, normals})=>{
       return {
         type: Mesh,
-        onEnter: e=>{ console.log('enter');},
+        onEnter: e=>{ },
         onMouseMove: this.onMeshMouseMove,
         geometry: {position: positions, index: indices, uv:uvs, normal:normals},
         position: new Vector3,
@@ -90,14 +118,15 @@ export class PartDisplay extends CanvasBase{
           type: MeshLambertMaterial, properties:{
             color: new Color(0xffffff),
             map: Textures.earthMap,
+            //wireframe:true,
             side: THREE.FrontSide
           }
         }
       }
     });
-    let cps = this.getControlPoints();
+    let sliceControls  = RotationalShape.getLengthSliceControls(part.calculated);
     let color = new Color(0x0000ff);
-
+    let cps = this.getControls(sliceControls);
     return [...meshes, ...cps]; 
     /* ...this.getPath().map(geometry=>({
       type:Line,
