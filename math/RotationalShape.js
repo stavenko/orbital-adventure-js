@@ -146,9 +146,6 @@ export function getSideLineControls(part){
       if(hasTopCone && j == (sliceAmount - coneSegments - 1))
         endIndex = `${j+b+1}`;
 
-      console.log('index',j, sliceAmount, coneSegments );
-
-
       controlPoints.push({ix:`${j+b}+,${i}`, ...part.pointIndex[`${j+b}+,${i}`]})
       controlPoints.push({ix:`${j+b+1}-,${i}`, ...part.pointIndex[`${j+b+1}-,${i}`]})
       controlPoints.push({ix:endIndex,  ...part.pointIndex[endIndex]})
@@ -168,10 +165,34 @@ export function getSideLineControls(part){
 }
 
 export function getSurfaceControls(part){
+  let props = part._initialProps;
   let radialAmount = part.radialAmount;
-  let lengthSlices = part.lengthSlices;
+  let lengthSlices = part.sliceAmount;
   let hasBottomCone = props.bottomCone;
   let hasTopCone = props.topCone;
+  let coneSegments = (props.topCone? 1:0) + (props.bottomCone?1:0);
+  let slices = [];
+  let points = part.pointIndex;
+  for(let i = 0; i < radialAmount; ++i){
+    let controlPoints = [];
+    if(hasTopCone){
+      controlPoints.push({ix:`${lengthSlices-1}:111,${i}`, 
+      ...points[`${lengthSlices-1}:111,${i}`]});
+    }
+    if(hasBottomCone){
+      controlPoints.push({ix:`0:111,${i}`, 
+      ...points[`0:111,${i}`]});
+    }
+    for(let j=hasBottomCone?1:0; j < lengthSlices - coneSegments ; ++j){
+      let nj = (j+1) % lengthSlices;
+      controlPoints.push({ix:`${j}+,${i}+`, ...points[`${j}+,${i}+`]});
+      controlPoints.push({ix:`${nj}-,${i}+`, ...points[`${nj}-,${i}+`]});
+      controlPoints.push({ix:`${j}+,${i}-`, ...points[`${j}+,${i}-`]});
+      controlPoints.push({ix:`${nj}-,${i}-`, ...points[`${nj}-,${i}-`]});
+    }
+    slices.push({controlPoints});
+  }
+  return slices;
   
 }
 

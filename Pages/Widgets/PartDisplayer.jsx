@@ -74,32 +74,36 @@ export class PartDisplay extends CanvasBase{
     //console.log("moving on mesh", intersects);
   }
    
-  getControls(controlsArray){
+  getControls(controlsArray, cpColor = new Color(0xff9900)){
     return controlsArray.map(({geometry, plane, controlPoints})=>{
-      return [{
-        type: Line,
-        onMouseMove:(i,j)=>{},
-        geometry:{position: geometry[0]},
-        material: {
-          type: LineBasicMaterial, 
-          properties:{
-            color:new Color(0xff0000)
+      let meshes = []
+
+      if(geometry)
+        meshes.push({
+          type: Line,
+          onMouseMove:(i,j)=>{},
+          geometry:{position: geometry[0]},
+          material: {
+            type: LineBasicMaterial, 
+            properties:{
+              color:new Color(0xff0000)
+            }
           }
-        }
-      },
-      ...controlPoints.map(p=>({
+      });
+
+
+      meshes.push(...controlPoints.map(p=>({
         type: Mesh,
         geometry: {type: BoxBufferGeometry, arguments:[1,1,1].map(x=>x*0.01)},
         material: {
           type: MeshBasicMaterial, properties:{
-            color: new Color(0xff9900)
+            color: cpColor
           }
         },
-
         position: new Vector3(p.x, p.y, p.z)
-      }))
-      ]
-    }).reduce((a,b)=>{a.push(...b);return a;}, []);
+      })));
+      return meshes;
+    }).reduce((a,b)=>{a.push(...b);return a}, []);
   }
 
   renderScene(){
@@ -129,7 +133,9 @@ export class PartDisplay extends CanvasBase{
     let color = new Color(0x0000ff);
     let cps = this.getControls(sliceControls);
     return [...meshes, ...this.getControls(sliceControls),
-    ...this.getControls(sideControls) ]; 
+      ...this.getControls(sideControls),
+      ...this.getControls(RotationalShape.getSurfaceControls(part.calculated), new Color(0x00ff99))
+    ]; 
     /* ...this.getPath().map(geometry=>({
       type:Line,
       geometry:{position: geometry},
