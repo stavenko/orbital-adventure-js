@@ -6,6 +6,8 @@ import * as Quad from './QuadBezier.js';
 import * as Path from './Path.js';
 import {fact} from './Math.js';
 
+
+
 export function createRotationalShape(props){
   let newPart = {_initialProps:props};
   createMainAxis(newPart,props);
@@ -32,26 +34,6 @@ export function getRotationalGeometry(part){
   geometries.push(...createGeometryForPatches(part.pointIndex, part.cylindrycal));
 
   return geometries;
-}
-
-function getRadialLineAt(part,t){
-
-}
-
-function getCircleLineAt(part, t){
-
-}
-
-
-
-export function getLinesOnUV(part, uv){
-  let st = uv2st(part, uv)
-}
-
-export function getControllingLines(part){
-  // export all length-slices as curves with closed shape;
-  //  Make those lines three-layer lines. + - for surface control points
-  // export all 
 }
 
 
@@ -129,31 +111,96 @@ export function getPoints(part, pointList){
   return [];
 }
 
-export function getLengthSliceControls(part){
+export function getSideLineControls(part){
+  let props = part._initialProps;
+  let radial = part.radialAmount;
+  let sliceAmount = part.sliceAmount;
+  let hasBottomCone = props.bottomCone;
+  let hasTopCone = props.topCone;
+  let coneSegments = (props.topCone? 1:0) + (props.bottomCone?1:0);
+  let sideLines = [];
+  let slices = [];
+  for(let i = 0; i < radial; ++i){
+
+    let path = [];
+    let controlPoints = [];
+    if(hasBottomCone){
+      controlPoints.push({ix:'0', ...part.pointIndex['0']})
+      controlPoints.push({ix:`0+,${i}`, ...part.pointIndex[`0+,${i}`]})
+      controlPoints.push({ix:`1-,${i}`, ...part.pointIndex[`1-,${i}`]})
+      controlPoints.push({ix:`1,${i}`,  ...part.pointIndex[`1,${i}`]})
+
+      path.push({command:'moveTo', ...part.pointIndex['0']})
+      path.push({command:'curveTo', 
+                cp1:part.pointIndex[`0+,${i}`],
+                cp2:part.pointIndex[`1-,${i}`],
+                end:part.pointIndex[`1,${i}`],
+      })
+    }else{
+      controlPoints.push({ix:`0,${i}`, ...part.pointIndex[`0,${i}`]})
+      path.push({command:'moveTo', ...part.pointIndex[`0,${i}`]})
+    }
+    for(let j =0; j < sliceAmount - coneSegments; ++j){
+      let b = hasTopCone?1:0;
+      let endIndex = `${j+b+1},${i}`;
+      if(hasTopCone && j == (sliceAmount - coneSegments - 1))
+        endIndex = `${j+b+1}`;
+
+      console.log('index',j, sliceAmount, coneSegments );
+
+
+      controlPoints.push({ix:`${j+b}+,${i}`, ...part.pointIndex[`${j+b}+,${i}`]})
+      controlPoints.push({ix:`${j+b+1}-,${i}`, ...part.pointIndex[`${j+b+1}-,${i}`]})
+      controlPoints.push({ix:endIndex,  ...part.pointIndex[endIndex]})
+        
+      path.push({command:'curveTo', 
+                cp1: part.pointIndex[`${j+b}+,${i}`],
+                cp2: part.pointIndex[`${j+b+1}-,${i}`],
+                end: part.pointIndex[endIndex]
+      })
+    }
+    let geometry = Path.getGeometry(path);
+    slices.push({geometry, controlPoints})
+  }
+
+  return slices;
+
+}
+
+export function getSurfaceControls(part){
+  let radialAmount = part.radialAmount;
+  let lengthSlices = part.lengthSlices;
+  let hasBottomCone = props.bottomCone;
+  let hasTopCone = props.topCone;
+  
+}
+
+export function getSliceControls(part){
   let props = part._initialProps;
   let coneSegments = (props.topCone? 1:0) + (props.bottomCone?1:0);
+  let radialAmount = part.radialAmount;
   let hasBottomCone = props.bottomCone;
   let hasTopCone = props.topCone;
   let slices = [];
   for(let i = 0; i < part.sliceAmount - coneSegments; ++i){
     let bottomConeSliceNum = (hasBottomCone?1:0);
-    let slice = getLengthSlice(part, i+ bottomConeSliceNum);
-    console.log(slice);
-    let points = slice.points;
+    let sliceIx = i+bottomConeSliceNum;
+    //let slice = getLengthSlice(part, i+ bottomConeSliceNum);
+    let points = part.pointIndex;
     let path = [
-      {command:'moveTo', ...points['0']}
+      {command:'moveTo', ...points[`${sliceIx},0`]}
     ]
     let controlPoints = [];
-    for(let j =0; j <slice.curves; ++j){
-      let nj = (j+1) % slice.curves;
-      controlPoints.push({slice:i+bottomConeSliceNum, ix: `${j}`, ...points[`${j}`]})
-      controlPoints.push({slice:i+bottomConeSliceNum, ix: `${j}-`, ...points[`${j}-`]})
-      controlPoints.push({slice:i+bottomConeSliceNum, ix: `${j}+`, ...points[`${j}+`]})
+    for(let j =0; j < radialAmount; ++j){
+      let nj = (j+1) % radialAmount;
+      controlPoints.push({slice:i+bottomConeSliceNum, ix: `${sliceIx},${j}`, ...points[`${sliceIx},${j}`]})
+      controlPoints.push({slice:i+bottomConeSliceNum, ix: `${sliceIx},${j}-`, ...points[`${sliceIx},${j}-`]})
+      controlPoints.push({slice:i+bottomConeSliceNum, ix: `${sliceIx},${j}+`, ...points[`${sliceIx},${j}+`]})
       path.push({
         command:'curveTo', 
-        cp1:points[`${j}+`], 
-        cp2:points[`${nj}-`], 
-        end:points[`${nj}`]
+        cp1:points[`${sliceIx},${j}+`], 
+        cp2:points[`${sliceIx},${nj}-`], 
+        end:points[`${sliceIx},${nj}`]
       });
 
     }
@@ -277,6 +324,7 @@ function createSliceFromRadialSegments(part, orientation, t){
 
 function createInitialSlices(part, props){
   part.sliceAmount = props.lengthSegments+1;
+  part.radialAmount = props.radialSegments;
 
 
   let noConeSliceAmount = part.sliceAmount;

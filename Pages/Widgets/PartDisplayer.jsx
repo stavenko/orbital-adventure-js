@@ -78,7 +78,7 @@ export class PartDisplay extends CanvasBase{
     return controlsArray.map(({geometry, plane, controlPoints})=>{
       return [{
         type: Line,
-        onMouseMove:(i,j)=>{console.log('CURVE',i,j);},
+        onMouseMove:(i,j)=>{},
         geometry:{position: geometry[0]},
         material: {
           type: LineBasicMaterial, 
@@ -124,10 +124,12 @@ export class PartDisplay extends CanvasBase{
         }
       }
     });
-    let sliceControls  = RotationalShape.getLengthSliceControls(part.calculated);
+    let sliceControls  = RotationalShape.getSliceControls(part.calculated);
+    let sideControls  = RotationalShape.getSideLineControls(part.calculated);
     let color = new Color(0x0000ff);
     let cps = this.getControls(sliceControls);
-    return [...meshes, ...cps]; 
+    return [...meshes, ...this.getControls(sliceControls),
+    ...this.getControls(sideControls) ]; 
     /* ...this.getPath().map(geometry=>({
       type:Line,
       geometry:{position: geometry},
