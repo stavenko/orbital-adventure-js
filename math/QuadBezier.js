@@ -15,8 +15,8 @@ export function getGeometryFromPatch(weights, steps = 10){
       let lt = getPoint(i,j+1);
       let rb = getPoint(i+1,j);
       let rt = getPoint(i+1,j+1);
-      let face1 = [lb, lt, rt];
-      let face2 = [lb, rt, rb];
+      let face1 = [lb, rt, lt];
+      let face2 = [lb, rb, rt];
       geometry.indices.push(...face1, ...face2);
     }
   }
@@ -47,7 +47,7 @@ export function getGeometryFromPatch(weights, steps = 10){
     let point = new Vector3;
     let [uvFrom, uvTo] = patch.uv;
     let uvDist = [0,1].map(i=>uvTo[i] - uvFrom[i]);
-    let ts = [t,s];
+    let ts = [ s, t];
     let pT = new Vector3;
     let pS = new Vector3;
     let t1 = t + delta,
@@ -74,10 +74,10 @@ export function getGeometryFromPatch(weights, steps = 10){
     if(t1 < t) tangentT.negate();
     if(s1 < s) tangentS.negate();
 
-    let uv = new Vector2(...[1,0].map(i=>uvDist[i]*ts[i] + uvFrom[i]));
+    let uv = new Vector2(...[0,1].map(i=>uvDist[i]*ts[i] + uvFrom[i]));
 
     return {point, tangentS, tangentT, uv,
-      normal: new Vector3().crossVectors(tangentT, tangentS).normalize().negate()
+      normal: new Vector3().crossVectors(tangentT, tangentS).normalize()
     };
   }
 

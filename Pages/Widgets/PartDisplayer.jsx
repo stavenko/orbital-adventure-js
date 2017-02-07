@@ -71,7 +71,10 @@ export class PartDisplay extends CanvasBase{
   }
 
   onMeshMouseMove(e, intersects){
-    //console.log("moving on mesh", intersects);
+    this.sceneIntersection = intersects[0];
+    this.scenePoint = intersects[0].point.clone();
+    this.renderCanvas();
+
   }
    
   getControls(controlsArray, cpColor = new Color(0xff9900)){
@@ -81,7 +84,7 @@ export class PartDisplay extends CanvasBase{
       if(geometry)
         meshes.push({
           type: Line,
-          onMouseMove:(i,j)=>{},
+          // onMouseMove:(i,j)=>{},
           geometry:{position: geometry[0]},
           material: {
             type: LineBasicMaterial, 
@@ -111,7 +114,7 @@ export class PartDisplay extends CanvasBase{
     let part = this.props.state.get('currentPart').toJS();
     if(!part.calculated) return [];
     let faces = RotationalShape.getRotationalGeometry(part.calculated);
-    let meshes = faces.map(({positions, indices, uvs, normals})=>{
+    let mainMeshes = faces.map(({positions, indices, uvs, normals})=>{
       return {
         type: Mesh,
         onEnter: e=>{ },
@@ -132,10 +135,26 @@ export class PartDisplay extends CanvasBase{
     let sideControls  = RotationalShape.getSideLineControls(part.calculated);
     let color = new Color(0x0000ff);
     let cps = this.getControls(sliceControls);
-    return [...meshes, ...this.getControls(sliceControls),
+
+    let meshes = [...mainMeshes, ...this.getControls(sliceControls),
       ...this.getControls(sideControls),
       ...this.getControls(RotationalShape.getSurfaceControls(part.calculated), new Color(0x00ff99))
-    ]; 
+    ]
+    if(this.sceneIntersection){
+      meshes.push({
+        type: Mesh,
+        geometry: {type: BoxBufferGeometry, arguments:[1,1,1].map(x=>x*0.005)},
+        material: {
+          type: MeshBasicMaterial, properties:{
+            color: new Color(0x00ffff),
+            side: THREE.DoubleSide
+          }
+        },
+        position: new Vector3().copy(this.sceneIntersection.point)
+      })
+    }
+    return meshes; 
+
     /* ...this.getPath().map(geometry=>({
       type:Line,
       geometry:{position: geometry},

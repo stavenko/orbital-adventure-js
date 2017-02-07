@@ -292,8 +292,8 @@ function createCylinders(part, props){
       controlPoints.length = 16;
       let ls = part.sliceAmount - 1;
       controlPoints.uv = [
-        [segmentStart/ls, ix / props.radialSegments],
-        [(segmentStart+1)/ls, (ix+1) / props.radialSegments]
+        [ 1-(ix / props.radialSegments), segmentStart/ls],
+        [ 1-((ix+1) / props.radialSegments), (segmentStart+1)/ls ]
       ];
       totalPatches.push(controlPoints);
     }
@@ -435,8 +435,8 @@ function createConeAt(part, props, tCone){
     let lowerU = 1/ls
 
 
-    let fromUV = [ ix / props.radialSegments, Math.min(upperU, tCone)];
-    let toUV = [(ix+1) / props.radialSegments, Math.max(lowerU,tCone) ];
+    let fromUV = [ 1-(ix / props.radialSegments), Math.min(upperU, tCone)];
+    let toUV = [1-((ix+1) / props.radialSegments), Math.max(lowerU,tCone) ];
     controlPoints.uv = [fromUV, toUV]; 
     controlPoints.length = 10;
     controlPoints.way = way;

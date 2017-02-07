@@ -5,6 +5,7 @@ import {PointLight} from 'three/src/lights/PointLight';
 import {AmbientLight} from 'three/src/lights/AmbientLight';
 import {WebGLRenderer} from 'three/src/renderers/WebGLRenderer';
 import {OrthographicCamera} from 'three/src/cameras/OrthographicCamera';
+import {PerspectiveCamera} from 'three/src/cameras/PerspectiveCamera';
 import {Raycaster} from 'three/src/core/Raycaster';
 import {BufferGeometry} from 'three/src/core/BufferGeometry';
 import {BufferAttribute} from 'three/src/core/BufferAttribute';
@@ -42,6 +43,7 @@ export class CanvasBase extends React.Component{
         this.lights.forEach(l=>this.scene.add(l));
     }
 
+
     pickMesh(event){
       let normalizedMouse = new Vector2;
       normalizedMouse.x = ( (event.clientX - this.nodeRect.left) / this.refs.node.width ) * 2 - 1;
@@ -49,7 +51,8 @@ export class CanvasBase extends React.Component{
         this.rayCaster.setFromCamera(normalizedMouse, this.camera);
 
         let intersects = this.rayCaster.intersectObject( this.scene, true )
-        .filter(m=>!(m.object instanceof AxisHelper))
+          .filter(m=>m.object.userData.interactable)
+          // console.log(intersects);
         this.currentIntersections = intersects;
 
         if(intersects.length>0){
@@ -102,7 +105,6 @@ export class CanvasBase extends React.Component{
         }
       }
       this.pickMesh( e);
-      // console.log('mm', this.pickedMesh, this.currentIntersections);
       if(this.pickedMesh && this.pickedMesh.userData.onMouseMove){
         this.pickedMesh.userData.onMouseMove(e, this.currentIntersections)
       }
@@ -337,17 +339,21 @@ export class CanvasBase extends React.Component{
           mesh[key] = value;
       }
 
+      let hasEvents = false;
       events.forEach(evt=>{
         if(props[evt]) {
           mesh.userData[evt] = props[evt];
+          hasEvents = true;
           return;
         }
+
         if(mesh.userData[evt]) {
           delete mesh.userData[evt];
           return;
         }
 
       })
+      mesh.userData.interactable = hasEvents;
     }
 
 
@@ -396,7 +402,9 @@ export class CanvasBase extends React.Component{
       this.nodeRect = this.refs.node.getBoundingClientRect();
 
       this.renderer = new WebGLRenderer({canvas: this.refs.node, antialias:true});
-      this.camera = new OrthographicCamera(width/2 , -width/2, height/2, -height/2, 1, 100);
+
+      this.camera = new PerspectiveCamera(45, width/height, 0.01,20);
+        //new OrthographicCamera(width/2 , -width/2, height/2, -height/2, 1, 100);
       this.cameraHandler = new Camera(this.camera, this.refs.node);
 
       this.renderer.setClearColor(0x096dc7);

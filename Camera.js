@@ -26,7 +26,7 @@ export class Camera{
   }
 
   rotateLeft(a){
-    this.thetaDelta += a;
+    this.thetaDelta -= a;
   }
   rotateUp(a){ 
     this.phiDelta -= a;

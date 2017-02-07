@@ -22,9 +22,9 @@ export function getGeometryFromPatch(weights, steps = 10){
     let topl = getPoint(i+1,steps-(i+1),patch);
     let preLast = getPoint(i, steps-i-1, patch);
     if(way < 0)
-      geometry.indices.push(last, preLast, topl);
-    else
       geometry.indices.push(last, topl, preLast);
+    else
+      geometry.indices.push(last, preLast, topl);
 
     for(let j=0; j < to-1; ++j){
       let ni = (i + 1)
@@ -35,11 +35,11 @@ export function getGeometryFromPatch(weights, steps = 10){
       let rt = getPoint(ni,nj, patch);
       let face1, face2;
       if(way> 0){
-        face1 = [lb, lt, rt];
-        face2 = [lb, rt, rb];
-      }else{
         face1 = [lb, rt, lt];
         face2 = [lb, rb, rt];
+      }else{
+        face1 = [lb, lt, rt];
+        face2 = [lb, rt, rb];
       }
 
       let u = i / steps;
