@@ -2,6 +2,20 @@ import {fact} from './Math.js';
 import {Vector2} from 'three/src/math/Vector2';
 import {Vector3} from 'three/src/math/Vector3';
 
+export function slice(weights, st){
+}
+
+export function getWeights(patch, part){
+  let weights = [];
+  for(let i=0; i<4; ++i){
+    for(let j=0; j<4; ++j){
+      let k = `${i}${j}`;
+      let point = part.pointIndex[patch[k]].clone();
+      weights[i*4+j] = point;
+    }
+  }
+  return weights;
+}
 
 export function getGeometryFromPatch(weights, steps = 10){
 

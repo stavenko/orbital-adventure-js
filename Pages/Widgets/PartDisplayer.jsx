@@ -4,15 +4,19 @@ import {Color} from 'three/src/math/Color';
 import {CanvasBase} from '../../Canvas.jsx'
 import {Mesh} from 'three/src/objects/Mesh';
 import {MeshBasicMaterial} from 'three/src/materials/MeshBasicMaterial';
+import {RawShaderMaterial} from 'three/src/materials/RawShaderMaterial';
 import {MeshLambertMaterial} from 'three/src/materials/MeshLambertMaterial';
 import {Line} from 'three/src/objects/Line';
 import {LineBasicMaterial} from 'three/src/materials/LineBasicMaterial';
 import {Vector3} from 'three/src/math/Vector3';
+import {Vector2} from 'three/src/math/Vector2';
 import {BoxBufferGeometry} from 'three/src/geometries/BoxBufferGeometry';
 import * as RotationalShape from '../../math/RotationalShape.js'
 import * as THREE from 'three/src/constants'
 import * as Path from '../../math/Path.js';
+import {QuadGeometry} from '../../math/Geometry.js';
 import {Textures} from '../../Utils/TextureCache.js';
+import * as Quad from './../../math/QuadBezier.js';
 
 export class PartDisplay extends CanvasBase{
   constructor(props){
@@ -113,7 +117,9 @@ export class PartDisplay extends CanvasBase{
     if(!this.props.state.has('currentPart')) return [];
     let part = this.props.state.get('currentPart').toJS();
     if(!part.calculated) return [];
-    let faces = RotationalShape.getRotationalGeometry(part.calculated);
+    //let faces = RotationalShape.getRotationalGeometry(part.calculated);
+    //
+    /*
     let mainMeshes = faces.map(({positions, indices, uvs, normals})=>{
       return {
         type: Mesh,
@@ -130,7 +136,26 @@ export class PartDisplay extends CanvasBase{
           }
         }
       }
-    });
+      });
+      */
+    let mainMeshes = part.calculated.cylindrycal.map(patch=>{
+      let weights = Quad.getWeights(patch, part.calculated);
+      let uvStart = patch.uv[0];
+      let uvEnd = patch.uv[1];
+      return{
+        type:Mesh,
+        geometry: {type:QuadGeometry, arguments:[10,10]}, 
+        material: {type:RawShaderMaterial,properties:{
+          vertexShader: require("../../shaders/BezierQuadVertexShader.glsl"),
+          fragmentShader: require("../../shaders/FragmentShader.glsl"),
+          uniforms: {
+            uvStart: {value: new Vector2(...uvStart)}, 
+            uvEnd:{value: new Vector2(...uvEnd)},
+            weights: {value: weights}
+          }
+        }}
+      }
+    })
     let sliceControls  = RotationalShape.getSliceControls(part.calculated);
     let sideControls  = RotationalShape.getSideLineControls(part.calculated);
     let color = new Color(0x0000ff);

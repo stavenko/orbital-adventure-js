@@ -3,6 +3,34 @@ import {Vector2} from 'three/src/math/Vector2';
 import {Vector3} from 'three/src/math/Vector3';
 
 
+/*
+
+export function split(weights, uvw){
+  let max = 3;
+  let levels = [weights];
+  let levelsIx = [null, 
+    [[2,0,0], [1,1,0], [1,0,1],[0,2,0], [0,1,1], [0,0,2]],
+    [[1,0,0], [0,1,0], [0,0,1]],
+    [[0,0,0]],
+]
+
+  for(let c =1; c <= 3; ++c){
+    let M = max - c;
+    levels[c] = {};
+    [[2,0,0], [1,1,0], [1,0,1],[0,2,0], [0,1,1], [0,0,2]].map(([i,j,k])=>{
+      let k = `${i}${j}${k}`;
+      let point = new Vector3;
+      point.add(levels[c-1][`${i+1}${j}${k}`].clone().multiplyScalar(uvw[0]));
+      point.add(levels[c-1][`${i}${j+1}${k}`].clone().multiplyScalar(uvw[1]));
+      point.add(levels[c-1][`${i}${j}${k+1}`].clone().multiplyScalar(uvw[2]));
+      levels[c][k] = point;
+    })
+  }
+  console.log(levels);
+}
+*/
+
+
 export function getGeometryFromPatch(weights, steps = 10){
   let geometry = { indices:[], positions: [],
     faces:[], pointsIx: {}, normals:[], uvs:[] }

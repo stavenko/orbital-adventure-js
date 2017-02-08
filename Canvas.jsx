@@ -249,17 +249,19 @@ export class CanvasBase extends React.Component{
     }
 
     updateMeshMaterial(mesh, props){
-      let {type, uniforms, properties} = props;
+      let {type, properties} = props;
       
       let M = mesh.material;
       if(!mesh.material || !(mesh.material instanceof type)) 
         mesh.material = this.createMaterial(props);
       else{
         if(mesh.material.uniforms)
-          for(let uname in unifoms){
-            mesh.material.unifoms[uname].value = uniforms[uname];
+          for(let uname in properties.unifoms){
+            mesh.material.unifoms[uname].value = properties.uniforms[uname];
           }
+
         for(let p in properties) {
+          if(p == 'uniforms') continue;
           mesh.material[p] = properties[p];
         }
         mesh.material.needsUpdate=true;
@@ -267,13 +269,14 @@ export class CanvasBase extends React.Component{
     }
 
     createMaterial(props){
-      let {type, uniforms, properties} = props;
+      let {type, properties} = props;
       let M = new type(properties);
-      if(!M.uniforms) return M;
+      // if(!M.uniforms) return M;
 
-      for(let uname in unifoms){
-        M.unifoms[uname].value = uniforms[uname];
-      }
+      //console.log(props);
+      //for(let uname in unifoms){
+      //M.unifoms[uname].value = uniforms[uname];
+      //}
       return M;
     }
 
@@ -403,8 +406,8 @@ export class CanvasBase extends React.Component{
 
       this.renderer = new WebGLRenderer({canvas: this.refs.node, antialias:true});
 
-      this.camera = new PerspectiveCamera(45, width/height, 0.01,20);
-        //new OrthographicCamera(width/2 , -width/2, height/2, -height/2, 1, 100);
+      this.camera =  // new PerspectiveCamera(45, width/height, 0.01,20);
+      new OrthographicCamera(-width/2 , width/2, height/2, -height/2, 0.1, 50);
       this.cameraHandler = new Camera(this.camera, this.refs.node);
 
       this.renderer.setClearColor(0x096dc7);
