@@ -14,7 +14,7 @@ import {BoxBufferGeometry} from 'three/src/geometries/BoxBufferGeometry';
 import * as RotationalShape from '../../math/RotationalShape.js'
 import * as THREE from 'three/src/constants'
 import * as Path from '../../math/Path.js';
-import {QuadGeometry} from '../../math/Geometry.js';
+import {QuadBezierBufferGeometry, TriangleBezierBufferGeometry} from '../../math/Geometry.js';
 import {Textures} from '../../Utils/TextureCache.js';
 import * as Quad from './../../math/QuadBezier.js';
 
@@ -138,25 +138,26 @@ export class PartDisplay extends CanvasBase{
       }
       });
       */
-    let mainMeshes = part.calculated.cylindrycal.map(patch=>{
-      let weights = Quad.getWeights(patch, part.calculated);
-      let uvStart = patch.uv[0];
-      let uvEnd = patch.uv[1];
-      return{
+    let mainMeshes = RotationalShape.getRotationalGeometry(part.calculated).map(attrs=>{
+
+      return {
         type:Mesh,
-        geometry: {type:QuadGeometry, arguments:[10,10]}, 
-        material: {type:RawShaderMaterial,properties:{
-          vertexShader: require("../../shaders/BezierQuadVertexShader.glsl"),
-          fragmentShader: require("../../shaders/FragmentShader.glsl"),
-          uniforms: {
-            uvStart: {value: new Vector2(...uvStart)}, 
-            uvEnd:{value: new Vector2(...uvEnd)},
-            weights: {value: weights}
+        onMouseMove: this.onMeshMouseMove,
+        geometry:{
+          type:attrs[0] == 16?QuadBezierBufferGeometry:TriangleBezierBufferGeometry,
+          arguments: attrs.splice(1),
+        },
+        material:{
+          type: MeshLambertMaterial, properties:{
+            color: new Color(0xffffff),
+            map: Textures.earthMap,
+            //wireframe:true,
+            side: THREE.FrontSide
           }
-        }}
+        }
       }
     })
-    let sliceControls  = RotationalShape.getSliceControls(part.calculated);
+      let sliceControls  = RotationalShape.getSliceControls(part.calculated);
     let sideControls  = RotationalShape.getSideLineControls(part.calculated);
     let color = new Color(0x0000ff);
     let cps = this.getControls(sliceControls);

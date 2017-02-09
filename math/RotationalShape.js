@@ -26,6 +26,19 @@ export function recalculateSlices(part, props){
 export function getRotationalGeometry(part){
   let geometries = [];
   if(part.topCone) {
+    geometries.push(...part.topCone.map(patch=>getGeometryAttributes(part, patch)))
+  }
+  if(part.bottomCone) {
+    geometries.push(...part.bottomCone.map(patch=>getGeometryAttributes(part, patch)));
+  }
+  geometries.push(...part.cylindrycal.map(patch=>getGeometryAttributes(part, patch)));
+
+  return geometries;
+}
+
+export function getRotationalGeometryOld(part){
+  let geometries = [];
+  if(part.topCone) {
     geometries.push(...createGeometryForPatches(part.pointIndex, part.topCone));
   }
   if(part.bottomCone) {
@@ -37,6 +50,7 @@ export function getRotationalGeometry(part){
 }
 
 
+
 function createGeometryForPatches(pointIndex, patchesCollection){
   let geometries = [];
   patchesCollection.forEach((patch, ix)=>{
@@ -46,6 +60,7 @@ function createGeometryForPatches(pointIndex, patchesCollection){
       geometries.push(renderTrianglePatch(pointIndex, patchesCollection, ix))
     }
   });
+
   return geometries.map(geometry=>{
     let indices = toArray(Uint16Array, geometry.indices);
     let positions = toArray(Float32Array, geometry.positions);
@@ -58,6 +73,23 @@ function createGeometryForPatches(pointIndex, patchesCollection){
       uvs: {array:uvs, size:2},
     }
   })
+}
+
+function getGeometryAttributes(part, patch){
+  let attrs = [patch.length];
+  let pointIndex = part.pointIndex;
+  let weights = {};
+  for( let key in patch){
+    if(pointIndex[patch[key]])
+      weights[key] = pointIndex[patch[key]].clone();
+  }
+  attrs.push(weights)
+  attrs.push(...patch.uv);
+  if(patch.length == 10){
+    attrs.push(patch.way);
+  }
+  attrs.push(10);
+  return attrs;
 }
 
 function toArray(type, fromArray){

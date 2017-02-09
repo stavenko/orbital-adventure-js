@@ -17,7 +17,7 @@ export function getWeights(patch, part){
   return weights;
 }
 
-export function getGeometryFromPatch(weights, steps = 10){
+export function getGeometryFromPatch(weights, uvFrom, uvTo, steps = 10){
 
   let patch = weights
   let geometry = {indices:[], positions:[], pointsIx:{}, 
@@ -59,7 +59,7 @@ export function getGeometryFromPatch(weights, steps = 10){
   function getPointBezier(t,s){
     const delta = 0.0001;
     let point = new Vector3;
-    let [uvFrom, uvTo] = patch.uv;
+    //let [uvFrom, uvTo] = patch.uv;
     let uvDist = [0,1].map(i=>uvTo[i] - uvFrom[i]);
     let ts = [ s, t];
     let pT = new Vector3;

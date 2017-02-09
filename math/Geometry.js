@@ -1,5 +1,7 @@
 import {BufferGeometry} from 'three/src/core/BufferGeometry';
 import {BufferAttribute} from 'three/src/core/BufferAttribute';
+import * as Quad from './QuadBezier.js'
+import * as Triangle from './TriangleBezier.js'
 
 
 export function QuadGeometry(tSteps, sSteps){
@@ -21,6 +23,42 @@ export function QuadGeometry(tSteps, sSteps){
 QuadGeometry.prototype = Object.create(BufferGeometry.prototype);
 QuadGeometry.prototype.constructor = BufferGeometry;
 
+
+export function TriangleBezierBufferGeometry(weights,uvStart, uvEnd, invert, sSteps){
+  BufferGeometry.call(this);
+  console.log(arguments);
+  let geometry = Triangle.getGeometryFromPatch(weights, uvStart, uvEnd, invert, sSteps);
+
+  let indices = toArray(Uint16Array, geometry.indices);
+  let positions = toArray(Float32Array, geometry.positions);
+  let normals = toArray(Float32Array, geometry.normals || []);
+  let uvs = toArray(Float32Array, geometry.uvs || []);
+
+  this.setIndex(new BufferAttribute(indices, 1));
+  this.addAttribute('position', new BufferAttribute(positions, 3));
+  this.addAttribute('normal', new BufferAttribute(normals, 3));
+  this.addAttribute('uv', new BufferAttribute(uvs, 2));
+}
+
+export function QuadBezierBufferGeometry(weights,uvStart, uvEnd, tSteps, sSteps){
+  BufferGeometry.call(this);
+  let geometry = Quad.getGeometryFromPatch(weights, uvStart, uvEnd, tSteps);
+
+  let indices = toArray(Uint16Array, geometry.indices);
+  let positions = toArray(Float32Array, geometry.positions);
+  let normals = toArray(Float32Array, geometry.normals || []);
+  let uvs = toArray(Float32Array, geometry.uvs || []);
+
+  this.setIndex(new BufferAttribute(indices, 1));
+  this.addAttribute('position', new BufferAttribute(positions, 3));
+  this.addAttribute('normal', new BufferAttribute(normals, 3));
+  this.addAttribute('uv', new BufferAttribute(uvs, 2));
+}
+
+QuadBezierBufferGeometry.prototype = Object.create(BufferGeometry.prototype);
+QuadBezierBufferGeometry.prototype.constructor = BufferGeometry;
+TriangleBezierBufferGeometry.prototype = Object.create(BufferGeometry.prototype);
+TriangleBezierBufferGeometry.prototype.constructor = BufferGeometry;
 
 function createQuadBezierGeometry(tSteps, sSteps){
   let pointIndex = {};

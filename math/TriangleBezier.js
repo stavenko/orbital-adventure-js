@@ -31,14 +31,14 @@ export function split(weights, uvw){
 */
 
 
-export function getGeometryFromPatch(weights, steps = 10){
+export function getGeometryFromPatch(weights, uvFrom, uvTo, invert, steps = 10){
   let geometry = { indices:[], positions: [],
     faces:[], pointsIx: {}, normals:[], uvs:[] }
   let w=0, u=0, v=0;
   let points = [];
   let lastPointId = 0;
   let patch = weights
-  let way = patch.way;
+  let way = invert
   for(let i =0; i < steps; ++i){
     let to = steps - i;
     let first = getPoint(i  ,0, patch);
@@ -104,7 +104,7 @@ export function getGeometryFromPatch(weights, steps = 10){
   function getPointBezier(u,v,w, patch){
     const delta = 0.0001;
     let point = new Vector3;
-    let [uvFrom, uvTo] = patch.uv;
+    //let [uvFrom, uvTo] = patch.uv;
 
     let uvDiff = [0,1].map(i=>uvTo[i] - uvFrom[i]);
 
