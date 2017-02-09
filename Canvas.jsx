@@ -288,8 +288,12 @@ export class CanvasBase extends React.Component{
 
     replaceGeometryIfNeeded(props, oldGeometry){
       let cached = this.geometryCache[oldGeometry.uuid] || {};
-      if(props.type == cached.type && isEqual(props.arguments, cached.arguments))
+      if(props.type == cached.type && isEqual(props.arguments, cached.arguments)){
         return oldGeometry;
+      }else{
+        // console.log("not ok", props.arguments, cached.arguments);
+        
+      }
       delete this.geometryCache[oldGeometry.uuid];
       return this.createGeometry(props);
     }

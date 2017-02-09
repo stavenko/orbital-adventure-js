@@ -26,7 +26,6 @@ QuadGeometry.prototype.constructor = BufferGeometry;
 
 export function TriangleBezierBufferGeometry(weights,uvStart, uvEnd, invert, sSteps){
   BufferGeometry.call(this);
-  console.log(arguments);
   let geometry = Triangle.getGeometryFromPatch(weights, uvStart, uvEnd, invert, sSteps);
 
   let indices = toArray(Uint16Array, geometry.indices);

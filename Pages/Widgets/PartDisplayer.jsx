@@ -147,6 +147,7 @@ export class PartDisplay extends CanvasBase{
           type:attrs[0] == 16?QuadBezierBufferGeometry:TriangleBezierBufferGeometry,
           arguments: attrs.splice(1),
         },
+        position: new Vector3,
         material:{
           type: MeshLambertMaterial, properties:{
             color: new Color(0xffffff),
