@@ -148,9 +148,12 @@ export class PartDisplay extends CanvasBase{
       ...this.getControls(RotationalShape.getSurfaceControls(part.calculated), new Color(0x00ff99))
     ]
     if(this.sceneIntersection){
-      console.log(this.sceneIntersection.uv.y);
       let s = this.sceneIntersection.uv.y;
-      let curve = RotationalShape.getLineAtS(part.calculated, s);
+      let t = this.sceneIntersection.uv.x;
+      let curve = [
+        ...RotationalShape.getLineAtS(part.calculated, s),
+        ...RotationalShape.getLineAtT(part.calculated, t),
+      ];
       curve.forEach(({position})=>{
         meshes.push({
           type:Line,

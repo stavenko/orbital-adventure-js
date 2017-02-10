@@ -30,6 +30,20 @@ export function split(weights, uvw){
 }
 */
 
+export function getGeometryLineAtT(weights, t, steps){
+  let getPoint = BezierPointGetter(weights);
+  let points = [];
+  let v0 = t;
+  for(let i = 0; i <= steps; ++i){
+    let u = i/steps;
+    let v = (1-u) * v0;
+    let w = 1-u-v;
+    points.push(...getPoint(u,v,w).toArray());
+  }
+  let position =toArray(Float32Array, points);
+  return {position:{array: position, size: 3}}
+}
+
 export function getGeometryLineAtS(weights, s, steps){
   let getPoint = BezierPointGetter(weights);
   let points = [];

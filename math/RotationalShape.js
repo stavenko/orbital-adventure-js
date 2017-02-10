@@ -30,6 +30,34 @@ export function getRotationalGeometry(part){
     .map(key=>getGeometryAttributes(part, patchIndex[key]));
 }
 
+export function getLineAtT(part, t){
+  let lines = []
+    t = 1-t;
+  for(let i = 0; i < part.radialAmount; ++i){
+
+    let t0 = part.radialDivision[i];
+    let t1 = part.radialDivision[(i+1)];
+    if(i+1 == part.radialAmount) 
+      t1 = 1;
+    if(t > t0 && t < t1){
+      let ds = t1 - t0;
+      let s = (t-t0)/ds;
+      s=1-s
+    
+      for(let j=0; j < part.sliceAmount-1; ++j){
+        let key = `${j},${i}`;
+        let patch = part.patchIndex[key];
+
+        if(patch.length > 10) 
+          lines.push(Quad.getGeometryLineAtT(patchToWeights(part, patch), s, 10));
+        else
+          lines.push(Triangle.getGeometryLineAtT(patchToWeights(part, patch), s, 10));
+      }
+    }
+
+  }
+  return lines;
+}
 
 export function getLineAtS(part, s){
   // need to find all circle patches at height s;
@@ -379,9 +407,14 @@ function getOrCreateLengthSlice(sliceNumber, part, orientation, t){
 function createSliceFromRadialSegments(part, orientation, t){
   let {_initialProps:{radialSegments, radius}} = part;
   let plane = getSlicePlane(part, orientation, t);
+
   let circle = [...circleInPlane(plane, radialSegments, radius) ]
   let slice = {orientation, t, points:{}}
   let circularWeight = getWeightForCircleWith(radialSegments, radius);
+  part.radialDivision = [];
+  for(let i=0; i< radialSegments; ++i){
+    part.radialDivision.push(i/radialSegments);
+  }
   circle.forEach(({point, tangent}, i)=>{
     let ix = `${i}`;
     slice.points[ix] = point.clone();
@@ -395,7 +428,6 @@ function createSliceFromRadialSegments(part, orientation, t){
 function createInitialSlices(part, props){
   part.sliceAmount = props.lengthSegments+1;
   part.radialAmount = props.radialSegments;
-
 
   let noConeSliceAmount = part.sliceAmount;
   if(props.topCone) ++part.sliceAmount;

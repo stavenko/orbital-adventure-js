@@ -17,6 +17,17 @@ export function getWeights(patch, part){
   return weights;
 }
 
+export function getGeometryLineAtT(weights, s, steps){
+  let getPoint = BesierPointGetter(weights);
+  let points = [];
+  for(let i = 0; i <= steps; ++i){
+    let t = i/steps;
+    points.push(...getPoint(t,1.0-s).toArray());
+  }
+  let position =toArray(Float32Array, points);
+  return {position:{array: position, size: 3}}
+
+}
 export function getGeometryLineAtS(weights, s, steps){
   let getPoint = BesierPointGetter(weights);
   let points = [];
