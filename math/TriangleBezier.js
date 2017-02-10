@@ -1,4 +1,4 @@
-import {fact} from './Math.js';
+import {toArray, fact} from './Math.js';
 import {Vector2} from 'three/src/math/Vector2';
 import {Vector3} from 'three/src/math/Vector3';
 
@@ -30,6 +30,20 @@ export function split(weights, uvw){
 }
 */
 
+export function getGeometryLineAtS(weights, s, steps){
+  let getPoint = BezierPointGetter(weights);
+  let points = [];
+  if(weights.way > 0) s = 1.0-s;
+  let uv = 1.0 - s;
+  for(let i = 0; i <= steps; ++i){
+    let u = i/steps * uv;
+    let v = 1.0 - u - s;
+    points.push(...getPoint(s,u,v).toArray());
+  }
+  let position =toArray(Float32Array, points);
+  return {position:{array: position, size: 3}}
+
+}
 
 export function getGeometryFromPatch(weights, uvFrom, uvTo, invert, steps = 10){
   let geometry = { indices:[], positions: [],
@@ -146,18 +160,35 @@ export function getGeometryFromPatch(weights, uvFrom, uvTo, invert, steps = 10){
       normal: new Vector3().crossVectors(tangentT, tangentS).normalize().negate() };
   }
 
-  function Bernstein(ijk, uvw){
-    let [k,j,i] = ijk;
-    let [u,v,w] = uvw;
-
-    let n = i+j+k;
-    let pows = pow(u,i)* pow(v,j) * pow(w,k);
-    return pows * fact(n) / (fact(i)*fact(j)*fact(k));
-  }
-
-  function pow(a,p){
-    return Math.pow(a,p);
-  }
 
   
+}
+
+function BezierPointGetter(patch){
+  return (u,v,w) => {
+    let point = new Vector3;
+    let keys = ['300', '210', '201', '120', '111', '102', '030', '021', '012', '003'];
+    keys.forEach(key=>{
+      let pp = patch[key].clone();
+      let k=parseInt(key[0]),
+          j=parseInt(key[1]),
+          i=parseInt(key[2]);
+
+      point.add(pp.clone().multiplyScalar(Bernstein([i,j,k], [u,v,w])));
+    })
+    return point;
+  }
+}
+
+function Bernstein(ijk, uvw){
+  let [k,j,i] = ijk;
+  let [u,v,w] = uvw;
+
+  let n = i+j+k;
+  let pows = pow(u,i)* pow(v,j) * pow(w,k);
+  return pows * fact(n) / (fact(i)*fact(j)*fact(k));
+}
+
+function pow(a,p){
+  return Math.pow(a,p);
 }

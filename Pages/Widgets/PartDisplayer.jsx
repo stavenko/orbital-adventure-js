@@ -117,29 +117,7 @@ export class PartDisplay extends CanvasBase{
     if(!this.props.state.has('currentPart')) return [];
     let part = this.props.state.get('currentPart').toJS();
     if(!part.calculated) return [];
-    //let faces = RotationalShape.getRotationalGeometry(part.calculated);
-    //
-    /*
-    let mainMeshes = faces.map(({positions, indices, uvs, normals})=>{
-      return {
-        type: Mesh,
-        onEnter: e=>{ },
-        onMouseMove: this.onMeshMouseMove,
-        geometry: {position: positions, index: indices, uv:uvs, normal:normals},
-        position: new Vector3,
-        material: {
-          type: MeshLambertMaterial, properties:{
-            color: new Color(0xffffff),
-            map: Textures.earthMap,
-            //wireframe:true,
-            side: THREE.FrontSide
-          }
-        }
-      }
-      });
-      */
     let mainMeshes = RotationalShape.getRotationalGeometry(part.calculated).map(attrs=>{
-
       return {
         type:Mesh,
         onMouseMove: this.onMeshMouseMove,
@@ -157,8 +135,10 @@ export class PartDisplay extends CanvasBase{
           }
         }
       }
-    })
-      let sliceControls  = RotationalShape.getSliceControls(part.calculated);
+    });
+
+
+    let sliceControls  = RotationalShape.getSliceControls(part.calculated);
     let sideControls  = RotationalShape.getSideLineControls(part.calculated);
     let color = new Color(0x0000ff);
     let cps = this.getControls(sliceControls);
@@ -168,6 +148,17 @@ export class PartDisplay extends CanvasBase{
       ...this.getControls(RotationalShape.getSurfaceControls(part.calculated), new Color(0x00ff99))
     ]
     if(this.sceneIntersection){
+      console.log(this.sceneIntersection.uv.y);
+      let s = this.sceneIntersection.uv.y;
+      let curve = RotationalShape.getLineAtS(part.calculated, s);
+      curve.forEach(({position})=>{
+        meshes.push({
+          type:Line,
+          geometry: {position},
+          material: {type: LineBasicMaterial, parameters:{color: new Color(0xff0000)}}
+        })
+      })
+
       meshes.push({
         type: Mesh,
         geometry: {type: BoxBufferGeometry, arguments:[1,1,1].map(x=>x*0.005)},

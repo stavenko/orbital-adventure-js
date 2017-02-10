@@ -6,3 +6,8 @@ export function fact(n){
   return F;
 }
 
+export function toArray(type, fromArray){
+  let array = new type(fromArray.length);
+  fromArray.forEach((v,i)=>array[i]=v);
+  return array;
+}

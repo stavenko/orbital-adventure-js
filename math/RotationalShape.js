@@ -25,31 +25,46 @@ export function recalculateSlices(part, props){
 
 export function getRotationalGeometry(part){
   let geometries = [];
-  if(part.topCone) {
-    geometries.push(...part.topCone.map(patch=>getGeometryAttributes(part, patch)))
-  }
-  if(part.bottomCone) {
-    geometries.push(...part.bottomCone.map(patch=>getGeometryAttributes(part, patch)));
-  }
-  geometries.push(...part.cylindrycal.map(patch=>getGeometryAttributes(part, patch)));
-
-  return geometries;
-}
-
-export function getRotationalGeometryOld(part){
-  let geometries = [];
-  if(part.topCone) {
-    geometries.push(...createGeometryForPatches(part.pointIndex, part.topCone));
-  }
-  if(part.bottomCone) {
-    geometries.push(...createGeometryForPatches(part.pointIndex, part.bottomCone));
-  }
-  geometries.push(...createGeometryForPatches(part.pointIndex, part.cylindrycal));
-
-  return geometries;
+  let patchIndex = part.patchIndex;
+  return Object.keys(patchIndex)
+    .map(key=>getGeometryAttributes(part, patchIndex[key]));
 }
 
 
+export function getLineAtS(part, s){
+  // need to find all circle patches at height s;
+  let lines = []
+  for(let i = 0; i < part.sliceAmount-1; ++i){
+    let slice = part.lengthSlices[i];
+    let nextSlice = part.lengthSlices[i+1];
+    if(s > slice.t && s < nextSlice.t){
+      let dt = nextSlice.t  - slice.t;
+      let t = (s - slice.t)/dt;
+
+      for(let j =0; j < part.radialAmount; ++j){
+        let key = `${i},${j}`;
+        let patch = part.patchIndex[key];
+        
+        
+        if(patch.length > 10) 
+          lines.push(Quad.getGeometryLineAtS(patchToWeights(part, patch), t, 10));
+        else
+          lines.push(Triangle.getGeometryLineAtS(patchToWeights(part, patch), t, 10));
+      }
+    }
+  }
+  return lines;
+}
+
+function patchToWeights(part, patch){
+  let weights = {};
+  for( let key in patch){
+    if(part.pointIndex[patch[key]])
+      weights[key] = part.pointIndex[patch[key]].clone();
+    else weights[key] = patch[key];
+  }
+  return weights;
+}
 
 function createGeometryForPatches(pointIndex, patchesCollection){
   let geometries = [];
@@ -128,6 +143,7 @@ function renderTrianglePatch(pointIndex, collection, patchId, steps = 10){
 function createPatches(part, props){
   let {topCone, bottomCone, radialSegments} = props;
   part.pointIndex = {};
+  part.patchIndex = {};
   if(bottomCone)props.lengthSegments+=1;
   if(topCone) props.lengthSegments+=1
   if(bottomCone)
@@ -328,6 +344,7 @@ function createCylinders(part, props){
         [ 1-((ix+1) / props.radialSegments), (segmentStart+1)/ls ]
       ];
       totalPatches.push(controlPoints);
+      part.patchIndex[`${segmentStart},${ix}`] = controlPoints;
     }
   }
   return totalPatches;
@@ -473,6 +490,11 @@ function createConeAt(part, props, tCone){
     controlPoints.length = 10;
     controlPoints.way = way;
     trianglePatches.push(controlPoints);
+    if(way < 0)
+      part.patchIndex[`${lengthIndex-1},${ix}`] = controlPoints;
+    else
+      part.patchIndex[`${lengthIndex},${ix}`] = controlPoints;
+
   }
   return trianglePatches;
 

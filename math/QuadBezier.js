@@ -1,4 +1,4 @@
-import {fact} from './Math.js';
+import {toArray, fact} from './Math.js';
 import {Vector2} from 'three/src/math/Vector2';
 import {Vector3} from 'three/src/math/Vector3';
 
@@ -15,6 +15,18 @@ export function getWeights(patch, part){
     }
   }
   return weights;
+}
+
+export function getGeometryLineAtS(weights, s, steps){
+  let getPoint = BesierPointGetter(weights);
+  let points = [];
+  for(let i = 0; i <= steps; ++i){
+    let t = i/steps;
+    points.push(...getPoint(s,t).toArray());
+  }
+  let position =toArray(Float32Array, points);
+  return {position:{array: position, size: 3}}
+
 }
 
 export function getGeometryFromPatch(weights, uvFrom, uvTo, steps = 10){
@@ -95,11 +107,29 @@ export function getGeometryFromPatch(weights, uvFrom, uvTo, steps = 10){
     };
   }
 
-  function Bernstein(n,i,z){
-    n=n-1;
-    let ni = fact(n) / (fact(i) * fact(n-i))
-    let B = ni * Math.pow(z, i) * Math.pow(1-z, n-i); 
-    return B;
-  }
-
 }
+
+function BesierPointGetter(weights){
+  return (t,s)=>{
+    let point = new Vector3;
+    for(let i = 0; i < 4; ++i){
+      for(let j=0;j<4; ++j){
+        let key = `${i}${j}`;
+        let pp = weights[key].clone();
+        let bi = Bernstein(4, i, t);
+        let bj = Bernstein(4, j, s); 
+        point.add(pp.clone().multiplyScalar(bi*bj));
+      }
+    }
+    return point;
+  }
+}
+
+
+function Bernstein(n,i,z){
+  n=n-1;
+  let ni = fact(n) / (fact(i) * fact(n-i))
+  let B = ni * Math.pow(z, i) * Math.pow(1-z, n-i); 
+  return B;
+}
+
