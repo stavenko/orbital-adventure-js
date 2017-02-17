@@ -7,7 +7,6 @@ const Symmetry = ['mirror', 'two', 'three', 'four', 'five', 'six', 'eight'];
 
 let userInput = null;
 export function HullWidget(props){
-  console.log(props);
   
   if(props.stage === 'rough') return <ShapeCreator {...props}/>
   return <ShapeControls {...props}/>;

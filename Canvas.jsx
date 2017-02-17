@@ -160,6 +160,12 @@ export class CanvasBase extends React.Component{
     }
     
     onWindowMouseUp(e) {
+      let {clientX, clientY} = e;
+      if(clientX > this.nodeRect.left && clientX <= this.nodeRect.right)
+        return;
+      if(clientY > this.nodeRect.top && clientY <= this.nodeRect.bottom)
+        return;
+
       this.onMouseUp(e);
     }
 

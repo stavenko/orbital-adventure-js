@@ -5,6 +5,7 @@ import * as Triangle from './TriangleBezier.js';
 import * as Quad from './QuadBezier.js';
 import * as Path from './Path.js';
 import {fact} from './Math.js';
+import {patchToWeights} from './Utils.js';
 
 
 
@@ -27,12 +28,166 @@ export function getRotationalGeometry(part){
   let geometries = [];
   let patchIndex = part.patchIndex;
   return Object.keys(patchIndex)
-    .map(key=>getGeometryAttributes(part, patchIndex[key]));
+    .map(key=>getGeometryAttributes(part, patchIndex[key]))
+    .filter(x=>x);
+}
+
+function radialPointsShift(part, fromR){
+  let pointIndex = part.pointIndex;
+  let radialAmount = part.radialAmount;
+  let sliceAmount = part.sliceAmount;
+  let patchAmount = sliceAmount - 1;
+  let hasTopCone = !!pointIndex[`${sliceAmount-1}`];
+  let hasBottomCone = !!pointIndex['0'];
+  //let From = hasBottomCone?1:0;
+  //let To   = hasTopCone?:sliceAmount-1:sliceAmount;
+
+
+  for(let i = 0; i < patchAmount; ++i){
+    for(let j = part.radialAmount-1; j >= fromR; --j){
+      let pointsToMove = [];
+      if((hasBottomCone && i == 0) || (hasTopCone && i == patchAmount -1)){
+        let way = i ==0?1:-1;
+        let ix = i ==0?0:patchAmount;
+        pointsToMove.push([`${ix}${S(way)},${j}`,    `${ix}${S(way)},${j+1}`])
+        pointsToMove.push([`${ix}:111,${j}`, `${ix}:111,${j+1}`])
+        pointsToMove.push([`${ix+way}${S(-way)},${j}`,  `${ix+way}${S(-way)},${j+1}`])
+        if(i !=0){
+          pointsToMove.push([`${i},${j}`,   `${i},${j+1}`])
+          pointsToMove.push([`${i},${j}+`,  `${i},${j+1}+`])
+          pointsToMove.push([`${i},${j}-`,  `${i},${j+1}-`])
+        }
+      }else{
+        pointsToMove.push([`${i},${j}`,   `${i},${j+1}`])
+        pointsToMove.push([`${i},${j}-`,   `${i},${j+1}-`])
+        pointsToMove.push([`${i},${j}+`,   `${i},${j+1}+`])
+
+        pointsToMove.push([`${i}+,${j}`,   `${i}+,${j+1}`])
+        pointsToMove.push([`${i}+,${j}-`,   `${i}+,${j+1}-`])
+        pointsToMove.push([`${i}+,${j}+`,   `${i}+,${j+1}+`])
+
+        pointsToMove.push([`${i+1}-,${j}`,    `${i+1}-,${j+1}`])
+        pointsToMove.push([`${i+1}-,${j}-`,   `${i+1}-,${j+1}-`])
+        pointsToMove.push([`${i+1}-,${j}+`,   `${i+1}-,${j+1}+`])
+      }
+
+      if(i == patchAmount -1 && !hasTopCone){
+        pointsToMove.push([`${i+1},${j}`,   `${i+1},${j+1}`])
+        pointsToMove.push([`${i+1},${j}+`,  `${i+1},${j+1}+`])
+        pointsToMove.push([`${i+1},${j}-`,  `${i+1},${j+1}-`])
+      }
+      pointsToMove.forEach(([from,to])=>{
+        console.log('move', from, '->',to);
+        let p = pointIndex[from];
+        delete pointIndex[from];
+        pointIndex[to] = p
+      })
+    }
+  }
+  function S(a){
+    return a>0?'+':'-';
+  }
+}
+
+export function splitPartAtT(part, t){
+  console.log('radial division before', part.radialDivision.map(x=>x));
+  console.log('try split part at',t);
+  let newPatchIndex = {};
+  let division;
+  for(let i = 0; i < part.radialAmount; ++i){
+    let t0 = part.radialDivision[i];
+    let t1 = part.radialDivision[(i+1)];
+    if(i+1 == part.radialAmount) 
+      t1 = 1;
+    if(t > t0 && t < t1){
+      division = i+1;
+      let ds = t1 - t0;
+      let s = (t-t0)/ds;
+      s=1-s
+      console.log('split ix', i, 't=',s);
+      let ni = (i+1) % part.radialAmount;
+    
+      let patchSubstitution = [];
+      for(let j=0; j < part.sliceAmount-1; ++j){
+        let key = `${j},${i}`;
+        let patch = part.patchIndex[key];
+
+        if(patch.length > 10)
+          console.log('split quad patch');
+        else {
+          let [tt1,t2,t3] = Triangle.splitPatchWithU0(part.pointIndex, patch, s);
+          let l = j ==0?0:part.sliceAmount-1;
+          patchSubstitution.push([part, i, i+1, l, t2, tt1]);
+        }
+      }
+
+      radialPointsShift(part,i+1);
+      patchSubstitution.forEach(pp=>{
+        insertTriangleWeights(...pp);
+      })
+      console.log(part.pointIndex);
+
+      break;
+
+    }
+  }
+
+  part.radialDivision = [...part.radialDivision.slice(0, division), t, 
+    ...part.radialDivision.slice(division)];
+  part.radialAmount += 1;
+
+  recreatePatchesFromPoints(part);
+
+  console.log('radial division after', part.radialDivision.map(x=>x));
+
+  return part;
+
+}
+
+function insertTriangleWeights(part, fromR, toR, L, t1, t2){
+  let {pointIndex} = part;
+  let way = L ==0?1:-1;
+  let fromL = L
+  let toL   = fromL + way;
+  //let way='+';
+  //let opway='-';
+  let S = a=>a<0?'-':'+';
+
+  //let fromR = parseInt(originalPatch['210'].split(','));
+  //let toR   = parseInt(originalPatch['201'].split(',')[1]);
+
+  // let's just assume, that points for other patches are saved
+  // We must put SEVEN new trianle points from both triangles
+  let nra = part.radialAmount + 1;
+  let nr = (toR+1)%(nra)
+  let pr = (toR-1 + nra)%(nra);
+  let newMap={
+    [`${fromL}${S(way)},${toR}`]: t2['210'],
+    [`${toL}${S(-way)},${toR}`]: t2['120'],
+    [`${toL},${toR}`]: t2['030'],
+
+    [`${fromL}:111,${fromR}`]: t1['111'],
+    [`${fromL}:111,${toR}`]: t2['111'],
+
+    [`${toL},${toR}-`]: t1['012'],
+    [`${toL},${toR}+`] :t2['021'],
+
+    [`${toL},${pr}+`] :t1['021'],
+    [`${toL},${nr}-`] :t2['012'],
+  }
+  
+  console.log('create', `${fromL}:111,${fromR}`,`${fromL}:111,${toR}`);
+  for(let k in newMap){
+    pointIndex[k] = newMap[k].clone();
+    if(pointIndex[k] && fromL == 0){
+      // there shouldn't be any point for first triangle.
+    }
+  }
 }
 
 export function getLineAtT(part, t){
   let lines = []
-    t = 1-t;
+  //t = 1-t;
   for(let i = 0; i < part.radialAmount; ++i){
 
     let t0 = part.radialDivision[i];
@@ -42,11 +197,15 @@ export function getLineAtT(part, t){
     if(t > t0 && t < t1){
       let ds = t1 - t0;
       let s = (t-t0)/ds;
-      s=1-s
+      s = 1- s;
     
       for(let j=0; j < part.sliceAmount-1; ++j){
         let key = `${j},${i}`;
         let patch = part.patchIndex[key];
+        if(patch == null){
+          console.warn('patch',key, 'is null')
+          continue;
+        }
 
         if(patch.length > 10) 
           lines.push(Quad.getGeometryLineAtT(patchToWeights(part, patch), s, 10));
@@ -84,15 +243,6 @@ export function getLineAtS(part, s){
   return lines;
 }
 
-function patchToWeights(part, patch){
-  let weights = {};
-  for( let key in patch){
-    if(part.pointIndex[patch[key]])
-      weights[key] = part.pointIndex[patch[key]].clone();
-    else weights[key] = patch[key];
-  }
-  return weights;
-}
 
 function createGeometryForPatches(pointIndex, patchesCollection){
   let geometries = [];
@@ -119,6 +269,7 @@ function createGeometryForPatches(pointIndex, patchesCollection){
 }
 
 function getGeometryAttributes(part, patch){
+  if(!patch) return;
   let attrs = [patch.length];
   let pointIndex = part.pointIndex;
   let weights = {};
@@ -175,10 +326,12 @@ function createPatches(part, props){
   if(bottomCone)props.lengthSegments+=1;
   if(topCone) props.lengthSegments+=1
   if(bottomCone)
-    part.bottomCone = createConeAt(part, props, 0);
+    createConeAt(part, props, 0);
   if(topCone)
-    part.topCone = createConeAt(part, props, 1);
-  part.cylindrycal = createCylinders(part, props);
+    createConeAt(part, props, 1);
+  createCylinders(part, props);
+  recreatePatchesFromPoints(part);
+
 }
 
 export function getPoints(part, pointList){
@@ -337,45 +490,38 @@ function createCylinders(part, props){
       let l = lowerSlice.points[`${ix}`]
       let t = upperSlice.points[`${ix}`]
       let controlPoints = {};
-      controlPoints['00'] = mkPoint(`${segmentStart},${ix}`,l.clone());
-      controlPoints['10'] = mkPoint(`${segmentStart}+,${ix}`,new Vector3().lerpVectors(l,t,lerpLower));
-      controlPoints['20'] = mkPoint(`${segmentStart+1}-,${ix}`,new Vector3().lerpVectors(l,t,lerpUpper));
-      controlPoints['30'] = mkPoint(`${segmentStart+1},${ix}`,t.clone());
+      mkPoint(`${segmentStart},${ix}`,l.clone());
+      mkPoint(`${segmentStart}+,${ix}`,new Vector3().lerpVectors(l,t,lerpLower));
+      mkPoint(`${segmentStart+1}-,${ix}`,new Vector3().lerpVectors(l,t,lerpUpper));
+      mkPoint(`${segmentStart+1},${ix}`,t.clone());
 
       let lp = lowerSlice.points[`${ix}+`];
       let tp = upperSlice.points[`${ix}+`];
 
-      controlPoints['01'] = mkPoint(`${segmentStart},${ix}+`, lp.clone());
-      controlPoints['11'] = mkPoint(`${segmentStart}+,${ix}+`,new Vector3().lerpVectors(lp,tp,lerpLower))
-      controlPoints['21'] = mkPoint(`${segmentStart+1}-,${ix}+`, new Vector3().lerpVectors(lp,tp,lerpUpper));
-      controlPoints['31'] = mkPoint(`${segmentStart+1},${ix}+`, tp.clone());
+      mkPoint(`${segmentStart},${ix}+`, lp.clone());
+      mkPoint(`${segmentStart}+,${ix}+`,new Vector3().lerpVectors(lp,tp,lerpLower))
+      mkPoint(`${segmentStart+1}-,${ix}+`, new Vector3().lerpVectors(lp,tp,lerpUpper));
+      mkPoint(`${segmentStart+1},${ix}+`, tp.clone());
 
       let lm = lowerSlice.points[`${nx}-`];
       let tm = upperSlice.points[`${nx}-`];
 
-      controlPoints['02'] = mkPoint(`${segmentStart},${nx}-`, lm.clone());
-      controlPoints['12'] = mkPoint(`${segmentStart}+,${nx}-`,new Vector3().lerpVectors(lm,tm,lerpLower))
-      controlPoints['22'] = mkPoint(`${segmentStart+1}-,${nx}-`, new Vector3().lerpVectors(lm,tm,lerpUpper));
-      controlPoints['32'] = mkPoint(`${segmentStart+1},${nx}-`, tm.clone());
+      mkPoint(`${segmentStart},${nx}-`, lm.clone());
+      mkPoint(`${segmentStart}+,${nx}-`,new Vector3().lerpVectors(lm,tm,lerpLower))
+      mkPoint(`${segmentStart+1}-,${nx}-`, new Vector3().lerpVectors(lm,tm,lerpUpper));
+      mkPoint(`${segmentStart+1},${nx}-`, tm.clone());
 
       let le = lowerSlice.points[`${nx}`];
       let te = upperSlice.points[`${nx}`];
 
-      controlPoints['03'] = mkPoint(`${segmentStart},${nx}`, le.clone());
-      controlPoints['13'] = mkPoint(`${segmentStart}+,${nx}`,new Vector3().lerpVectors(le,te,lerpLower))
-      controlPoints['23'] = mkPoint(`${segmentStart+1}-,${nx}`, new Vector3().lerpVectors(le,te,lerpUpper));
-      controlPoints['33'] = mkPoint(`${segmentStart+1},${nx}`, te.clone());
-      controlPoints.length = 16;
-      let ls = part.sliceAmount - 1;
-      controlPoints.uv = [
-        [ 1-(ix / props.radialSegments), segmentStart/ls],
-        [ 1-((ix+1) / props.radialSegments), (segmentStart+1)/ls ]
-      ];
-      totalPatches.push(controlPoints);
-      part.patchIndex[`${segmentStart},${ix}`] = controlPoints;
+      mkPoint(`${segmentStart},${nx}`, le.clone());
+      mkPoint(`${segmentStart}+,${nx}`,new Vector3().lerpVectors(le,te,lerpLower))
+      mkPoint(`${segmentStart+1}-,${nx}`, new Vector3().lerpVectors(le,te,lerpUpper));
+      mkPoint(`${segmentStart+1},${nx}`, te.clone());
     }
   }
-  return totalPatches;
+
+  //return totalPatches;
 
   function mkPoint(index, point){
     pushPoint(part, index, point);
@@ -412,18 +558,19 @@ function createSliceFromRadialSegments(part, orientation, t){
   let slice = {orientation, t, points:{}}
   let circularWeight = getWeightForCircleWith(radialSegments, radius);
   part.radialDivision = [];
-  for(let i=0; i< radialSegments; ++i){
+  for(let i=0; i<= radialSegments; ++i){
     part.radialDivision.push(i/radialSegments);
   }
   circle.forEach(({point, tangent}, i)=>{
     let ix = `${i}`;
     slice.points[ix] = point.clone();
-    slice.points[ix + '-'] = point.clone().add(tangent.clone().multiplyScalar(-circularWeight))
-    slice.points[ix + '+'] = point.clone().add(tangent.clone().multiplyScalar(circularWeight))
+    slice.points[ix + '-'] = point.clone().add(tangent.clone().multiplyScalar(circularWeight))
+    slice.points[ix + '+'] = point.clone().add(tangent.clone().multiplyScalar(-circularWeight))
   })
   slice.curves = radialSegments;
   return slice;
 }
+
 
 function createInitialSlices(part, props){
   part.sliceAmount = props.lengthSegments+1;
@@ -465,6 +612,103 @@ function createInitialSlices(part, props){
   });
 }
 
+function recreatePatchesFromPoints(part){
+  let pointIndex = part.pointIndex;
+  let radialAmount = part.radialAmount;
+  let sliceAmount = part.sliceAmount;
+  let patchAmount = sliceAmount - 1;
+  let hasTopCone = !!pointIndex[`${sliceAmount-1}`];
+  let hasBottomCone = !!pointIndex['0'];
+  let newPatchIndex = {};
+  let radialDivision = part.radialDivision;
+  for(let i=0; i< patchAmount; ++i){
+    let uFrom = part.radialDivision[i];
+    let uTo = part.radialDivision[i+1];
+    for(let j=0; j< radialAmount; ++j){
+      if((hasBottomCone && i == 0) || (hasTopCone && i == (patchAmount-1))){
+        newPatchIndex[`${i},${j}`] = mkTPatch(i, i==0?1:-1, j);
+      }else
+        newPatchIndex[`${i},${j}`]= mkQPatch(i,j);
+    }
+  }
+  part.patchIndex = newPatchIndex;
+
+  function mkQPatch(i, j){
+    let ni = i+1;
+    let nj = (j+1) % radialAmount;
+    let ls = part.sliceAmount - 1;
+    let uFrom = radialDivision[j];
+    let uTo   = radialDivision[j+1];
+    return {
+      '00': `${i},${j}`,
+      '10': `${i}+,${j}`,
+      '20': `${ni}-,${j}`,
+      '30': `${ni},${j}`,
+
+      '01': `${i},${j}+`,
+      '11': `${i}+,${j}+`,
+      '21': `${ni}-,${j}+`,
+      '31': `${ni},${j}+`,
+
+      '02': `${i},${nj}-`,
+      '12': `${i}+,${nj}-`,
+      '22': `${ni}-,${nj}-`,
+      '32': `${ni},${nj}-`,
+
+      '03': `${i},${nj}`,
+      '13': `${i}+,${nj}`,
+      '23': `${ni}-,${nj}`,
+      '33': `${ni},${nj}`,
+      length:16,
+      uv:[
+        [ uFrom, i/ls],
+        [ uTo, ni/ls ]
+      ]
+
+    }
+
+  }
+
+  function mkTPatch(ix, way, rad){
+    let ls = sliceAmount - 1;
+    let upperU = (ls - 1)/(ls);
+    let lowerU = 1/ls;
+    let tCone = ix == 0? 0: 1;
+    ix = ix == 0?0:ix+1;
+
+    let nr = (rad+1) % radialAmount;
+
+    let uFrom = radialDivision[rad];
+    let uTo   = radialDivision[rad+1];
+    console.log(uFrom, uTo, rad, radialDivision);
+
+    let fromUV = [ uFrom, Math.min(upperU, tCone)];
+    let toUV = [uTo, Math.max(lowerU,tCone) ];
+    return {
+      '300': `${ix}`,
+
+      '210': `${ix}${sign(way)},${rad}`,
+      '201': `${ix}${sign(way)},${nr}`,
+
+      '120': `${ix+way}${sign(-way)},${rad}`,
+      '111': `${ix}:111,${rad}`,
+      '102': `${ix+way}${sign(-way)},${nr}`,
+
+      '030': `${ix+way},${rad}`,
+      '021': `${ix+way},${rad}+`,
+      '012': `${ix+way},${nr}-`,
+      '003': `${ix+way},${nr}`,
+      length:10,
+      uv:[fromUV, toUV],
+      way
+
+    }
+  }
+  function sign(t){
+    return t > 0?'+':'-'
+  }
+}
+
 function createConeAt(part, props, tCone){
   let way = tCone == 0?1:-1;
   let tipSliceId = tCone == 0? 0: part.lengthSlices.length-1;
@@ -495,40 +739,23 @@ function createConeAt(part, props, tCone){
     let p120 = baseSlice.points[`${ix}`].clone().add(triBaseTipWeight);
     let p102 = baseSlice.points[`${nextIndex}`].clone().add(triBaseTipWeight);
     let p111 = pathCentral.add(tri111Weight); 
-    let controlPoints = {
-      '300': mkPoint(`${lengthIndex}`, tipSlice.plane.origin.clone()),
-
-      '210': mkPoint(`${lengthIndex}${sign(way)},${ix}`, p210),
-      '201': mkPoint(`${lengthIndex}${sign(way)},${nextIndex}`, p201),
-      
-      '120': mkPoint(`${lengthIndex+way}${sign(-way)},${ix}`, p120),
-      '111': mkPoint(`${lengthIndex}:111,${ix}`, p111),
-      '102': mkPoint(`${lengthIndex+way}${sign(-way)},${nextIndex}`, p102),
-
-      '030': mkPoint(`${lengthIndex+way},${ix}`, baseSlice.points[`${ix}`]),
-      '021': mkPoint(`${lengthIndex+way},${ix}+`,baseSlice.points[`${ix}+`] ),
-      '012': mkPoint(`${lengthIndex+way},${nextIndex}-`,baseSlice.points[`${nextIndex}-`]),
-      '003': mkPoint(`${lengthIndex+way},${nextIndex}`,baseSlice.points[`${nextIndex}`]),
-
-    }
-    let ls = part.sliceAmount - 1;
-    let upperU = (ls - 1)/(ls);
-    let lowerU = 1/ls
-
-
-    let fromUV = [ 1-(ix / props.radialSegments), Math.min(upperU, tCone)];
-    let toUV = [1-((ix+1) / props.radialSegments), Math.max(lowerU,tCone) ];
-    controlPoints.uv = [fromUV, toUV]; 
-    controlPoints.length = 10;
-    controlPoints.way = way;
-    trianglePatches.push(controlPoints);
-    if(way < 0)
-      part.patchIndex[`${lengthIndex-1},${ix}`] = controlPoints;
-    else
-      part.patchIndex[`${lengthIndex},${ix}`] = controlPoints;
-
+    
+    
+   mkPoint(`${lengthIndex}`, tipSlice.plane.origin.clone());
+                                                                                   
+   mkPoint(`${lengthIndex}${sign(way)},${ix}`, p210);
+   mkPoint(`${lengthIndex}${sign(way)},${nextIndex}`, p201);
+                                                                                   
+   mkPoint(`${lengthIndex+way}${sign(-way)},${ix}`, p120);
+   mkPoint(`${lengthIndex}:111,${ix}`, p111);
+   mkPoint(`${lengthIndex+way}${sign(-way)},${nextIndex}`, p102);
+                                                                                   
+   mkPoint(`${lengthIndex+way},${ix}`, baseSlice.points[`${ix}`]);
+   mkPoint(`${lengthIndex+way},${ix}+`,baseSlice.points[`${ix}+`] );
+   mkPoint(`${lengthIndex+way},${nextIndex}-`,baseSlice.points[`${nextIndex}-`]);
+   mkPoint(`${lengthIndex+way},${nextIndex}`,baseSlice.points[`${nextIndex}`]);
   }
-  return trianglePatches;
+
 
   function mkPoint(index, point){
     pushPoint(part, index, point);
@@ -548,7 +775,6 @@ function pushPoint(part, index, point){
     let p2 = point;
     console.error(`overriding point [${index}] with 
                   anouther value: ${p1.x},${p1.y},${p1.z} =>   ${p2.x},${p2.y},${p2.z}`);
-                  //debugger;
   }
   part.pointIndex[index] = point;
 
@@ -573,23 +799,6 @@ function createMainAxis(part, props){
   ];
 }
 
-/*
-function createVirtualSlices(part, props){
-  let {slices} = part;
-  let mixedSlices = slices.map((slice,ix)=>{
-    if(ix == slices.length - 2) return;
-
-    let nextSlice = slices[ix+1];
-    let vSlicePoints = slice.path.map((cmd,ix) => {
-      if(cmd.command == 'moveTo')
-
-
-
-    }
-
-  })
-
-}*/
 
 function createSlices(part, props){
   let {
@@ -683,7 +892,7 @@ function* circleInPlane({normal, origin}, steps, radius){
   const pi2 = Math.PI * 2;
   for(let i = 0; i < steps; ++i){
     let p  = origin.clone();
-    let t = i / steps;
+    let t = 1.0 - i / steps;
     p.add(x.clone().multiplyScalar(Math.cos(t * pi2)));
     p.add(y.clone().multiplyScalar(Math.sin(t * pi2)));
     let p0 = p.clone().sub(origin);

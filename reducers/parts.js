@@ -5,7 +5,7 @@ import * as RotationalShape from '../math/RotationalShape.js'
 const initialPartConfig = {
   length:1,
   radius: 0.23,
-  lengthSegments: 1,
+  lengthSegments: 0,
   radialSegments: 4,
   topCone: true,
   topConeLength: 0.33,
@@ -48,6 +48,11 @@ export function partsEditor(state = initialState, action){
       shape[action.prop] = action.value;
       state = state.setIn(['currentPart', 'shape'], fromJS(shape));
       let calculated = RotationalShape.createRotationalShape(shape);
+      return state.setIn(['currentPart', 'calculated'], fromJS(calculated));
+    }
+    case A.SPLIT_CURRENT_PART_T:{
+      let part = state.get('currentPart').toJS();
+      let calculated = RotationalShape.splitPartAtT(part.calculated, action.at);
       return state.setIn(['currentPart', 'calculated'], fromJS(calculated));
     }
     default:

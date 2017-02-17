@@ -36,6 +36,14 @@ export class PartDisplay extends CanvasBase{
     this.camera.lookAt(new Vector3);
     this.camera.updateProjectionMatrix();
     this.onMeshMouseMove = this.onMeshMouseMove.bind(this);
+    this.onMeshMouseClick = this.onMeshMouseClick.bind(this);
+    this.randomColors = [new Color(0xff0000), new Color(0x00ff00), new Color(0x0000ff),
+      new Color(0xff9900), new Color(0x00ff99), new Color(0x0099ff)
+
+    ];
+    for(let i =0; i< 1000; ++i){
+      this.randomColors.push(new Color(Math.random(),Math.random(), Math.random()) );
+    }
   }  
 
   getPath(){
@@ -72,6 +80,11 @@ export class PartDisplay extends CanvasBase{
       }
 
     })
+  }
+
+  splitAtT(t){
+    this.props.actions.splitCurrentPartAtT(t);
+
   }
 
   onMeshMouseMove(e, intersects){
@@ -113,14 +126,20 @@ export class PartDisplay extends CanvasBase{
     }).reduce((a,b)=>{a.push(...b);return a}, []);
   }
 
+  onMeshMouseClick(e){
+    this.splitAtT(this.sceneIntersection.uv.x);
+  }
+
   renderScene(){
     if(!this.props.state.has('currentPart')) return [];
     let part = this.props.state.get('currentPart').toJS();
     if(!part.calculated) return [];
-    let mainMeshes = RotationalShape.getRotationalGeometry(part.calculated).map(attrs=>{
+    let mainMeshes = RotationalShape.getRotationalGeometry(part.calculated).map((attrs,ix)=>{
+      let c = this.randomColors[ix];
       return {
         type:Mesh,
         onMouseMove: this.onMeshMouseMove,
+        onMouseUp: this.onMeshMouseClick,
         geometry:{
           type:attrs[0] == 16?QuadBezierBufferGeometry:TriangleBezierBufferGeometry,
           arguments: attrs.splice(1),
@@ -128,7 +147,7 @@ export class PartDisplay extends CanvasBase{
         position: new Vector3,
         material:{
           type: MeshLambertMaterial, properties:{
-            color: new Color(0xffffff),
+            //color: c,
             map: Textures.earthMap,
             //wireframe:true,
             side: THREE.FrontSide
@@ -151,14 +170,14 @@ export class PartDisplay extends CanvasBase{
       let s = this.sceneIntersection.uv.y;
       let t = this.sceneIntersection.uv.x;
       let curve = [
-        ...RotationalShape.getLineAtS(part.calculated, s),
+        //...RotationalShape.getLineAtS(part.calculated, s),
         ...RotationalShape.getLineAtT(part.calculated, t),
       ];
       curve.forEach(({position})=>{
         meshes.push({
           type:Line,
           geometry: {position},
-          material: {type: LineBasicMaterial, parameters:{color: new Color(0xff0000)}}
+          material: {type: LineBasicMaterial, properties:{color: new Color(0xff9900)}}
         })
       })
 

@@ -74,8 +74,8 @@ function createQuadBezierGeometry(tSteps, sSteps){
       let lt = getPoint(i,j+1);
       let rb = getPoint(i+1,j);
       let rt = getPoint(i+1,j+1);
-      let face1 = [lb, rt, lt];
-      let face2 = [lb, rb, rt];
+      let face1 = [lb, lt, rt];
+      let face2 = [lb, rt, rb];
       index.push(...face1, ...face2);
     }
   }

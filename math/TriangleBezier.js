@@ -1,9 +1,10 @@
 import {toArray, fact} from './Math.js';
 import {Vector2} from 'three/src/math/Vector2';
 import {Vector3} from 'three/src/math/Vector3';
+import {patchToWeights} from './Utils.js';
 
 
-/*
+
 
 export function split(weights, uvw){
   let max = 3;
@@ -17,18 +18,75 @@ export function split(weights, uvw){
   for(let c =1; c <= 3; ++c){
     let M = max - c;
     levels[c] = {};
-    [[2,0,0], [1,1,0], [1,0,1],[0,2,0], [0,1,1], [0,0,2]].map(([i,j,k])=>{
-      let k = `${i}${j}${k}`;
+    levelsIx[c].map(([i,j,k])=>{
       let point = new Vector3;
+      let key = `${i}${j}${k}`;
+
       point.add(levels[c-1][`${i+1}${j}${k}`].clone().multiplyScalar(uvw[0]));
       point.add(levels[c-1][`${i}${j+1}${k}`].clone().multiplyScalar(uvw[1]));
       point.add(levels[c-1][`${i}${j}${k+1}`].clone().multiplyScalar(uvw[2]));
-      levels[c][k] = point;
+      levels[c][key] = point;
     })
   }
-  console.log(levels);
+  return  {...levels[0], ...levels[1], ...levels[2], ...levels[3]}
 }
-*/
+
+export function splitPatchWithU0(pointIndex, patch, v){
+  let weights = patchToWeights({pointIndex}, patch);
+  let levels = split(weights, [0, v, 1.0-v]);
+
+  console.info( levels['012'], levels['002']);
+  console.info( levels['021'], levels['020']);
+  let t1 = {
+    '300': levels['300'].clone(),
+    '201': levels['201'].clone(),
+    '102': levels['102'].clone(),
+    '003': levels['003'].clone(),
+
+    '210': levels['200'].clone(),
+    '120': levels['100'].clone(),
+    '030': levels['000'].clone(),
+
+    '021': levels['001'].clone(),
+    '012': levels['002'].clone(),
+
+    '111': levels['101'].clone(),
+  }
+
+  let t2 = {
+    '300': levels['300'].clone(),
+    '210': levels['210'].clone(),
+    '120': levels['120'].clone(),
+    '030': levels['030'].clone(),
+
+    '201': levels['200'].clone(),
+    '102': levels['100'].clone(),
+    '003': levels['000'].clone(),
+
+    '021': levels['020'].clone(),
+    '012': levels['010'].clone(),
+
+    '111': levels['110'].clone(),
+  }
+
+  let t3 = {
+    '030': levels['030'].clone(),
+    '021': levels['021'].clone(),
+    '012': levels['012'].clone(),
+    '003': levels['003'].clone(),
+
+    '300': levels['000'].clone(),
+    '210': levels['010'].clone(),
+    '120': levels['020'].clone(),
+
+    '102': levels['002'].clone(),
+    '201': levels['001'].clone(),
+
+    '111': levels['011'].clone(),
+  }
+
+  return [t1,t2,t3]
+}
 
 export function getGeometryLineAtT(weights, t, steps){
   let getPoint = BezierPointGetter(weights);
@@ -78,9 +136,9 @@ export function getGeometryFromPatch(weights, uvFrom, uvTo, invert, steps = 10){
     let topl = getPoint(i+1,steps-(i+1),patch);
     let preLast = getPoint(i, steps-i-1, patch);
     if(way < 0)
-      geometry.indices.push(last, topl, preLast);
-    else
       geometry.indices.push(last, preLast, topl);
+    else
+      geometry.indices.push(last, topl, preLast);
 
     for(let j=0; j < to-1; ++j){
       let ni = (i + 1)
@@ -91,11 +149,11 @@ export function getGeometryFromPatch(weights, uvFrom, uvTo, invert, steps = 10){
       let rt = getPoint(ni,nj, patch);
       let face1, face2;
       if(way> 0){
-        face1 = [lb, rt, lt];
-        face2 = [lb, rb, rt];
-      }else{
         face1 = [lb, lt, rt];
         face2 = [lb, rt, rb];
+      }else{
+        face1 = [lb, rt, lt];
+        face2 = [lb, rb, rt];
       }
 
       let u = i / steps;
