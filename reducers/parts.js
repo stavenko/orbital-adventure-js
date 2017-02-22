@@ -5,7 +5,7 @@ import * as RotationalShape from '../math/RotationalShape.js'
 const initialPartConfig = {
   length:1,
   radius: 0.23,
-  lengthSegments: 1,
+  lengthSegments: 2,
   radialSegments: 4,
   topCone: true,
   topConeLength: 0.33,

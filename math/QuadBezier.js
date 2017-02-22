@@ -62,7 +62,7 @@ function splitCurve(p1,p2,p3,p4, s){
 export function splitS(pointIndex, patch, s){
   let weights = patchToWeights({pointIndex}, patch);
   let [p0, p1, p2, p3] = split(weights, s, 1);
-  return [p1, p2];
+  return [p0, p2];
 }
 
 export function splitT(pointIndex, patch, t){

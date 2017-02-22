@@ -150,9 +150,9 @@ export class PartDisplay extends CanvasBase{
         position: new Vector3,
         material:{
           type: MeshLambertMaterial, properties:{
-            //color: c,
-             map: Textures.earthMap,
-            //wireframe:true,
+            color: c,
+            // map: Textures.earthMap,
+            wireframe:true,
             side: THREE.FrontSide
           }
         }

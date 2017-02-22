@@ -129,17 +129,17 @@ function radialPointsShift(part, fromR){
   }
 }
 
-export function splitPartAtS(part, s){
+export function splitPartAtS(part, S){
   let division;
   let lengthPatches = part.sliceAmount -1;
   let {bottomCone, topCone} = part._initialProps;
   for(let i =0; i < lengthPatches; ++i){
     let fromS = part.lengthDivision[i];
     let toS = part.lengthDivision[i+1];
-    if(s > fromS && s < toS){
+    if(S > fromS && S < toS){
       division = i+1;
       let ds = toS - fromS;
-      s = (s - fromS) / ds;
+      let s = (S - fromS) / ds;
 
       if((i == 0  && bottomCone) || ((i == (lengthPatches - 1)) && topCone)){
         console.log("Cannot split cones today");
@@ -167,7 +167,7 @@ export function splitPartAtS(part, s){
     }
   }
 
-  part.lengthDivision= [...part.lengthDivision.slice(0, division), s, 
+  part.lengthDivision= [...part.lengthDivision.slice(0, division), S, 
     ...part.lengthDivision.slice(division)];
   part.sliceAmount += 1;
 
@@ -239,6 +239,7 @@ function insertQuadWeightsVertically(part, fromR, toR, fromL, toL, q1,q2){
     [`${fromL}+,${fromR}`]: q1['10'],
     [`${toL}-,${fromR}`]: q1['20'],
     [`${toL},${fromR}`]: q1['30'],
+
     [`${toL}+,${fromR}`]: q2['10'],
     [`${nl}-,${fromR}`]: q2['20'],
     [`${nl},${fromR}`]: q2['30'],
@@ -247,6 +248,7 @@ function insertQuadWeightsVertically(part, fromR, toR, fromL, toL, q1,q2){
     [`${fromL}+,${fromR}+`]: q1['11'],
     [`${toL}-,${fromR}+`]: q1['21'],
     [`${toL},${fromR}+`]: q1['31'],
+
     [`${toL}+,${fromR}+`]: q2['11'],
     [`${nl}-,${fromR}+`]: q2['21'],
     [`${nl},${fromR}+`]: q2['31'],
@@ -255,6 +257,7 @@ function insertQuadWeightsVertically(part, fromR, toR, fromL, toL, q1,q2){
     [`${fromL}+,${toR}-`]: q1['12'],
     [`${toL}-,${toR}-`]: q1['22'],
     [`${toL},${toR}-`]: q1['32'],
+
     [`${toL}+,${toR}-`]: q2['12'],
     [`${nl}-,${toR}-`]: q2['22'],
     [`${nl},${toR}-`]: q2['32'],
@@ -394,11 +397,13 @@ export function getLineAtS(part, s){
   // need to find all circle patches at height s;
   let lines = []
   for(let i = 0; i < part.sliceAmount-1; ++i){
-    let slice = part.lengthSlices[i];
-    let nextSlice = part.lengthSlices[i+1];
-    if(s > slice.t && s < nextSlice.t){
-      let dt = nextSlice.t  - slice.t;
-      let t = (s - slice.t)/dt;
+    //let slice = part.lengthSlices[i];
+    //let nextSlice = part.lengthSlices[i+1];
+    let t0 = part.lengthDivision[i];
+    let t1 = part.lengthDivision[i+1];
+    if(s > t0 && s < t1){
+      let dt = t1  - t0;
+      let t = (s - t0)/dt;
 
       for(let j =0; j < part.radialAmount; ++j){
         let key = `${i},${j}`;
@@ -796,6 +801,7 @@ function recreatePatchesFromPoints(part){
   let hasBottomCone = !!pointIndex['0'];
   let newPatchIndex = {};
   let radialDivision = part.radialDivision;
+  let lengthDivision = part.lengthDivision;
   for(let i=0; i< patchAmount; ++i){
     let uFrom = part.radialDivision[i];
     let uTo = part.radialDivision[i+1];
@@ -814,6 +820,9 @@ function recreatePatchesFromPoints(part){
     let ls = part.sliceAmount - 1;
     let uFrom = radialDivision[j];
     let uTo   = radialDivision[j+1];
+    let vFrom = lengthDivision[i];
+    let vTo = lengthDivision[i+1];
+    console.log(i, lengthDivision);
     return {
       '00': `${i},${j}`,
       '10': `${i}+,${j}`,
@@ -836,8 +845,8 @@ function recreatePatchesFromPoints(part){
       '33': `${ni},${nj}`,
       length:16,
       uv:[
-        [ uFrom, i/ls],
-        [ uTo, ni/ls ]
+        [ uFrom, vFrom],
+        [ uTo, vTo ]
       ]
 
     }
@@ -846,8 +855,8 @@ function recreatePatchesFromPoints(part){
 
   function mkTPatch(ix, way, rad){
     let ls = sliceAmount - 1;
-    let upperU = (ls - 1)/(ls);
-    let lowerU = 1/ls;
+    let upperU = lengthDivision[lengthDivision.length-2];
+    let lowerU = lengthDivision[1];
     let tCone = ix == 0? 0: 1;
     ix = ix == 0?0:ix+1;
 
@@ -855,6 +864,8 @@ function recreatePatchesFromPoints(part){
 
     let uFrom = radialDivision[rad];
     let uTo   = radialDivision[rad+1];
+    //let vFrom = lengthDivision[i];
+    //let vTo = lengthDivision[i+1];
 
     let fromUV = [ uFrom, Math.min(upperU, tCone)];
     let toUV = [uTo, Math.max(lowerU,tCone) ];
