@@ -1,8 +1,196 @@
 import {toArray, fact} from './Math.js';
 import {Vector2} from 'three/src/math/Vector2';
 import {Vector3} from 'three/src/math/Vector3';
+import {patchToWeights} from './Utils.js';
 
-export function slice(weights, st){
+
+function quadInterpolate(p00, p01, p10, p11, s, t){
+  let point = new Vector3;
+  let sm = 1-s;
+  let tm = 1-t;
+  point.add(p00.clone().multiplyScalar(sm*tm));
+  point.add(p01.clone().multiplyScalar(sm*t));
+  point.add(p10.clone().multiplyScalar(s*tm));
+  point.add(p11.clone().multiplyScalar(s*t));
+
+  return point;
+}
+
+function getLevelsFromWeights(weights, s,t){
+  let levels = [weights];
+  for(let l = 1; l < 4; ++l){
+    let to = 4-l;
+    levels[l] = {};
+    for(let i =0; i < to; ++i){
+      for(let j = 0; j < to; ++j){
+        let p = new Vector3;
+        let pts = [
+          levels[l-1][`${i}${j}`],
+          levels[l-1][`${i}${j+1}`],
+          levels[l-1][`${i+1}${j}`],
+          levels[l-1][`${i+1}${j+1}`]
+        ]
+        levels[l][`${i}${j}`]=quadInterpolate( ...pts, s, t);
+      }
+    }
+  }
+  return levels
+}
+
+
+function lerp(p1, p2, t){
+  let d = p2.clone().sub(p1).multiplyScalar(t);
+  let p = p1.clone().add(d);
+  return p;
+}
+
+function splitCurve(p1,p2,p3,p4, s){
+  let t1 = lerp(p1,p2, s);
+  let t2 = lerp(p2,p3, s);
+  let t3 = lerp(p3,p4, s);
+
+  let q1 = lerp(t1,t2, s);
+  let q2 = lerp(t2,t3, s);
+
+  let p  = lerp(q1,q2, s);
+
+  return [[p1, t1, q1, p],
+    [p,q2,t3,p4]
+  ]
+}
+
+export function splitS(pointIndex, patch, s){
+  let weights = patchToWeights({pointIndex}, patch);
+  let [p0, p1, p2, p3] = split(weights, s, 1);
+  return [p1, p2];
+}
+
+export function splitT(pointIndex, patch, t){
+  let weights = patchToWeights({pointIndex}, patch);
+  let [p0, p1, p2, p3] = split(weights, 1, t);
+  return [p0, p1];
+}
+
+export function split(weights, s,t){
+  let levels = getLevelsFromWeights(weights, s,t);
+
+
+  let boundCurves = [
+    splitCurve(levels[0]['00'], levels[0]['10'],levels[0]['20'], levels[0]['30'], s),
+    splitCurve(levels[0]['03'], levels[0]['13'],levels[0]['23'], levels[0]['33'], s),
+    splitCurve(levels[0]['00'], levels[0]['01'],levels[0]['02'], levels[0]['03'], t),
+    splitCurve(levels[0]['30'], levels[0]['31'],levels[0]['32'], levels[0]['33'], t),
+  ]
+  let secondLerps = [
+    [
+      lerp(levels[1]['00'], levels[1]['10'], s), 
+      lerp(levels[1]['10'], levels[1]['20'], s)
+    ],
+    [
+      lerp(levels[1]['00'], levels[1]['01'], t), 
+      lerp(levels[1]['01'], levels[1]['02'], t)
+    ],
+    [
+      lerp(levels[1]['02'], levels[1]['12'], s), 
+      lerp(levels[1]['12'], levels[1]['22'], s)
+    ],
+    [
+      lerp(levels[1]['20'], levels[1]['21'], t), 
+      lerp(levels[1]['21'], levels[1]['22'], t)
+    ]
+
+
+  ]
+
+  let P0 = {
+    '00': boundCurves[0][0][0],
+    '10': boundCurves[0][0][1],
+    '20': boundCurves[0][0][2],
+    '30': boundCurves[0][0][3],
+
+    '01': boundCurves[2][0][1],
+    '11': levels[1]['00'],
+    '21': secondLerps[0][0], //lerp(levels[1]['00'], levels[1]['01'], s),
+    '31': lerp(secondLerps[0][0], secondLerps[0][1], s),
+
+    '02': boundCurves[2][0][2],
+    '12': secondLerps[1][0],
+    '22': levels[2]['00'],
+    '32': lerp(levels[2]['00'], levels[2]['10'], s),
+
+    '03': boundCurves[2][0][3],
+    '13': lerp(secondLerps[1][0], secondLerps[1][1], t ),
+    '23': lerp(levels[2]['00'],levels[2]['01'], t ),
+    '33': levels[3]['00']
+  }
+
+  let P1= {
+    '00': boundCurves[2][1][0],
+    '10': lerp(secondLerps[1][0], secondLerps[1][1], t ),
+    '20': lerp(levels[2]['00'],levels[2]['01'], t ),
+    '30': levels[3]['00'],
+          
+    '01': boundCurves[2][1][1], 
+    '11': secondLerps[1][1],
+    '21': levels[2]['01'], 
+    '31': lerp(levels[2]['01'], levels[2]['11'], s),
+          
+    '02': boundCurves[2][1][2], 
+    '12': levels[1]['02'],
+    '22': secondLerps[2][0],
+    '32': lerp(secondLerps[2][0], secondLerps[2][1], s),
+          
+    '03': boundCurves[1][0][0],
+    '13': boundCurves[1][0][1],
+    '23': boundCurves[1][0][2],
+    '33': boundCurves[1][0][3]
+  }
+
+  let P2= {
+    '00': boundCurves[0][1][0], 
+    '10': boundCurves[0][1][1],
+    '20': boundCurves[0][1][2],
+    '30': boundCurves[0][1][3],
+          
+    '01': lerp(secondLerps[0][0], secondLerps[0][1], s),
+    '11': secondLerps[0][1],
+    '21': levels[1]['20'],
+    '31': boundCurves[3][0][1],
+          
+    '02': lerp(levels[2]['00'], levels[2]['10'], s),
+    '12': levels[2]['10'],
+    '22': secondLerps[3][0],
+    '32': boundCurves[3][0][2],
+          
+    '03': levels[3]['00'], 
+    '13': lerp(levels[2]['10'], levels[2]['11'], t),
+    '23': lerp(secondLerps[3][0], secondLerps[3][1], t),
+    '33': boundCurves[3][0][3]
+  }
+
+  let P3= {
+    '00': levels[3]['00'],
+    '10': lerp(levels[2]['10'], levels[2]['11'], t),
+    '20': secondLerps[3][0],
+    '30': boundCurves[3][1][0],
+          
+    '01': lerp(levels[2]['01'], levels[2]['11'], s),
+    '11': levels[2]['11'],
+    '21': secondLerps[3][1],
+    '31': boundCurves[3][1][1],
+          
+    '02': secondLerps[2][0],
+    '12': lerp(secondLerps[2][0], secondLerps[2][1], s),
+    '22': levels[1]['22'],
+    '32': boundCurves[3][1][2],
+          
+    '03': boundCurves[1][1][0], 
+    '13': boundCurves[1][1][1], 
+    '23': boundCurves[1][1][2], 
+    '33': boundCurves[3][1][3],
+  }
+
+  return [P0,P1,P2,P3];
 }
 
 export function getWeights(patch, part){
@@ -52,8 +240,8 @@ export function getGeometryFromPatch(weights, uvFrom, uvTo, steps = 10){
       let lt = getPoint(i,j+1);
       let rb = getPoint(i+1,j);
       let rt = getPoint(i+1,j+1);
-      let face1 = [lb, rt, lt];
-      let face2 = [lb, rb, rt];
+      let face1 = [lb, lt, rt];
+      let face2 = [lb, rt, rb];
       geometry.indices.push(...face1, ...face2);
     }
   }
@@ -141,6 +329,7 @@ function Bernstein(n,i,z){
   n=n-1;
   let ni = fact(n) / (fact(i) * fact(n-i))
   let B = ni * Math.pow(z, i) * Math.pow(1-z, n-i); 
+
   return B;
 }
 

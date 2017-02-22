@@ -77,7 +77,6 @@ function radialPointsShift(part, fromR){
         pointsToMove.push([`${i+1},${j}-`,  `${i+1},${j+1}-`])
       }
       pointsToMove.forEach(([from,to])=>{
-        console.log('move', from, '->',to);
         let p = pointIndex[from];
         delete pointIndex[from];
         pointIndex[to] = p
@@ -90,8 +89,6 @@ function radialPointsShift(part, fromR){
 }
 
 export function splitPartAtT(part, t){
-  console.log('radial division before', part.radialDivision.map(x=>x));
-  console.log('try split part at',t);
   let newPatchIndex = {};
   let division;
   for(let i = 0; i < part.radialAmount; ++i){
@@ -104,7 +101,6 @@ export function splitPartAtT(part, t){
       let ds = t1 - t0;
       let s = (t-t0)/ds;
       s=1-s
-      console.log('split ix', i, 't=',s);
       let ni = (i+1) % part.radialAmount;
     
       let patchSubstitution = [];
@@ -112,23 +108,24 @@ export function splitPartAtT(part, t){
         let key = `${j},${i}`;
         let patch = part.patchIndex[key];
 
-        if(patch.length > 10)
-          console.log('split quad patch');
-        else {
+        if(patch.length > 10){
+          let [q1,q2] = Quad.splitT(part.pointIndex, patch, 1-s);
+          patchSubstitution.push([part, i, i+1, j, j+1, q1, q2 ]);
+        } else {
           let [tt1,t2,t3] = Triangle.splitPatchWithU0(part.pointIndex, patch, s);
           let l = j ==0?0:part.sliceAmount-1;
-          patchSubstitution.push([part, i, i+1, l, t2, tt1]);
+          patchSubstitution.push([part, i, i+1, l, t2, tt1, 'triangle']);
         }
       }
 
       radialPointsShift(part,i+1);
       patchSubstitution.forEach(pp=>{
-        insertTriangleWeights(...pp);
+        if(pp[pp.length-1] == 'triangle')
+          insertTriangleWeights(...pp);
+        else
+          insertQuadWeights(...pp);
       })
-      console.log(part.pointIndex);
-
       break;
-
     }
   }
 
@@ -137,11 +134,77 @@ export function splitPartAtT(part, t){
   part.radialAmount += 1;
 
   recreatePatchesFromPoints(part);
-
-  console.log('radial division after', part.radialDivision.map(x=>x));
-
   return part;
 
+}
+
+function insertQuadWeights(part, fromR, toR, fromL, toL, q1,q2){
+  let {pointIndex} = part;
+  let nra = part.radialAmount + 1;
+  let nr = (toR+1)%(nra)
+  let pr = (toR-1 + nra)%(nra);
+
+  let newMap = {
+    [`${fromL},${fromR}+`]: q1['01'],
+    [`${fromL}+,${fromR}+`]: q1['11'],
+    [`${toL}-,${fromR}+`]: q1['21'].clone(),
+    [`${toL},${fromR}+`]: q1['31'],
+
+    [`${fromL},${toR}-`]: q1['02'],
+    [`${fromL}+,${toR}-`]: q1['12'],
+    [`${toL}-,${toR}-`]: q1['22'],
+    [`${toL},${toR}-`]: q1['32'],
+    
+    [`${fromL},${toR}`]: q1['03'],
+    [`${fromL}+,${toR}`]: q1['13'],
+    [`${toL}-,${toR}`]: q1['23'],
+    [`${toL},${toR}`]: q1['33'],
+
+    [`${fromL},${toR}+`]: q2['01'],
+    [`${fromL}+,${toR}+`]: q2['11'],
+    [`${toL}-,${toR}+`]: q2['21'],
+    [`${toL},${toR}+`]: q2['31'],
+
+    [`${fromL},${nr}-`]: q2['02'],
+    [`${fromL}+,${nr}-`]: q2['12'],
+    [`${toL}-,${nr}-`]: q2['22'],
+    [`${toL},${nr}-`]: q2['32'],
+    /*
+    [`${fromL},${fromR}+`]: q1['31'],
+    [`${fromL}+,${fromR}+`]: q1['21'],
+    [`${toL}-,${fromR}+`]: q1['11'],
+    [`${toL},${fromR}+`]: q1['01'],
+
+    [`${fromL},${toR}-`]: q1['32'],
+    [`${fromL}+,${toR}-`]: q1['22'],
+    [`${toL}-,${toR}-`]: q1['12'],
+    [`${toL},${toR}-`]: q1['02'],
+    
+    [`${fromL},${toR}`]: q1['33'],
+    [`${fromL}+,${toR}`]: q1['23'],
+    [`${toL}-,${toR}`]: q1['13'],
+    [`${toL},${toR}`]: q1['03'],
+
+    [`${fromL},${toR}+`]: q2['31'],
+    [`${fromL}+,${toR}+`]: q2['21'],
+    [`${toL}-,${toR}+`]: q2['11'],
+    [`${toL},${toR}+`]: q2['01'],
+
+    [`${fromL},${nr}-`]: q2['32'],
+    [`${fromL}+,${nr}-`]: q2['22'],
+    [`${toL}-,${nr}-`]: q2['12'],
+    [`${toL},${nr}-`]: q2['02'],
+   */
+  }
+  for(let k in newMap){
+    if(pointIndex[k]){
+      if( pointIndex[k].x != newMap[k].x || 
+          pointIndex[k].y != newMap[k].y || 
+          pointIndex[k].z != newMap[k].z ) 
+        console.info('Diff point', k, pointIndex[k].clone(), newMap[k].clone());
+    }
+    pointIndex[k] = newMap[k].clone();
+  }
 }
 
 function insertTriangleWeights(part, fromR, toR, L, t1, t2){
