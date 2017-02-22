@@ -82,9 +82,12 @@ export class PartDisplay extends CanvasBase{
     })
   }
 
+  splitAtS(s){
+    this.props.actions.splitCurrentPartAtS(s);
+  }
+
   splitAtT(t){
     this.props.actions.splitCurrentPartAtT(t);
-
   }
 
   onMeshMouseMove(e, intersects){
@@ -127,7 +130,7 @@ export class PartDisplay extends CanvasBase{
   }
 
   onMeshMouseClick(e){
-    this.splitAtT(this.sceneIntersection.uv.x);
+    this.splitAtS(this.sceneIntersection.uv.y);
   }
 
   renderScene(){
@@ -170,8 +173,8 @@ export class PartDisplay extends CanvasBase{
       let s = this.sceneIntersection.uv.y;
       let t = this.sceneIntersection.uv.x;
       let curve = [
-        //...RotationalShape.getLineAtS(part.calculated, s),
-        ...RotationalShape.getLineAtT(part.calculated, t),
+        ...RotationalShape.getLineAtS(part.calculated, s),
+        // ...RotationalShape.getLineAtT(part.calculated, t),
       ];
       curve.forEach(({position})=>{
         meshes.push({

@@ -32,6 +32,13 @@ export function hideList(){
 }
 
 
+export const SPLIT_CURRENT_PART_S = 'SPLIT_CURRENT_PART_S';
+export function splitCurrentPartAtS(s){
+  return {
+    type:SPLIT_CURRENT_PART_S,
+    at:s
+  }
+}
 export const SPLIT_CURRENT_PART_T = 'SPLIT_CURRENT_PART_T';
 export function splitCurrentPartAtT(t){
   return {

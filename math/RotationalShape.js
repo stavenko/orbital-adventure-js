@@ -32,6 +32,43 @@ export function getRotationalGeometry(part){
     .filter(x=>x);
 }
 
+function lengthPointsShift(part, fromL){
+  let pointIndex = part.pointIndex;
+  let radialAmount = part.radialAmount;
+  let sliceAmount = part.sliceAmount;
+  let patchAmount = radialAmount - 1;
+  let hasTopCone = !!pointIndex[`${sliceAmount-1}`];
+  let hasBottomCone = !!pointIndex['0'];
+  
+
+  for(let j = part.sliceAmount-1; j > fromL; --j){
+    if(j == part.sliceAmount-1 && hasTopCone){
+      pointsToMove.push([`${j}`,`${j+1}`])
+      for(let i = 0; i < radialAmount; ++i){
+        pointsToMove.push([`${j}-,${i}`, `${j+1}-,${i}`]);
+        pointsToMove.push([`${j}:111,${i}`, `${j+1}:111,${i}`]);
+        pointsToMove.push([`${j-1}+,${i}`, `${j-1}+,${i}`]);
+      }
+    }else{
+      for(let i = 0; i < radialAmount; ++i){
+        pointsToMove([`${j},${i}`, `${j+1},${i}`]);
+        pointsToMove([`${j},${i}-`,`${j+1},${i}-`]);
+        pointsToMove([`${j},${i}+`,`${j+1},${i}+`]);
+
+        pointsToMove([`${j}-,${i}`, `${j+1}-,${i}`]);
+        pointsToMove([`${j}-,${i}-`,`${j+1}-,${i}-`]);
+        pointsToMove([`${j}-,${i}+`,`${j+1}-,${i}+`]);
+
+        pointsToMove([`${j-1}+,${i}`, `${j}+,${i}`]);
+        pointsToMove([`${j-1}+,${i}-`,`${j}+,${i}-`]);
+        pointsToMove([`${j-1}+,${i}+`,`${j}+,${i}+`]);
+
+      }
+    }
+  }
+
+}
+
 function radialPointsShift(part, fromR){
   let pointIndex = part.pointIndex;
   let radialAmount = part.radialAmount;
@@ -39,8 +76,6 @@ function radialPointsShift(part, fromR){
   let patchAmount = sliceAmount - 1;
   let hasTopCone = !!pointIndex[`${sliceAmount-1}`];
   let hasBottomCone = !!pointIndex['0'];
-  //let From = hasBottomCone?1:0;
-  //let To   = hasTopCone?:sliceAmount-1:sliceAmount;
 
 
   for(let i = 0; i < patchAmount; ++i){
@@ -88,8 +123,27 @@ function radialPointsShift(part, fromR){
   }
 }
 
+export function splitPartAtS(part, s){
+  let lengthPatches = part.sliceAmount -1;
+  let {bottomCone, topCone} = part._initialProps;
+  for(let i =0; i < lengthPatches; ++i){
+    let fromS = part.lengthSlices[i].t;
+    let toS = part.lengthSlices[i+1].t;
+    if(s > fromS && s < toS){
+      if((i == 0  && bottomCone) || ((i == (lengthPatches - 1)) && topCone)){
+        console.log("Cannot split cones today");
+        return part;
+      }
+
+    }
+  }
+
+  debugger;
+
+  return part;
+}
+
 export function splitPartAtT(part, t){
-  let newPatchIndex = {};
   let division;
   for(let i = 0; i < part.radialAmount; ++i){
     let t0 = part.radialDivision[i];
@@ -743,7 +797,6 @@ function recreatePatchesFromPoints(part){
 
     let uFrom = radialDivision[rad];
     let uTo   = radialDivision[rad+1];
-    console.log(uFrom, uTo, rad, radialDivision);
 
     let fromUV = [ uFrom, Math.min(upperU, tCone)];
     let toUV = [uTo, Math.max(lowerU,tCone) ];
