@@ -42,26 +42,27 @@ function lengthPointsShift(part, fromL){
   
 
   for(let j = part.sliceAmount-1; j > fromL; --j){
+    let pointsToMove = [];
     if(j == part.sliceAmount-1 && hasTopCone){
       pointsToMove.push([`${j}`,`${j+1}`])
       for(let i = 0; i < radialAmount; ++i){
         pointsToMove.push([`${j}-,${i}`, `${j+1}-,${i}`]);
         pointsToMove.push([`${j}:111,${i}`, `${j+1}:111,${i}`]);
-        pointsToMove.push([`${j-1}+,${i}`, `${j-1}+,${i}`]);
+        pointsToMove.push([`${j-1}+,${i}`, `${j}+,${i}`]);
       }
     }else{
       for(let i = 0; i < radialAmount; ++i){
-        pointsToMove([`${j},${i}`, `${j+1},${i}`]);
-        pointsToMove([`${j},${i}-`,`${j+1},${i}-`]);
-        pointsToMove([`${j},${i}+`,`${j+1},${i}+`]);
+        pointsToMove.push([`${j},${i}`, `${j+1},${i}`]);
+        pointsToMove.push([`${j},${i}-`,`${j+1},${i}-`]);
+        pointsToMove.push([`${j},${i}+`,`${j+1},${i}+`]);
 
-        pointsToMove([`${j}-,${i}`, `${j+1}-,${i}`]);
-        pointsToMove([`${j}-,${i}-`,`${j+1}-,${i}-`]);
-        pointsToMove([`${j}-,${i}+`,`${j+1}-,${i}+`]);
+        pointsToMove.push([`${j}-,${i}`, `${j+1}-,${i}`]);
+        pointsToMove.push([`${j}-,${i}-`,`${j+1}-,${i}-`]);
+        pointsToMove.push([`${j}-,${i}+`,`${j+1}-,${i}+`]);
 
-        pointsToMove([`${j-1}+,${i}`, `${j}+,${i}`]);
-        pointsToMove([`${j-1}+,${i}-`,`${j}+,${i}-`]);
-        pointsToMove([`${j-1}+,${i}+`,`${j}+,${i}+`]);
+        pointsToMove.push([`${j-1}+,${i}`, `${j}+,${i}`]);
+        pointsToMove.push([`${j-1}+,${i}-`,`${j}+,${i}-`]);
+        pointsToMove.push([`${j-1}+,${i}+`,`${j}+,${i}+`]);
 
       }
     }
@@ -129,24 +130,52 @@ function radialPointsShift(part, fromR){
 }
 
 export function splitPartAtS(part, s){
+  let division;
   let lengthPatches = part.sliceAmount -1;
   let {bottomCone, topCone} = part._initialProps;
   for(let i =0; i < lengthPatches; ++i){
-    let fromS = part.lengthSlices[i].t;
-    let toS = part.lengthSlices[i+1].t;
+    let fromS = part.lengthDivision[i];
+    let toS = part.lengthDivision[i+1];
     if(s > fromS && s < toS){
+      division = i+1;
+      let ds = toS - fromS;
+      s = (s - fromS) / ds;
+
       if((i == 0  && bottomCone) || ((i == (lengthPatches - 1)) && topCone)){
         console.log("Cannot split cones today");
         return part;
       }
+      let patchSubstitution = [];
+      for(let j =0; j < part.radialAmount; ++j){
+        let fromR = j;
+        let toR = (fromR +1 )% part.radialAmount;
+        let key = `${i},${j}`;
+        let patch = part.patchIndex[key];
+        if(patch.length == 10) throw "Cannot split triangle patches";
 
+        let [q1, q2] = Quad.splitS(part.pointIndex, patch, s);
+        patchSubstitution.push([part, fromR, toR, i, i+1, q1, q2 ]);
+
+      }
+
+      lengthPointsShift(part, i);
+      patchSubstitution.forEach(pp=>{
+          insertQuadWeightsVertically(...pp);
+      })
+
+    break;
     }
   }
 
-  debugger;
+  part.lengthDivision= [...part.lengthDivision.slice(0, division), s, 
+    ...part.lengthDivision.slice(division)];
+  part.sliceAmount += 1;
+
+  recreatePatchesFromPoints(part);
 
   return part;
 }
+
 
 export function splitPartAtT(part, t){
   let division;
@@ -197,6 +226,53 @@ export function splitPartAtT(part, t){
 
 }
 
+function insertQuadWeightsVertically(part, fromR, toR, fromL, toL, q1,q2){
+  let {pointIndex} = part;
+  let nla = part.sliceAmount;
+  let nl = (toL+1)%(nla)
+  let pl = (toL-1 + nla)%(nla);
+
+  console.info('rad', fromR, toR);
+
+  let newMap = {
+    [`${fromL},${fromR}`]: q1['00'],
+    [`${fromL}+,${fromR}`]: q1['10'],
+    [`${toL}-,${fromR}`]: q1['20'],
+    [`${toL},${fromR}`]: q1['30'],
+    [`${toL}+,${fromR}`]: q2['10'],
+    [`${nl}-,${fromR}`]: q2['20'],
+    [`${nl},${fromR}`]: q2['30'],
+
+    [`${fromL},${fromR}+`]: q1['01'],
+    [`${fromL}+,${fromR}+`]: q1['11'],
+    [`${toL}-,${fromR}+`]: q1['21'],
+    [`${toL},${fromR}+`]: q1['31'],
+    [`${toL}+,${fromR}+`]: q2['11'],
+    [`${nl}-,${fromR}+`]: q2['21'],
+    [`${nl},${fromR}+`]: q2['31'],
+
+    [`${fromL},${toR}-`]: q1['02'],
+    [`${fromL}+,${toR}-`]: q1['12'],
+    [`${toL}-,${toR}-`]: q1['22'],
+    [`${toL},${toR}-`]: q1['32'],
+    [`${toL}+,${toR}-`]: q2['12'],
+    [`${nl}-,${toR}-`]: q2['22'],
+    [`${nl},${toR}-`]: q2['32'],
+
+  }
+  for(let k in newMap){
+    if(pointIndex[k]){
+      if( pointIndex[k].x != newMap[k].x || 
+          pointIndex[k].y != newMap[k].y || 
+          pointIndex[k].z != newMap[k].z ) {
+        // console.info('Diff point', k, pointIndex[k].clone(), newMap[k].clone());
+      }
+    }
+    pointIndex[k] = newMap[k].clone();
+  }
+
+}
+
 function insertQuadWeights(part, fromR, toR, fromL, toL, q1,q2){
   let {pointIndex} = part;
   let nra = part.radialAmount + 1;
@@ -228,32 +304,6 @@ function insertQuadWeights(part, fromR, toR, fromL, toL, q1,q2){
     [`${fromL}+,${nr}-`]: q2['12'],
     [`${toL}-,${nr}-`]: q2['22'],
     [`${toL},${nr}-`]: q2['32'],
-    /*
-    [`${fromL},${fromR}+`]: q1['31'],
-    [`${fromL}+,${fromR}+`]: q1['21'],
-    [`${toL}-,${fromR}+`]: q1['11'],
-    [`${toL},${fromR}+`]: q1['01'],
-
-    [`${fromL},${toR}-`]: q1['32'],
-    [`${fromL}+,${toR}-`]: q1['22'],
-    [`${toL}-,${toR}-`]: q1['12'],
-    [`${toL},${toR}-`]: q1['02'],
-    
-    [`${fromL},${toR}`]: q1['33'],
-    [`${fromL}+,${toR}`]: q1['23'],
-    [`${toL}-,${toR}`]: q1['13'],
-    [`${toL},${toR}`]: q1['03'],
-
-    [`${fromL},${toR}+`]: q2['31'],
-    [`${fromL}+,${toR}+`]: q2['21'],
-    [`${toL}-,${toR}+`]: q2['11'],
-    [`${toL},${toR}+`]: q2['01'],
-
-    [`${fromL},${nr}-`]: q2['32'],
-    [`${fromL}+,${nr}-`]: q2['22'],
-    [`${toL}-,${nr}-`]: q2['12'],
-    [`${toL},${nr}-`]: q2['02'],
-   */
   }
   for(let k in newMap){
     if(pointIndex[k]){
@@ -679,9 +729,11 @@ function createSliceFromRadialSegments(part, orientation, t){
   let circle = [...circleInPlane(plane, radialSegments, radius) ]
   let slice = {orientation, t, points:{}}
   let circularWeight = getWeightForCircleWith(radialSegments, radius);
-  part.radialDivision = [];
-  for(let i=0; i<= radialSegments; ++i){
-    part.radialDivision.push(i/radialSegments);
+  if(!part.radialDivision){
+    part.radialDivision = [];
+    for(let i=0; i<= radialSegments; ++i){
+      part.radialDivision.push(i/radialSegments);
+    }
   }
   circle.forEach(({point, tangent}, i)=>{
     let ix = `${i}`;
@@ -713,6 +765,7 @@ function createInitialSlices(part, props){
   }
   ts.push(1);
   part.lengthSlices = [];
+  part.lengthDivision = ts;
   ts.forEach((t, id)=>{
     let slice = {id,
       t,
