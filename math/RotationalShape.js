@@ -65,6 +65,11 @@ function lengthPointsShift(part, fromL){
 
       }
     }
+    pointsToMove.forEach(([from,to])=>{
+      let p = pointIndex[from];
+      delete pointIndex[from];
+      pointIndex[to] = p
+    })
   }
 
 }
