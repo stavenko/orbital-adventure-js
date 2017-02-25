@@ -9,7 +9,7 @@ const initialPartConfig = {
   radialSegments: 4,
   topCone: true,
   topConeLength: 0.33,
-  bottomCone: true,
+  bottomCone: false,
   bottomConeLength: 0.33,
   type: 'rotational',
   orientation: 'path-tangent'

@@ -23,6 +23,21 @@ function ShapeControls(props){
           onClick={()=>actions.selectSymmetryMode(m)}/>
         )} 
       </div>
+      <div className='btn'>
+        Create cross slice
+      </div>
+      <div className='btn'>
+        Create radial slice
+      </div>
+      <div className='btn'>
+        Edit slices
+      </div>
+      <div className='btn'>
+        Edit Radials
+      </div>
+      <div className='btn'>
+        Add Plane cutter
+      </div>
 
   </div>
 }

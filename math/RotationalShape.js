@@ -547,10 +547,12 @@ export function getSideLineControls(part){
       path.push({command:'moveTo', ...part.pointIndex[`0,${i}`]})
     }
     for(let j =0; j < sliceAmount - coneSegments; ++j){
-      let b = hasTopCone?1:0;
+      let b = hasBottomCone?1:0;
       let endIndex = `${j+b+1},${i}`;
-      if(hasTopCone && j == (sliceAmount - coneSegments - 1))
+      if(j == (sliceAmount - coneSegments - 1)){
+        if(!hasTopCone) continue;
         endIndex = `${j+b+1}`;
+      }
 
       controlPoints.push({ix:`${j+b}+,${i}`, ...part.pointIndex[`${j+b}+,${i}`]})
       controlPoints.push({ix:`${j+b+1}-,${i}`, ...part.pointIndex[`${j+b+1}-,${i}`]})

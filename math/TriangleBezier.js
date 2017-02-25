@@ -130,7 +130,7 @@ export function getGeometryFromPatch(weights, uvFrom, uvTo, invert, steps = 10){
     let first = getPoint(i  ,0, patch);
     let top   = getPoint(i+1,0, patch);
     let second = getPoint(i, 1, patch);
-    geometry.indices.push(first, top, second);
+    // geometry.indices.push(first, top, second);
 
     let last = getPoint(i,  steps-i, patch);
     let topl = getPoint(i+1,steps-(i+1),patch);
@@ -139,7 +139,6 @@ export function getGeometryFromPatch(weights, uvFrom, uvTo, invert, steps = 10){
       geometry.indices.push(last, preLast, topl);
     else
       geometry.indices.push(last, topl, preLast);
-
     for(let j=0; j < to-1; ++j){
       let ni = (i + 1)
       let nj = (j + 1)

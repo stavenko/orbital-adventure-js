@@ -130,14 +130,16 @@ export class PartDisplay extends CanvasBase{
   }
 
   onMeshMouseClick(e){
-    this.splitAtS(this.sceneIntersection.uv.y);
+    let editorState = this.props.state.get('editorState').toJS();
+    if(editorState.splitS)
+      return this.splitAtS(this.sceneIntersection.uv.y);
+    if(editorState.splitT)
+      return this.splitAtT(this.sceneIntersection.uv.x);
+    
   }
 
-  renderScene(){
-    if(!this.props.state.has('currentPart')) return [];
-    let part = this.props.state.get('currentPart').toJS();
-    if(!part.calculated) return [];
-    let mainMeshes = RotationalShape.getRotationalGeometry(part.calculated).map((attrs,ix)=>{
+  renderCreatorScene(calculated){
+    return RotationalShape.getRotationalGeometry(calculated).map((attrs,ix)=>{
       let c = this.randomColors[ix];
       return {
         type:Mesh,
@@ -158,22 +160,25 @@ export class PartDisplay extends CanvasBase{
         }
       }
     });
+  }
 
+  renderEditorScene(calculated){
+    let mainMeshes = this.renderCreatorScene(calculated);
 
-    let sliceControls  = RotationalShape.getSliceControls(part.calculated);
-    let sideControls  = RotationalShape.getSideLineControls(part.calculated);
+    let sliceControls  = RotationalShape.getSliceControls(calculated);
+    let sideControls  = RotationalShape.getSideLineControls(calculated);
     let color = new Color(0x0000ff);
     let cps = this.getControls(sliceControls);
 
     let meshes = [...mainMeshes, ...this.getControls(sliceControls),
       ...this.getControls(sideControls),
-      ...this.getControls(RotationalShape.getSurfaceControls(part.calculated), new Color(0x00ff99))
+      ...this.getControls(RotationalShape.getSurfaceControls(calculated), new Color(0x00ff99))
     ]
     if(this.sceneIntersection){
       let s = this.sceneIntersection.uv.y;
       let t = this.sceneIntersection.uv.x;
       let curve = [
-        ...RotationalShape.getLineAtS(part.calculated, s),
+        ...RotationalShape.getLineAtS(calculated, s),
         // ...RotationalShape.getLineAtT(part.calculated, t),
       ];
       curve.forEach(({position})=>{
@@ -198,11 +203,18 @@ export class PartDisplay extends CanvasBase{
     }
     return meshes; 
 
-    /* ...this.getPath().map(geometry=>({
-      type:Line,
-      geometry:{position: geometry},
-      material: {type:LineBasicMaterial, properties:{color}} 
-      }))];*/
+  }
+
+  renderScene(){
+    if(!this.props.state.has('currentPart')) return [];
+    let part = this.props.state.get('currentPart').toJS();
+    if(!part.calculated) return [];
+
+    if(part.stage == 'rough'){
+      return this.renderCreatorScene(part.calculated);
+    }
+    if(part.stage =='precise')
+      return this.renderEditorScene(part.calculated);
   }
 
 }
