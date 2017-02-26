@@ -8,6 +8,20 @@ import {fact} from './Math.js';
 import {patchToWeights} from './Utils.js';
 
 
+export function shapeContols(shape, controlType){
+  switch(controlType){
+    case 'edit-slices': return getSliceControls(shape);
+    case 'edit-radials': return getRadialControls(shape);
+    default: return [];
+  }
+}
+
+function getSliceControls(shape) {
+   
+}
+
+export function moveControl(shape, control,from, to){
+}
 
 export function createRotationalShape(props){
   let newPart = {_initialProps:props};
@@ -780,7 +794,7 @@ function createInitialSlices(part, props){
     };
     if(id == 0 && props.bottomCone || id == part.sliceAmount -1 && props.topCone){
       let plane = getSlicePlane(part, props.orientation, slice.t);
-      slice.weights = [...circleInPlane(plane,props.radialSegments, props.radius * 0.1)];
+      slice.weights = [...circleInPlane(plane,props.radialSegments, props.radius * 0.4)];
       slice.plane = plane;
     }else{
       let plane = getSlicePlane(part, props.orientation, slice.t);
@@ -923,12 +937,29 @@ function createConeAt(part, props, tCone){
     let tri111Weight = baseSlice.plane.normal.clone()
       .multiplyScalar(-way*coneBaseWeight1)
 
+
+    let p300 = tipSlice.plane.origin.clone();
+    let p030 = baseSlice.points[`${ix}`].clone();
+    let p003 = baseSlice.points[`${nextIndex}`].clone();
     let p120 = baseSlice.points[`${ix}`].clone().add(triBaseTipWeight);
     let p102 = baseSlice.points[`${nextIndex}`].clone().add(triBaseTipWeight);
-    let p111 = pathCentral.add(tri111Weight); 
+    let p021 = baseSlice.points[`${ix}+`].clone();
+    let p012 = baseSlice.points[`${nextIndex}-`].clone();
+
+    let [_p210, _p201] = [p210, p201].map(p=>p.clone().sub(p300));
+    let [_p120, _p021] = [p120, p021].map(p=>p.clone().sub(p030));
+    let [_p102, _p012] = [p102, p012].map(p=>p.clone().sub(p003));
+    let p210_p201 = p300.clone().add(_p210.add(_p201));
+    let p120_p021 = p030.clone().add(_p120.add(_p021));
+    let p102_p012 = p003.clone().add(_p102.add(_p012));
+    let p111 = [p210_p201, p120_p021, p102_p012]
+      .map(p=>p.multiplyScalar(1/3.0))
+      .reduce((p,p1)=>{p.add(p1);return p;}, new Vector3);
+
+    // let p111 = pathCentral.add(tri111Weight); 
     
     
-   mkPoint(`${lengthIndex}`, tipSlice.plane.origin.clone());
+   mkPoint(`${lengthIndex}`, p300);
                                                                                    
    mkPoint(`${lengthIndex}${sign(way)},${ix}`, p210);
    mkPoint(`${lengthIndex}${sign(way)},${nextIndex}`, p201);
@@ -937,10 +968,10 @@ function createConeAt(part, props, tCone){
    mkPoint(`${lengthIndex}:111,${ix}`, p111);
    mkPoint(`${lengthIndex+way}${sign(-way)},${nextIndex}`, p102);
                                                                                    
-   mkPoint(`${lengthIndex+way},${ix}`, baseSlice.points[`${ix}`]);
-   mkPoint(`${lengthIndex+way},${ix}+`,baseSlice.points[`${ix}+`] );
-   mkPoint(`${lengthIndex+way},${nextIndex}-`,baseSlice.points[`${nextIndex}-`]);
-   mkPoint(`${lengthIndex+way},${nextIndex}`,baseSlice.points[`${nextIndex}`]);
+   mkPoint(`${lengthIndex+way},${ix}`, p030);
+   mkPoint(`${lengthIndex+way},${ix}+`, p021);
+   mkPoint(`${lengthIndex+way},${nextIndex}-`, p012);
+   mkPoint(`${lengthIndex+way},${nextIndex}`, p003);
   }
 
 
@@ -986,7 +1017,7 @@ function createMainAxis(part, props){
   ];
 }
 
-
+/*
 function createSlices(part, props){
   let {
     lengthSegments, 
@@ -1021,7 +1052,7 @@ function createSlices(part, props){
     .push(createSliceAt(part, radialSegments, orientation, radius, lastFirst, t));
   }
 
-}
+}*/
 
 function createSliceAt(part, radialSegments, orientation, sliceRadius, lastFirst, t){
   let plane = getSlicePlane(part, orientation, t);
@@ -1050,7 +1081,7 @@ function createSliceAt(part, radialSegments, orientation, sliceRadius, lastFirst
 }
 
 function getWeightForCircleWith(steps, radius = 1){
-  return 0.4 * radius;
+  return 0.5526 * radius;
 }
 
 function createConetipContolPoints(part, radialSegments, orientation, t){

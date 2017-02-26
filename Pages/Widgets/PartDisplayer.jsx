@@ -131,11 +131,13 @@ export class PartDisplay extends CanvasBase{
 
   onMeshMouseClick(e){
     let editorState = this.props.state.get('editorState').toJS();
-    if(editorState.splitS)
-      return this.splitAtS(this.sceneIntersection.uv.y);
-    if(editorState.splitT)
-      return this.splitAtT(this.sceneIntersection.uv.x);
-    
+    switch(editorState.mode){
+      case 'cross-slicing':
+        return this.splitAtS(this.sceneIntersection.uv.y);
+      case 'radial-slicing':
+        return this.splitAtT(this.sceneIntersection.uv.x);
+
+    }
   }
 
   renderCreatorScene(calculated){
@@ -163,6 +165,7 @@ export class PartDisplay extends CanvasBase{
   }
 
   renderEditorScene(calculated){
+    let editorState = this.props.state.get('editorState').toJS();
     let mainMeshes = this.renderCreatorScene(calculated);
 
     let sliceControls  = RotationalShape.getSliceControls(calculated);
@@ -177,15 +180,20 @@ export class PartDisplay extends CanvasBase{
     if(this.sceneIntersection){
       let s = this.sceneIntersection.uv.y;
       let t = this.sceneIntersection.uv.x;
-      let curve = [
-        ...RotationalShape.getLineAtS(calculated, s),
-        // ...RotationalShape.getLineAtT(part.calculated, t),
-      ];
+      let curve = [];
+
+      if(editorState.mode == 'cross-slicing')
+        curve = RotationalShape.getLineAtS(calculated, s);
+      if(editorState.mode == 'radial-slicing')
+        curve =  RotationalShape.getLineAtT(calculated, t);
       curve.forEach(({position})=>{
         meshes.push({
           type:Line,
           geometry: {position},
-          material: {type: LineBasicMaterial, properties:{color: new Color(0xff9900)}}
+          material: {
+            type: LineBasicMaterial, 
+            properties:{color: new Color(0xff9900)
+            }}
         })
       })
 

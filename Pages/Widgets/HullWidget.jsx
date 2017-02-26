@@ -15,6 +15,7 @@ export function HullWidget(props){
 
 function ShapeControls(props){
   let {symmetryMode}= props.state.get('editorState').toJS() || {};
+  let {actions} = props;
   return <div className='hull-properties'>
       <div className='symmetry-mode'>
         {Symmetry.map(m=><div 
@@ -23,19 +24,29 @@ function ShapeControls(props){
           onClick={()=>actions.selectSymmetryMode(m)}/>
         )} 
       </div>
-      <div className='btn'>
+      <div className='btn' 
+        onClick={()=>actions.selectMode('cross-slicing')} 
+      >
         Create cross slice
       </div>
-      <div className='btn'>
+      <div className='btn' 
+        onClick={()=>actions.selectMode('radial-slicing')} 
+      >
         Create radial slice
       </div>
-      <div className='btn'>
+      <div className='btn' 
+        onClick={()=>actions.selectMode('edit-slices')} 
+      >
         Edit slices
       </div>
-      <div className='btn'>
+      <div className='btn' 
+        onClick={()=>actions.selectMode('edit-radials')} 
+      >
         Edit Radials
       </div>
-      <div className='btn'>
+      <div className='btn' 
+        onClick={()=>actions.selectMode('add-plane-cutter')} 
+      >
         Add Plane cutter
       </div>
 

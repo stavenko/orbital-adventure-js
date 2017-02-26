@@ -46,3 +46,11 @@ export function splitCurrentPartAtT(t){
     at:t
   }
 }
+
+export const SELECT_MODE = 'SELECT_MODE';
+export function selectMode(mode){
+  return {
+    type:SELECT_MODE,
+    mode
+  }
+}

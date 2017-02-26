@@ -25,52 +25,52 @@ const defaultParameters = {
 };
 
 export class CanvasBase extends React.Component{
-    constructor(props) {
-        super(props);
-        this.scene = new Scene;
-        this.geometryCache = {};
-        this.scene.userData.meshesIndex = [];
-        this.normalizedMouse = new Vector2;
-        this.rayCaster = new Raycaster;
-        this.onMouseMove = this.onMouseMove.bind(this);
-        this.onMouseDown = this.onMouseDown.bind(this);
-        this.onMouseUp = this.onMouseUp.bind(this);
-        this.onMouseWheel = this.onMouseWheel.bind(this);
-        this.lights = [];
-        this.lights.push(new AmbientLight(0xeeeeee));
-        this.lights.push(new PointLight(0xffffff, 10 ));
-        this.lights[1].position.set(0, 2, 0);
-        this.lights.forEach(l=>this.scene.add(l));
+  constructor(props) {
+    super(props);
+    this.scene = new Scene;
+    this.geometryCache = {};
+    this.scene.userData.meshesIndex = [];
+    this.normalizedMouse = new Vector2;
+    this.rayCaster = new Raycaster;
+    this.onMouseMove = this.onMouseMove.bind(this);
+    this.onMouseDown = this.onMouseDown.bind(this);
+    this.onMouseUp = this.onMouseUp.bind(this);
+    this.onMouseWheel = this.onMouseWheel.bind(this);
+    this.lights = [];
+    this.lights.push(new AmbientLight(0xeeeeee));
+    this.lights.push(new PointLight(0xffffff, 10 ));
+    this.lights[1].position.set(0, 2, 0);
+    this.lights.forEach(l=>this.scene.add(l));
+  }
+
+
+  pickMesh(event){
+    let normalizedMouse = new Vector2;
+    normalizedMouse.x = ( (event.clientX - this.nodeRect.left) / this.refs.node.width ) * 2 - 1;
+    normalizedMouse.y = - ( (event.clientY - this.nodeRect.top )/ this.refs.node.height ) * 2 + 1;
+    this.rayCaster.setFromCamera(normalizedMouse, this.camera);
+
+    let intersects = this.rayCaster.intersectObject( this.scene, true )
+      .filter(m=>m.object.userData.interactable)
+      // console.log(intersects);
+    this.currentIntersections = intersects;
+
+    if(intersects.length>0){
+      if(intersects[0].object != this.pickedMesh){
+        if(intersects[0].object.userData.onEnter)
+          intersects[0].object.userData.onEnter(event);
+        if(this.pickedMesh && this.pickedMesh.userData.onLeave)
+          this.pickedMesh.userData.onLeave(event);
+        this.pickedMesh = intersects[0].object;
+      }
+    }else{
+      if(this.pickedMesh){
+        if(this.pickedMesh.userData.onLeave)
+          this.pickedMesh.userData.onLeave(event);
+          this.pickedMesh = null;
+      }
     }
-
-
-    pickMesh(event){
-      let normalizedMouse = new Vector2;
-      normalizedMouse.x = ( (event.clientX - this.nodeRect.left) / this.refs.node.width ) * 2 - 1;
-      normalizedMouse.y = - ( (event.clientY - this.nodeRect.top )/ this.refs.node.height ) * 2 + 1;
-        this.rayCaster.setFromCamera(normalizedMouse, this.camera);
-
-        let intersects = this.rayCaster.intersectObject( this.scene, true )
-          .filter(m=>m.object.userData.interactable)
-          // console.log(intersects);
-        this.currentIntersections = intersects;
-
-        if(intersects.length>0){
-          if(intersects[0].object != this.pickedMesh){
-            if(intersects[0].object.userData.onEnter)
-              intersects[0].object.userData.onEnter(event);
-            if(this.pickedMesh && this.pickedMesh.userData.onLeave)
-              this.pickedMesh.userData.onLeave(event);
-            this.pickedMesh = intersects[0].object;
-          }else{
-          }
-      }else
-        if(this.pickedMesh){
-          if(this.pickedMesh.userData.onLeave)
-            this.pickedMesh.userData.onLeave(event);
-            this.pickedMesh = null;
-        }
-    }
+  }
 
     eventToNormalizedCanvas({clientX, clientY}){
       let normalizedMouse = new Vector2;
@@ -444,14 +444,15 @@ export class CanvasBase extends React.Component{
 
     resizeWindow(){
       this.nodeRect = this.refs.node.getBoundingClientRect();
-      let width = this.refs.node.width;
-      let height = this.refs.node.height;
-      this.camera.left = width/2;
-      this.camera.right = -width/2;
-      this.camera.top = height/2;
-      this.camera.bottom = -height/2;
+      let {width, height} = this.nodeRect;
+      // this.camera.left = width/2;
+      // this.camera.right = -width/2;
+      // this.camera.top = height/2;
+      // this.camera.bottom = -height/2;
+      this.camera.updateProjectionMatrix();
+      // console.log(this.camera);
+      this.renderCanvas();
 
-        console.log('resize-rezise');
     }
 
 }
