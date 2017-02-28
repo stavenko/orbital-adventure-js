@@ -16,8 +16,38 @@ export function shapeContols(shape, controlType){
   }
 }
 
-function getSliceControls(shape) {
-   
+export function getSliceControls(shape) {
+  let {sliceAmount, radialAmount, pointIndex} = shape;
+  let controls = [];
+  for(let i =sliceAmount-1; i > 0; --i){
+    let plane = shape.crossSlicePlanes[i];
+    controls.push({
+      point: plane.origin.clone(),
+      ix:`${i}`,
+      constrain: {type:'vector', value:plane.normal.clone()}
+    });
+    for(let j = 0; j< radialAmount; ++j){
+      let radialPlane = shape.radialPlanes[i];
+
+      controls.push({
+        ix: `${i},${j}`, 
+        point: pointIndex[`${i},${j}`],
+        constrain: {
+          type:'vector', 
+          value: new Vector3()
+            .crossVectors(plane.normal, radialPlane.normal) }});
+      controls.push({
+        ix: `${i},${j}-`, 
+        point: pointIndex[`${i},${j}-`],
+        constrain: { type:'plane', value: radialPlane }});
+      controls.push({
+        ix: `${i},${j}+`, 
+        point: pointIndex[`${i},${j}+`],
+        constrain: { type:'plane', value: radialPlane }
+      });
+    }
+  }
+  return controls;
 }
 
 export function moveControl(shape, control,from, to){
@@ -147,6 +177,7 @@ export function splitPartAtS(part, S){
   let division;
   let lengthPatches = part.sliceAmount -1;
   let {bottomCone, topCone} = part._initialProps;
+  let newSlicePlane;
   for(let i =0; i < lengthPatches; ++i){
     let fromS = part.lengthDivision[i];
     let toS = part.lengthDivision[i+1];
@@ -169,13 +200,18 @@ export function splitPartAtS(part, S){
 
         let [q1, q2] = Quad.splitS(part.pointIndex, patch, s);
         patchSubstitution.push([part, fromR, toR, i, i+1, q1, q2 ]);
-
       }
 
       lengthPointsShift(part, i);
       patchSubstitution.forEach(pp=>{
           insertQuadWeightsVertically(...pp);
       })
+      let prevPlane = part.crossSlicePlanes[i];
+      let nextPlane = part.crossSlicePlanes[i+1];
+      newSlicePlane = {
+        origin: new Vector3().lerpVectors(prevPlane.origin, nextPlane.origin, s),
+        normal: new Vector3().lerpVectors(prevPlane.normal, nextPlane.normal)
+      }
 
     break;
     }
@@ -183,6 +219,8 @@ export function splitPartAtS(part, S){
 
   part.lengthDivision= [...part.lengthDivision.slice(0, division), S, 
     ...part.lengthDivision.slice(division)];
+  part.crossSlicePlanes= [...part.crossSlicePlanes.slice(0, division), newSlicePlane, 
+    ...part.crossSlicePlanes.slice(division)];
   part.sliceAmount += 1;
 
   recreatePatchesFromPoints(part);
@@ -193,6 +231,7 @@ export function splitPartAtS(part, S){
 
 export function splitPartAtT(part, t){
   let division;
+  let newSlicePlane;
   for(let i = 0; i < part.radialAmount; ++i){
     let t0 = part.radialDivision[i];
     let t1 = part.radialDivision[(i+1)];
@@ -227,12 +266,21 @@ export function splitPartAtT(part, t){
         else
           insertQuadWeights(...pp);
       })
+      let prevPlane = part.radialPlanes[i];
+      let nextPlane = part.radialPlanes[(i+1)%part.radialAmount];
+      newSlicePlane = {
+        origin: new Vector3().lerpVectors(prevPlane.origin, nextPlane.origin, s),
+        normal: new Vector3().lerpVectors(prevPlane.normal, nextPlane.normal)
+      }
       break;
     }
   }
 
   part.radialDivision = [...part.radialDivision.slice(0, division), t, 
     ...part.radialDivision.slice(division)];
+  part.radialPlanes= [...part.radialPlanes.slice(0, division), newSlicePlane, 
+    ...part.radialPlanes.slice(division)];
+
   part.radialAmount += 1;
 
   recreatePatchesFromPoints(part);
@@ -618,6 +666,7 @@ export function getSurfaceControls(part){
   
 }
 
+/*
 export function getSliceControls(part){
   let props = part._initialProps;
   let coneSegments = (props.topCone? 1:0) + (props.bottomCone?1:0);
@@ -659,7 +708,7 @@ export function getSliceControls(part){
   return slices
 
 
-}
+}*/
 
 function createCylinders(part, props){
   let coneSegments = (props.topCone? 1:0) + (props.bottomCone?1:0);
@@ -770,6 +819,8 @@ function createSliceFromRadialSegments(part, orientation, t){
 function createInitialSlices(part, props){
   part.sliceAmount = props.lengthSegments+1;
   part.radialAmount = props.radialSegments;
+  part.crossSlicePlanes = [];
+  part.radialPlanes = [];
 
   let noConeSliceAmount = part.sliceAmount;
   if(props.topCone) ++part.sliceAmount;
@@ -784,6 +835,18 @@ function createInitialSlices(part, props){
   for(let i = 1; i <= props.lengthSegments; ++i){
     ts.push(bottomConeT + i * noConeT/props.lengthSegments);
   }
+  for(let i = 0; i < part.radialAmount; ++i){
+    let planeOrigin = new Vector3;
+    let firstDirection = new Vector3(0,1,0);
+    let a = i / part.radialAmount * Math.PI * 2;
+    let p = new Vector3(Math.cos(a),Math.sin(a), 0);
+    let plane = {
+      origin: planeOrigin.clone(),
+      normal: new Vector3().crossVectors(firstDirection, p)
+    }
+    part.radialPlanes.push(plane);
+  }
+
   ts.push(1);
   part.lengthSlices = [];
   part.lengthDivision = ts;
@@ -794,10 +857,12 @@ function createInitialSlices(part, props){
     };
     if(id == 0 && props.bottomCone || id == part.sliceAmount -1 && props.topCone){
       let plane = getSlicePlane(part, props.orientation, slice.t);
+      part.crossSlicePlanes.push(plane);
       slice.weights = [...circleInPlane(plane,props.radialSegments, props.radius * 0.4)];
       slice.plane = plane;
     }else{
       let plane = getSlicePlane(part, props.orientation, slice.t);
+      part.crossSlicePlanes.push(plane);
       slice = {
         ...createSliceFromRadialSegments(part, props.orientation, slice.t),
         ...slice,

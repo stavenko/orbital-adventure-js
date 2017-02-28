@@ -98,35 +98,17 @@ export class PartDisplay extends CanvasBase{
   }
    
   getControls(controlsArray, cpColor = new Color(0xff9900)){
-    return controlsArray.map(({geometry, plane, controlPoints})=>{
-      let meshes = []
+    return controlsArray.map(({point, ix, constrain})=>{
 
-      if(geometry)
-        meshes.push({
-          type: Line,
-          // onMouseMove:(i,j)=>{},
-          geometry:{position: geometry[0]},
-          material: {
-            type: LineBasicMaterial, 
-            properties:{
-              color:new Color(0xff0000)
-            }
-          }
-      });
-
-
-      meshes.push(...controlPoints.map(p=>({
+      return {
         type: Mesh,
-        geometry: {type: BoxBufferGeometry, arguments:[1,1,1].map(x=>x*0.01)},
-        material: {
-          type: MeshBasicMaterial, properties:{
-            color: cpColor
-          }
-        },
-        position: new Vector3(p.x, p.y, p.z)
-      })));
-      return meshes;
-    }).reduce((a,b)=>{a.push(...b);return a}, []);
+        position: point.clone(),
+        geometry: {type: BoxBufferGeometry, arguments:[0.01, 0.01, 0.01]},
+        material: {type:MeshLambertMaterial, properties:{
+          color: cpColor
+        }}
+      }
+    });
   }
 
   onMeshMouseClick(e){
@@ -168,15 +150,28 @@ export class PartDisplay extends CanvasBase{
     let editorState = this.props.state.get('editorState').toJS();
     let mainMeshes = this.renderCreatorScene(calculated);
 
-    let sliceControls  = RotationalShape.getSliceControls(calculated);
-    let sideControls  = RotationalShape.getSideLineControls(calculated);
+    // let sliceControls  = RotationalShape.getSliceControls(calculated);
+    // let sideControls  = RotationalShape.getSideLineControls(calculated);
     let color = new Color(0x0000ff);
-    let cps = this.getControls(sliceControls);
+    // let cps = this.getControls(sliceControls);
+    //
+    let controlMeshes = [];
+    if(editorState.mode == 'edit-slices'){
+      controlMeshes = this.getControls(RotationalShape.getSliceControls(calculated));
+    }
+    if(editorState.mode == 'edit-radials'){
+    }
 
-    let meshes = [...mainMeshes, ...this.getControls(sliceControls),
-      ...this.getControls(sideControls),
-      ...this.getControls(RotationalShape.getSurfaceControls(calculated), new Color(0x00ff99))
+    // debugger;
+
+
+    let meshes = [...mainMeshes, 
+      ...controlMeshes,
+      //...this.getControls(sliceControls),
+      //...this.getControls(sideControls),
+      //...this.getControls(RotationalShape.getSurfaceControls(calculated), new Color(0x00ff99))
     ]
+
     if(this.sceneIntersection){
       let s = this.sceneIntersection.uv.y;
       let t = this.sceneIntersection.uv.x;
@@ -186,6 +181,7 @@ export class PartDisplay extends CanvasBase{
         curve = RotationalShape.getLineAtS(calculated, s);
       if(editorState.mode == 'radial-slicing')
         curve =  RotationalShape.getLineAtT(calculated, t);
+
       curve.forEach(({position})=>{
         meshes.push({
           type:Line,
