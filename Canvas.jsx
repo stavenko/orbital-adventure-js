@@ -91,20 +91,41 @@ export class CanvasBase extends React.Component{
       e.preventDefault();
     }
 
+    eventInWorldPlane(e){
+      let v = new Vector3(
+        ((e.clientX-this.nodeRect.left)/this.refs.node.width)*2-1, 
+        -((e.clientY - this.nodeRect.top )/ this.refs.node.height)*2+1, 
+        0);
+      return v.unproject(this.camera);
+    }
+
+    calculateVectorsInWorldPlane(e){
+      let vs = [this._lastMouseEvent,e];
+      return vs.map(e=>new Vector3(
+        ((e.clientX-this.nodeRect.left)/this.refs.node.width)*2-1, 
+        -((e.clientY - this.nodeRect.top )/ this.refs.node.height)*2+1, 
+        0))
+      .map(v=>v.unproject(this.camera));
+    }
+
     onMouseMove(e){
       if(this.draggable){
         let diff = [
           e.clientX - this._lastMouseEvent.clientX, 
           e.clientY - this._lastMouseEvent.clientY 
         ];
-        this.draggable.userData.onDrag(e, diff);
+        if(!this.dragStarted && this.draggable.userData.onDragStart){
+          this.dragStarted = true;
+          this.draggable.userData.onDragStart(e, this.eventInWorldPlane(e));
+        }
+        this.draggable.userData.onDrag(e, diff, this.calculateVectorsInWorldPlane(e));
       }else{
         if(this._lastMouseDown){
           this.cameraHandler.rotate(e);
           this.renderCanvas();
         }
       }
-      this.pickMesh( e);
+      this.pickMesh(e);
       if(this.pickedMesh && this.pickedMesh.userData.onMouseMove){
         this.pickedMesh.userData.onMouseMove(e, this.currentIntersections)
       }
@@ -172,10 +193,16 @@ export class CanvasBase extends React.Component{
     onMouseUp(e){
       e.preventDefault();
       this._lastMouseDown = null;
-      if(!this.pickedMesh) return;
+      if(this.draggable && this.draggable.onDragEnds)
+        this.draggable.onDragEnds(e, this.eventInWorldPlane(e));
+      this.draggable = null;
+      this.dragStarted = false;
+
+      if(!this.pickedMesh) {
+        return;
+      }
       if(this.pickedMesh.userData.onMouseUp)
         this.pickedMesh.userData.onMouseUp(e);
-      this.draggable = null;
     }
 
     onMouseDown(e){
@@ -328,7 +355,7 @@ export class CanvasBase extends React.Component{
     }
 
     updateMeshProperties(mesh, props){
-      let events = ['onMouseMove', 'onMouseUp', 'onMouseDown', 'onEnter', 'onLeave','onDrag'];
+      let events = ['onMouseMove', 'onMouseUp', 'onMouseDown', 'onEnter', 'onLeave','onDrag', 'onDragStart', 'onDragEnds'];
 
       for(let key in props){
         if(key === 'material') {

@@ -8,6 +8,7 @@ import {RawShaderMaterial} from 'three/src/materials/RawShaderMaterial';
 import {MeshLambertMaterial} from 'three/src/materials/MeshLambertMaterial';
 import {Line} from 'three/src/objects/Line';
 import {LineBasicMaterial} from 'three/src/materials/LineBasicMaterial';
+import {LineDashedMaterial} from 'three/src/materials/LineDashedMaterial';
 import {Vector3} from 'three/src/math/Vector3';
 import {Vector2} from 'three/src/math/Vector2';
 import {BoxBufferGeometry} from 'three/src/geometries/BoxBufferGeometry';
@@ -96,16 +97,44 @@ export class PartDisplay extends CanvasBase{
     this.renderCanvas();
 
   }
+
+  moveControlPoint(ix, [from, to]){
+    let part = this.props.state.get('currentPart').toJS();
+    RotationalShape.moveControlPoint(part.calculated, ix, from, to);
+  }
+
+  getPointsMover(wv,ix,c){
+    return RotationalShape.getPointsMover(this.props.state.get('currentPart').toJS(), ix, wv, c);
+  }
+
+  finalizeDrag(){
+    this.props.actions.changePartPoints(this.state.pointsMover.getPointIndex())
+
+  }
+
+  dragControlPoint(vx){
+    this.state.pointsMover.move(vx[1]);
+    return this.props.actions.changePartPoints(this.state.pointsMover.getPointIndex());
+  }
    
   getControls(controlsArray, cpColor = new Color(0xff9900)){
     return controlsArray.map(({point, ix, constrain})=>{
-
+      let c = cpColor.clone();
+      if(this.state.hovered == ix) {
+        c = new Color(0xff0000);
+      }
       return {
         type: Mesh,
         position: point.clone(),
+        onEnter: ()=>{this.setState({hovered:ix})},
+        onLeave: ()=>{this.setState({hovered:null})},
+        onDragEnds: ()=>{this.finalizeDrag()},
+        onDragStart:(e, wv)=>this.setState({pointsMover: this.getPointsMover(wv,ix, constrain) }),
+        onDrag:(e, diff, vs)=>{this.dragControlPoint(vs)},
         geometry: {type: BoxBufferGeometry, arguments:[0.01, 0.01, 0.01]},
         material: {type:MeshLambertMaterial, properties:{
-          color: cpColor
+          color: c,
+          wireframe: false
         }}
       }
     });
@@ -146,6 +175,20 @@ export class PartDisplay extends CanvasBase{
     });
   }
 
+  renderCurves(curveGeometries, withColor = new Color(0x9999ff)){
+    return curveGeometries.map(pos=>({
+      type:Line,
+      geometry: {position:pos},
+      material: {
+        type: LineDashedMaterial, 
+        properties:{
+          color: withColor,
+          wireframe:false
+        }
+        }
+    }));
+  }
+
   renderEditorScene(calculated){
     let editorState = this.props.state.get('editorState').toJS();
     let mainMeshes = this.renderCreatorScene(calculated);
@@ -158,6 +201,7 @@ export class PartDisplay extends CanvasBase{
     let controlMeshes = [];
     if(editorState.mode == 'edit-slices'){
       controlMeshes = this.getControls(RotationalShape.getSliceControls(calculated));
+      mainMeshes = this.renderCurves(RotationalShape.getCurves(calculated));
     }
     if(editorState.mode == 'edit-radials'){
     }
@@ -199,9 +243,11 @@ export class PartDisplay extends CanvasBase{
         material: {
           type: MeshBasicMaterial, properties:{
             color: new Color(0x00ffff),
-            side: THREE.DoubleSide
+            side: THREE.DoubleSide,
+            wireframe:false
           }
         },
+        
         position: new Vector3().copy(this.sceneIntersection.point)
       })
     }

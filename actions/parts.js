@@ -47,6 +47,14 @@ export function splitCurrentPartAtT(t){
   }
 }
 
+export const CHANGE_PART_POINTS = 'CHANGE_PART_POINTS';
+export function changePartPoints(pointIndex){
+  return {
+    type:CHANGE_PART_POINTS,
+    pointIndex
+  }
+}
+
 export const SELECT_MODE = 'SELECT_MODE';
 export function selectMode(mode){
   return {

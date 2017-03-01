@@ -60,6 +60,11 @@ export function partsEditor(state = initialState, action){
       let calculated = RotationalShape.splitPartAtT(part.calculated, action.at);
       return state.setIn(['currentPart', 'calculated'], fromJS(calculated));
     }
+    case A.CHANGE_PART_POINTS:{
+      let part = state.get('currentPart').toJS();
+      part.calculated.pointIndex = action.pointIndex;
+      return state.setIn(['currentPart', 'calculated'], fromJS(part.calculated));
+    }
     case A.SELECT_MODE:{
       return state.setIn(['editorState', 'mode'], action.mode);
     }

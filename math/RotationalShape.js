@@ -16,10 +16,149 @@ export function shapeContols(shape, controlType){
   }
 }
 
+export function getCurves(shape){
+  return [
+    ...getSideCurves(shape), ...getSliceCurves(shape)
+  ]
+}
+
+export function getPointsMover(shape, ix, f, c){
+  return new PointsMover(shape, ix, f, c);
+}
+
+class PointsMover{
+  constructor(shape, ix, from, constrain){
+    this.shape = shape.calculated;
+    this.movingIx = ix;
+    this.from = from;
+    this.to = from;
+    this.constrain = constrain;
+    // console.log("init", ix);
+  }
+
+  move(to){
+    this.to = to;
+  }
+
+  calculatPlaneProjection(v, plane){
+    let ps = plane.normal.clone().dot(v);
+    let pv = plane.normal.clone().multiplyScalar(ps); 
+    return v.clone().sub(pv);
+
+  }
+
+  calculateVectorProjection(v, vector){
+    let nv = vector.clone().normalize();
+    let vs = nv.dot(v);
+    return nv.multiplyScalar(vs);
+  }
+
+  movePoint(newPointIndex){
+    // let's create it later;
+    let diff = this.to.clone().sub(this.from);
+    let {type, value} = this.constrain;
+    let projectedDiff = new Vector3;
+    switch(type){
+      case 'plane':
+        projectedDiff = this.calculatPlaneProjection(diff, value);
+        break;
+      case 'vector':
+        projectedDiff = this.calculateVectorProjection(diff, value);
+      break;
+
+      default:
+        console.warn('unknown constrain');
+    }
+    newPointIndex[this.movingIx].add(projectedDiff);
+  }
+
+  calculateNewPointIndex(){
+    let pi = {};
+    for(let ix in this.shape.pointIndex){
+      pi[ix] = this.shape.pointIndex[ix].clone();
+    }
+    this.movePoint(pi);
+    return pi;
+  }
+  getPointIndex(){
+    return this.calculateNewPointIndex();
+  }
+}
+
+function getSideCurves(shape){
+  let geometries = [];
+  let props = shape._initialProps;
+  let radial = shape.radialAmount;
+  let sliceAmount = shape.sliceAmount;
+  let hasBottomCone = props.bottomCone;
+  let hasTopCone = props.topCone;
+  let coneSegments = (props.topCone? 1:0) + (props.bottomCone?1:0);
+
+  for(let i = 0; i < radial; ++i){
+    let path = [];
+    let controlPoints = [];
+    if(hasBottomCone){
+      path.push({command:'moveTo', ...shape.pointIndex['0']})
+      path.push({command:'curveTo', 
+                cp1:part.pointIndex[`0+,${i}`],
+                cp2:part.pointIndex[`1-,${i}`],
+                end:part.pointIndex[`1,${i}`],
+      })
+    }else{
+      path.push({command:'moveTo', ...shape.pointIndex[`0,${i}`]})
+    }
+    for(let j =0; j < sliceAmount - coneSegments; ++j){
+      let b = hasBottomCone?1:0;
+      let endIndex = `${j+b+1},${i}`;
+      if(j == (sliceAmount - coneSegments - 1)){
+        if(!hasTopCone) continue;
+        endIndex = `${j+b+1}`;
+      }
+      path.push({command:'curveTo', 
+                cp1: shape.pointIndex[`${j+b}+,${i}`],
+                cp2: shape.pointIndex[`${j+b+1}-,${i}`],
+                end: shape.pointIndex[endIndex]
+      })
+    }
+    geometries.push(...Path.getGeometry(path));
+  }
+  return geometries;
+}
+
+
+function getSliceCurves(shape){
+  let props = shape._initialProps;
+  let coneSegments = (props.topCone? 1:0) + (props.bottomCone?1:0);
+  let radialAmount = shape.radialAmount;
+  let hasBottomCone = props.bottomCone;
+  let hasTopCone = props.topCone;
+  let geometries = [];
+  for(let i = 0; i < shape.sliceAmount - coneSegments; ++i){
+    let bottomConeSliceNum = (hasBottomCone?1:0);
+    let sliceIx = i+bottomConeSliceNum;
+    let points = shape.pointIndex;
+    let path = [
+      {command:'moveTo', ...points[`${sliceIx},0`]}
+    ]
+    for(let j =0; j < radialAmount; ++j){
+      let nj = (j+1) % radialAmount;
+      path.push({
+        command:'curveTo', 
+        cp1:points[`${sliceIx},${j}+`], 
+        cp2:points[`${sliceIx},${nj}-`], 
+        end:points[`${sliceIx},${nj}`]
+      });
+    }
+    geometries.push(...Path.getGeometry(path));
+  }
+  return geometries;
+}
+
+
 export function getSliceControls(shape) {
   let {sliceAmount, radialAmount, pointIndex} = shape;
   let controls = [];
-  for(let i =sliceAmount-1; i > 0; --i){
+  for(let i =sliceAmount-1; i >= 0; --i){
     let plane = shape.crossSlicePlanes[i];
     controls.push({
       point: plane.origin.clone(),
@@ -27,27 +166,57 @@ export function getSliceControls(shape) {
       constrain: {type:'vector', value:plane.normal.clone()}
     });
     for(let j = 0; j< radialAmount; ++j){
+      let isTopTip = i == sliceAmount-1 && shape._initialProps.topCone;
+      let isBottomTip = i == 0 && shape._initialProps.bottomCone;
       let radialPlane = shape.radialPlanes[i];
+      if(isTopTip || isBottomTip){
+        if(isTopTip)
+          controls.push({
+            ix: `${i}-,${j}`,
+            point: pt(`${i}-,${j}`),
+            constrain:{
+              type:'plane',
+              value: radialPlane,
+            }
+          })
+        else
+          controls.push({
+            ix: `${i}+,${j}`,
+            point: pt(`${i}+,${j}`),
+            constrain:{
+              type:'plane',
+              value: radialPlane,
+            }
+          });
+      }else{
+        controls.push({
+          ix: `${i},${j}`, 
+          point: pt(`${i},${j}`),
+          constrain: {
+            type:'vector', 
+            value: new Vector3()
+              .crossVectors(plane.normal, radialPlane.normal) }});
+        controls.push({
+          ix: `${i},${j}-`, 
+          point: pt(`${i},${j}-`),
+          constrain: { type:'plane', value: radialPlane }});
+        controls.push({
+          ix: `${i},${j}+`, 
+          point: pt(`${i},${j}+`),
+          constrain: { type:'plane', value: radialPlane }
+        });
+      }
 
-      controls.push({
-        ix: `${i},${j}`, 
-        point: pointIndex[`${i},${j}`],
-        constrain: {
-          type:'vector', 
-          value: new Vector3()
-            .crossVectors(plane.normal, radialPlane.normal) }});
-      controls.push({
-        ix: `${i},${j}-`, 
-        point: pointIndex[`${i},${j}-`],
-        constrain: { type:'plane', value: radialPlane }});
-      controls.push({
-        ix: `${i},${j}+`, 
-        point: pointIndex[`${i},${j}+`],
-        constrain: { type:'plane', value: radialPlane }
-      });
+
     }
   }
   return controls;
+
+  function pt(ix){
+    if(pointIndex[ix]) return pointIndex[ix];
+    throw `no such point in pointIndex '${ix}'`;
+  }
+
 }
 
 export function moveControl(shape, control,from, to){
