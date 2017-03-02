@@ -5,6 +5,7 @@ export function patchToWeights(part, patch){
       weights[key] = part.pointIndex[patch[key]].clone();
     else weights[key] = patch[key];
   }
+  
   return weights;
 }
 

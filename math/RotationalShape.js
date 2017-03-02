@@ -186,12 +186,13 @@ export function getRotationalGeometry(part){
 }
 
 function lengthPointsShift(part, fromL){
+  let props = part._initialProps;
   let pointIndex = part.pointIndex;
   let radialAmount = part.radialAmount;
   let sliceAmount = part.sliceAmount;
   let patchAmount = radialAmount - 1;
-  let hasTopCone = !!pointIndex[`${sliceAmount-1}`];
-  let hasBottomCone = !!pointIndex['0'];
+  let hasTopCone = props.topCone;
+  let hasBottomCone = props.bottomCone;
   
 
   for(let j = part.sliceAmount-1; j > fromL; --j){
@@ -229,12 +230,13 @@ function lengthPointsShift(part, fromL){
 }
 
 function radialPointsShift(part, fromR){
+  let props = part._initialProps;
   let pointIndex = part.pointIndex;
   let radialAmount = part.radialAmount;
   let sliceAmount = part.sliceAmount;
   let patchAmount = sliceAmount - 1;
-  let hasTopCone = !!pointIndex[`${sliceAmount-1}`];
-  let hasBottomCone = !!pointIndex['0'];
+  let hasTopCone = props.topCone;
+  let hasBottomCone = props.bottomCone;
 
 
   for(let i = 0; i < patchAmount; ++i){
@@ -622,11 +624,11 @@ function getGeometryAttributes(part, patch){
   if(!patch) return;
   let attrs = [patch.length];
   let pointIndex = part.pointIndex;
-  let weights = {};
-  for( let key in patch){
-    if(pointIndex[patch[key]])
-      weights[key] = pointIndex[patch[key]].clone();
-  }
+  let weights = patchToWeights(part, patch);
+  //for( let key in patch){
+    //if(pointIndex[patch[key]])
+      //weights[key] = pointIndex[patch[key]].clone();
+  //}
   attrs.push(weights)
   attrs.push(...patch.uv);
   if(patch.length == 10){
@@ -1009,6 +1011,7 @@ function recreatePatchesFromPoints(part){
     }
   }
   part.patchIndex = newPatchIndex;
+    debugger;
 
   function mkQPatch(i, j){
     let ni = i+1;
@@ -1064,7 +1067,6 @@ function recreatePatchesFromPoints(part){
 
     let fromUV = [ uFrom, Math.min(upperU, tCone)];
     let toUV = [uTo, Math.max(lowerU,tCone) ];
-    debugger;
     return {
       '300': `${ix}`,
 
