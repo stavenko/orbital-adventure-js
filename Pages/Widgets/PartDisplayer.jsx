@@ -12,6 +12,7 @@ import {LineDashedMaterial} from 'three/src/materials/LineDashedMaterial';
 import {Vector3} from 'three/src/math/Vector3';
 import {Vector2} from 'three/src/math/Vector2';
 import {BoxBufferGeometry} from 'three/src/geometries/BoxBufferGeometry';
+import {PointsMover} from '../../math/RotationalPointsMover.js';
 import * as RotationalShape from '../../math/RotationalShape.js'
 import * as THREE from 'three/src/constants'
 import * as Path from '../../math/Path.js';
@@ -103,8 +104,8 @@ export class PartDisplay extends CanvasBase{
     RotationalShape.moveControlPoint(part.calculated, ix, from, to);
   }
 
-  getPointsMover(wv,ix,c){
-    return RotationalShape.getPointsMover(this.props.state.get('currentPart').toJS(), ix, wv, c);
+  getShape(){
+    return this.props.state.get('currentPart').toJS();
   }
 
   finalizeDrag(){
@@ -129,7 +130,11 @@ export class PartDisplay extends CanvasBase{
         onEnter: ()=>{this.setState({hovered:ix})},
         onLeave: ()=>{this.setState({hovered:null})},
         onDragEnds: ()=>{this.finalizeDrag()},
-        onDragStart:(e, wv)=>this.setState({pointsMover: this.getPointsMover(wv,ix, constrain) }),
+        onDragStart:(e, wv)=>this.setState({
+          pointsMover: new PointsMover(
+            this.getShape(), ix, wv, constrain,
+            this.props.state.getIn(['editorState','mode'])) 
+        }),
         onDrag:(e, diff, vs)=>{this.dragControlPoint(vs)},
         geometry: {type: BoxBufferGeometry, arguments:[0.01, 0.01, 0.01]},
         material: {type:MeshLambertMaterial, properties:{

@@ -22,68 +22,6 @@ export function getCurves(shape){
   ]
 }
 
-export function getPointsMover(shape, ix, f, c){
-  return new PointsMover(shape, ix, f, c);
-}
-
-class PointsMover{
-  constructor(shape, ix, from, constrain){
-    this.shape = shape.calculated;
-    this.movingIx = ix;
-    this.from = from;
-    this.to = from;
-    this.constrain = constrain;
-    // console.log("init", ix);
-  }
-
-  move(to){
-    this.to = to;
-  }
-
-  calculatPlaneProjection(v, plane){
-    let ps = plane.normal.clone().dot(v);
-    let pv = plane.normal.clone().multiplyScalar(ps); 
-    return v.clone().sub(pv);
-
-  }
-
-  calculateVectorProjection(v, vector){
-    let nv = vector.clone().normalize();
-    let vs = nv.dot(v);
-    return nv.multiplyScalar(vs);
-  }
-
-  movePoint(newPointIndex){
-    // let's create it later;
-    let diff = this.to.clone().sub(this.from);
-    let {type, value} = this.constrain;
-    let projectedDiff = new Vector3;
-    switch(type){
-      case 'plane':
-        projectedDiff = this.calculatPlaneProjection(diff, value);
-        break;
-      case 'vector':
-        projectedDiff = this.calculateVectorProjection(diff, value);
-      break;
-
-      default:
-        console.warn('unknown constrain');
-    }
-    newPointIndex[this.movingIx].add(projectedDiff);
-  }
-
-  calculateNewPointIndex(){
-    let pi = {};
-    for(let ix in this.shape.pointIndex){
-      pi[ix] = this.shape.pointIndex[ix].clone();
-    }
-    this.movePoint(pi);
-    return pi;
-  }
-  getPointIndex(){
-    return this.calculateNewPointIndex();
-  }
-}
 
 function getSideCurves(shape){
   let geometries = [];
@@ -161,14 +99,14 @@ export function getSliceControls(shape) {
   for(let i =sliceAmount-1; i >= 0; --i){
     let plane = shape.crossSlicePlanes[i];
     controls.push({
-      point: plane.origin.clone(),
+      point: pointIndex[`${i}`],
       ix:`${i}`,
       constrain: {type:'vector', value:plane.normal.clone()}
     });
     for(let j = 0; j< radialAmount; ++j){
       let isTopTip = i == sliceAmount-1 && shape._initialProps.topCone;
       let isBottomTip = i == 0 && shape._initialProps.bottomCone;
-      let radialPlane = shape.radialPlanes[i];
+      let radialPlane = shape.radialPlanes[j];
       if(isTopTip || isBottomTip){
         if(isTopTip)
           controls.push({
@@ -189,6 +127,8 @@ export function getSliceControls(shape) {
             }
           });
       }else{
+        if(i == 0 && j == 0)
+          console.log(radialPlane.normal, j)
         controls.push({
           ix: `${i},${j}`, 
           point: pt(`${i},${j}`),
@@ -199,11 +139,11 @@ export function getSliceControls(shape) {
         controls.push({
           ix: `${i},${j}-`, 
           point: pt(`${i},${j}-`),
-          constrain: { type:'plane', value: radialPlane }});
+          constrain: { type:'plane', value: plane }});
         controls.push({
           ix: `${i},${j}+`, 
           point: pt(`${i},${j}+`),
-          constrain: { type:'plane', value: radialPlane }
+          constrain: { type:'plane', value: plane }
         });
       }
 
@@ -256,8 +196,8 @@ function lengthPointsShift(part, fromL){
 
   for(let j = part.sliceAmount-1; j > fromL; --j){
     let pointsToMove = [];
+    pointsToMove.push([`${j}`,`${j+1}`])
     if(j == part.sliceAmount-1 && hasTopCone){
-      pointsToMove.push([`${j}`,`${j+1}`])
       for(let i = 0; i < radialAmount; ++i){
         pointsToMove.push([`${j}-,${i}`, `${j+1}-,${i}`]);
         pointsToMove.push([`${j}:111,${i}`, `${j+1}:111,${i}`]);
@@ -381,6 +321,8 @@ export function splitPartAtS(part, S){
         origin: new Vector3().lerpVectors(prevPlane.origin, nextPlane.origin, s),
         normal: new Vector3().lerpVectors(prevPlane.normal, nextPlane.normal)
       }
+      part.pointIndex[`${i+1}`] = newSlicePlane.origin.clone();
+      console.log("add point ",i);
 
     break;
     }
@@ -895,6 +837,9 @@ function createCylinders(part, props){
     let upperSlice = getLengthSlice(part, upperSliceId);
     const lerpLower = 0.25;
     const lerpUpper = 0.75;
+    
+    mkPoint(`${lowerSliceId}`, lowerSlice.plane.origin.clone());
+    mkPoint(`${upperSliceId}`, upperSlice.plane.origin.clone());
 
     for(let ix =0; ix < props.radialSegments; ++ix){
       let nx = (ix + 1)%props.radialSegments;
@@ -1008,7 +953,7 @@ function createInitialSlices(part, props){
     let planeOrigin = new Vector3;
     let firstDirection = new Vector3(0,1,0);
     let a = i / part.radialAmount * Math.PI * 2;
-    let p = new Vector3(Math.cos(a),Math.sin(a), 0);
+    let p = new Vector3(Math.cos(a), 0, Math.sin(a));
     let plane = {
       origin: planeOrigin.clone(),
       normal: new Vector3().crossVectors(firstDirection, p)
@@ -1038,6 +983,7 @@ function createInitialSlices(part, props){
         plane
       };
     }
+    
     part.lengthSlices.push(slice);
   });
 }
@@ -1047,8 +993,8 @@ function recreatePatchesFromPoints(part){
   let radialAmount = part.radialAmount;
   let sliceAmount = part.sliceAmount;
   let patchAmount = sliceAmount - 1;
-  let hasTopCone = !!pointIndex[`${sliceAmount-1}`];
-  let hasBottomCone = !!pointIndex['0'];
+  let hasTopCone = part._initialProps.topCone;
+  let hasBottomCone = part._initialProps.bottomCone;
   let newPatchIndex = {};
   let radialDivision = part.radialDivision;
   let lengthDivision = part.lengthDivision;
@@ -1072,7 +1018,6 @@ function recreatePatchesFromPoints(part){
     let uTo   = radialDivision[j+1];
     let vFrom = lengthDivision[i];
     let vTo = lengthDivision[i+1];
-    console.log(i, lengthDivision);
     return {
       '00': `${i},${j}`,
       '10': `${i}+,${j}`,
@@ -1119,6 +1064,7 @@ function recreatePatchesFromPoints(part){
 
     let fromUV = [ uFrom, Math.min(upperU, tCone)];
     let toUV = [uTo, Math.max(lowerU,tCone) ];
+    debugger;
     return {
       '300': `${ix}`,
 
