@@ -12,6 +12,7 @@ import {LineDashedMaterial} from 'three/src/materials/LineDashedMaterial';
 import {Vector3} from 'three/src/math/Vector3';
 import {Vector2} from 'three/src/math/Vector2';
 import {BoxBufferGeometry} from 'three/src/geometries/BoxBufferGeometry';
+import {SphereBufferGeometry} from 'three/src/geometries/SphereBufferGeometry';
 import {PointsMover} from '../../math/RotationalPointsMover.js';
 import * as RotationalShape from '../../math/RotationalShape.js'
 import * as THREE from 'three/src/constants'
@@ -113,8 +114,8 @@ export class PartDisplay extends CanvasBase{
 
   }
 
-  dragControlPoint(vx){
-    this.state.pointsMover.move(vx[1]);
+  dragControlPoint(ray, e){
+    this.state.pointsMover.move(ray, e);
     return this.props.actions.changePartPoints(this.state.pointsMover.getPointIndex());
   }
    
@@ -124,19 +125,25 @@ export class PartDisplay extends CanvasBase{
       if(this.state.hovered == ix) {
         c = new Color(0xff0000);
       }
+      let geometry;
+      if(constrain.type!='rotation'){
+        geometry = {type:BoxBufferGeometry, arguments:[0.01, 0.01, 0.01]}
+      }else{
+        geometry = {type:SphereBufferGeometry, arguments:[0.03, 10, 10]}
+      }
       return {
         type: Mesh,
         position: point.clone(),
         onEnter: ()=>{this.setState({hovered:ix})},
         onLeave: ()=>{this.setState({hovered:null})},
         onDragEnds: ()=>{this.finalizeDrag()},
-        onDragStart:(e, wv)=>this.setState({
+        onDragStart:(e, wv, ray)=>this.setState({
           pointsMover: new PointsMover(
-            this.getShape(), ix, wv, constrain,
+            this.getShape(),e, ix, ray, constrain,
             this.props.state.getIn(['editorState','mode'])) 
         }),
-        onDrag:(e, diff, vs)=>{this.dragControlPoint(vs)},
-        geometry: {type: BoxBufferGeometry, arguments:[0.01, 0.01, 0.01]},
+        onDrag:(e, diff, vs, ray)=>{this.dragControlPoint(ray,e)},
+        geometry,
         material: {type:MeshLambertMaterial, properties:{
           color: c,
           wireframe: false
@@ -209,6 +216,8 @@ export class PartDisplay extends CanvasBase{
       mainMeshes = this.renderCurves(RotationalShape.getCurves(calculated));
     }
     if(editorState.mode == 'edit-radials'){
+      controlMeshes = this.getControls(RotationalShape.getRadialControls(calculated));
+      mainMeshes = this.renderCurves(RotationalShape.getCurves(calculated));
     }
 
     // debugger;

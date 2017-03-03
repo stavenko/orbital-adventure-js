@@ -92,6 +92,42 @@ function getSliceCurves(shape){
   return geometries;
 }
 
+export function getRadialControls(shape){
+  let props = shape._initialProps;
+  let coneSegments = (props.topCone? 1:0) + (props.bottomCone?1:0);
+  let radialAmount = shape.radialAmount;
+  let hasBottomCone = props.bottomCone;
+  let hasTopCone = props.topCone;
+  let controls = [];
+
+  for(let i = 0; i < radialAmount; ++i){
+    if(hasBottomCone)
+      createPlaneRotationControl(i, 1);
+    else 
+      createPlaneRotationControl(i, 0);
+  }
+
+  return controls;
+  function createPlaneRotationControl(j, i){
+    let pt = shape.pointIndex[`${i},${j}`].clone();
+    let plane = shape.radialPlanes[j];
+    let d = pt.clone().sub(plane.origin);
+    let distance = d.length();
+    let dir = d.normalize();
+    let extend = distance * 1.3;
+    let newPoint = dir.multiplyScalar(extend).add(plane.origin);
+    controls.push({
+      point:newPoint,
+      ix: `${j},r`,
+      constrain:{
+        type:'rotation',
+        pivot: plane.origin.clone(),
+        axis: new Vector3().crossVectors(dir, plane.normal).normalize()
+      }
+    })
+
+  }
+}
 
 export function getSliceControls(shape) {
   let {sliceAmount, radialAmount, pointIndex} = shape;
@@ -134,8 +170,11 @@ export function getSliceControls(shape) {
           point: pt(`${i},${j}`),
           constrain: {
             type:'vector', 
-            value: new Vector3()
-              .crossVectors(plane.normal, radialPlane.normal) }});
+            value: {
+              vector: new Vector3()
+                .crossVectors(plane.normal, radialPlane.normal),
+              plane: plane
+            }}});
         controls.push({
           ix: `${i},${j}-`, 
           point: pt(`${i},${j}-`),
@@ -1011,7 +1050,6 @@ function recreatePatchesFromPoints(part){
     }
   }
   part.patchIndex = newPatchIndex;
-    debugger;
 
   function mkQPatch(i, j){
     let ni = i+1;

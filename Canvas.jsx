@@ -108,6 +108,10 @@ export class CanvasBase extends React.Component{
       .map(v=>v.unproject(this.camera));
     }
 
+    rayToWorld(e){
+      return this.rayCaster.ray.clone();
+    }
+
     onMouseMove(e){
       if(this.draggable){
         let diff = [
@@ -116,9 +120,9 @@ export class CanvasBase extends React.Component{
         ];
         if(!this.dragStarted && this.draggable.userData.onDragStart){
           this.dragStarted = true;
-          this.draggable.userData.onDragStart(e, this.eventInWorldPlane(e));
+          this.draggable.userData.onDragStart(e, this.eventInWorldPlane(e),this.rayToWorld(e));
         }
-        this.draggable.userData.onDrag(e, diff, this.calculateVectorsInWorldPlane(e));
+        this.draggable.userData.onDrag(e, diff, this.calculateVectorsInWorldPlane(e), this.rayToWorld(e));
       }else{
         if(this._lastMouseDown){
           this.cameraHandler.rotate(e);
