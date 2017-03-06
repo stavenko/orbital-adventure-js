@@ -38,9 +38,9 @@ function getSideCurves(shape){
     if(hasBottomCone){
       path.push({command:'moveTo', ...shape.pointIndex['0']})
       path.push({command:'curveTo', 
-                cp1:part.pointIndex[`0+,${i}`],
-                cp2:part.pointIndex[`1-,${i}`],
-                end:part.pointIndex[`1,${i}`],
+                cp1:shape.pointIndex[`0+,${i}`],
+                cp2:shape.pointIndex[`1-,${i}`],
+                end:shape.pointIndex[`1,${i}`],
       })
     }else{
       path.push({command:'moveTo', ...shape.pointIndex[`0,${i}`]})
@@ -94,24 +94,90 @@ function getSliceCurves(shape){
 
 export function getRadialControls(shape){
   let props = shape._initialProps;
+  let {sliceAmount, radialAmount, pointIndex} = shape;
   let coneSegments = (props.topCone? 1:0) + (props.bottomCone?1:0);
-  let radialAmount = shape.radialAmount;
   let hasBottomCone = props.bottomCone;
   let hasTopCone = props.topCone;
   let controls = [];
 
-  for(let i = 0; i < radialAmount; ++i){
+  for(let j = 0; j < radialAmount; ++j){
     if(hasBottomCone)
-      createPlaneRotationControl(i, 1);
+      createPlaneRotationControl(j, 1);
     else 
-      createPlaneRotationControl(i, 0);
+      createPlaneRotationControl(j, 0);
+
+    for(let i = 0; i< sliceAmount; ++i){
+      if(hasTopCone && i == (sliceAmount-1)){
+        let ix = `${i}-,${j}`; 
+        controls.push({
+          point: shape.pointIndex[ix],
+          ix,
+          constrain:{
+            type:'plane',
+            value: shape.radialPlanes[j]
+          }
+        });
+        continue;
+      }
+      if(hasBottomCone && i == 0){
+        let ix  = `0+,${j}`;
+        controls.push({
+          point: shape.pointIndex[ix],
+          ix,
+          constrain:{
+            type: 'plane',
+            value: shape.radialPlanes[j]
+          }
+        })
+        continue;
+      }
+      let S = a=>a>0?'+':'-';
+      let ix = `${i},${j}`;
+      let ixs = s=>`${i}${S(s)},${j}`;
+
+      controls.push({
+        point: pointIndex[ix].clone(),
+        ix,
+        constrain:{
+          type:'vector',
+          value:{
+            plane:shape.radialPlanes[j],
+            vector: new Vector3().crossVectors(
+              shape.radialPlanes[j].normal, 
+              shape.crossSlicePlanes[i].normal)
+          }
+        }
+
+      })
+      if(i < sliceAmount-1)
+        controls.push({
+          point: pointIndex[ixs(+1)].clone(),
+          ix: ixs(+1),
+          constrain:{
+            type: 'plane',
+            value: shape.radialPlanes[j]
+          }
+
+        });
+      if(i > 0)
+        controls.push({
+          point: pointIndex[ixs(-1)].clone(),
+          ix: ixs(-1),
+          constrain:{
+            type:'plane',
+            value:shape.radialPlanes[j]
+          }
+        })
+
+    }
   }
 
   return controls;
   function createPlaneRotationControl(j, i){
     let pt = shape.pointIndex[`${i},${j}`].clone();
     let plane = shape.radialPlanes[j];
-    let d = pt.clone().sub(plane.origin);
+    let slicesPlane = shape.crossSlicePlanes[i];
+    let d = pt.clone().sub(slicesPlane.origin);
     let distance = d.length();
     let dir = d.normalize();
     let extend = distance * 1.3;
@@ -121,7 +187,7 @@ export function getRadialControls(shape){
       ix: `${j},r`,
       constrain:{
         type:'rotation',
-        pivot: plane.origin.clone(),
+        pivot: slicesPlane.origin.clone(),
         axis: new Vector3().crossVectors(dir, plane.normal).normalize()
       }
     })
@@ -137,7 +203,16 @@ export function getSliceControls(shape) {
     controls.push({
       point: pointIndex[`${i}`],
       ix:`${i}`,
-      constrain: {type:'vector', value:plane.normal.clone()}
+      constrain: {
+        type:'vector', 
+        value:{ 
+          vector: plane.normal.clone(), 
+          plane: {
+            origin: new Vector3,
+            normal: new Vector3(0,0,1)
+          }
+        }
+      }
     });
     for(let j = 0; j< radialAmount; ++j){
       let isTopTip = i == sliceAmount-1 && shape._initialProps.topCone;

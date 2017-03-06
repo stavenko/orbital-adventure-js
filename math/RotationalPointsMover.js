@@ -73,18 +73,43 @@ export class PointsMover{
         }
       }
 
-
-      console.log(pts);
-
       return pts;
     }else 
       return [pointIndex];
   }
 
   getPointListRadials(pointIndex){
+    let radials = this.shape.radialAmount;
+    let slices = this.shape.sliceAmount;
+    let hasTopCone = this.shape._initialProps.topCone;
+    let hasBottomCone = this.shape._initialProps.bottomCone;
     let st = pointIndex.split(',')
-    if(st[1] == 'r'){
-      return [`0,${st[0]}`];
+    let pts = [];
+    if(st[1] == 'r') {
+      for(let i =0; i < slices; ++i){
+        if(i == 0 && hasBottomCone){
+          pts.push(`0+,${st[0]}`);
+          continue;
+        }
+        if(i == (slices - 1) && hasTopCone){
+          pts.push(`${i}-,${st[0]}`)
+          continue;
+        }
+
+        pts.push(`${i},${st[0]}-`);
+        pts.push(`${i},${st[0]}`);
+        pts.push(`${i},${st[0]}+`);
+
+        if(i < (slices -1))
+          pts.push(`${i}+,${st[0]}`);
+
+        if(i > 0)
+          pts.push(`${i}-,${st[0]}`);
+      }
+      return pts;
+    }else{
+      
+      return [pointIndex];
     }
     return [];
   }
