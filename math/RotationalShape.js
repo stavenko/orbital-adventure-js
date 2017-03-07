@@ -63,6 +63,86 @@ function getSideCurves(shape){
   return geometries;
 }
 
+export function recalculateInterpolatedWeights(shape){
+  for(let j =0; j< shape.radialAmount; ++j){
+    let from = shape._initialProps.bottomCone?0:1;
+    let to = shape._initialProps.topCone?shape.sliceAmount: shape.sliceAmount-1;
+    if(shape._initialProps.bottomCone){
+      recalculate111(shape, j, -1);
+    }
+    if(shape._initialProps.topCone){
+      recalculate111(shape, j, 1);
+    }
+    for(let i = from; i< to; ++i){
+      recalculateQuadFour(shape, i, j);
+    }
+  }
+}
+
+function recalculateQuadFour(shape, L, R){
+  let {pointIndex} = shape;
+  let NL = L +1;
+  let NR = (R +1) % shape.radialAmount;
+
+  calculate(L,R, 1,1);
+  calculate(L,NR, 1,-1);
+  calculate(NL,R, -1,1);
+  calculate(NL,NR, -1,-1);
+  
+
+  function calculate(l,r, ll,rr){
+    let b = base(l, r);
+    let o = b().clone();
+    let r = b(0,rr).clone();
+    let l = b(ll,0);
+    b(ll,rr).copy(r.add(l).sub(o.multiplyScalar(2)));
+  }
+
+  function base(l,r){
+    return (ll,rr)=>shape.pointIndex[`${l}${S(ll)},${r}${S(rr)}`];
+  }
+
+  function S(t){
+    if (t == 0) return '';
+    if (t <  0) return '-';
+    if (t >  0) return '+';
+    return '';
+
+  }
+}
+
+function recalculate111(shape, r, way){
+  let {pointIndex} = shape;
+  let nr = (r + 1) % shape.radialAmount;
+  let tip = 0;
+  if(way < 0) tip = shape.sliceAmount-1;
+  let p300 = pointIndex[`${tip}`];
+  let p030 = pointIndex[`${tip+way},${r}`];
+  let p003 = pointIndex[`${tip+way},${nr}`];
+  let p210 = pointIndex[`${tip}${S(way)},${r}`] ;
+  let p201 = pointIndex[`${tip}${S(way)},${nr}`] ;
+  let p120 = pointIndex[`${tip+way}${S(-way)},${r}`] ;
+  let p102 = pointIndex[`${tip+way}${S(-way)},${nr}`] ;
+  let p021 = pointIndex[`${tip+way},${r}+`] ;
+  let p012 = pointIndex[`${tip+way},${nr}-`] ;
+
+
+  let [_p210, _p201] = [p210, p201].map(p=>p.clone().sub(p300));
+  let [_p120, _p021] = [p120, p021].map(p=>p.clone().sub(p030));
+  let [_p102, _p012] = [p102, p012].map(p=>p.clone().sub(p003));
+  let p210_p201 = p300.clone().add(_p210.add(_p201));
+  let p120_p021 = p030.clone().add(_p120.add(_p021));
+  let p102_p012 = p003.clone().add(_p102.add(_p012));
+
+  let p111 = [p210_p201, p120_p021, p102_p012]
+    .map(p=>p.multiplyScalar(1/3.0))
+    .reduce((p,p1)=>{p.add(p1);return p;}, new Vector3);
+  pointIndex[`${tip}:111,${r}`] = p111;
+  function S(t){
+    return t > 0?'+':'-'
+  }
+}
+
 
 function getSliceCurves(shape){
   let props = shape._initialProps;
@@ -114,7 +194,7 @@ export function getRadialControls(shape){
           ix,
           constrain:{
             type:'plane',
-            value: shape.radialPlanes[j]
+            value: radialPlane(j)
           }
         });
         continue;
@@ -126,7 +206,7 @@ export function getRadialControls(shape){
           ix,
           constrain:{
             type: 'plane',
-            value: shape.radialPlanes[j]
+            value: radialPlane(j)
           }
         })
         continue;
@@ -141,10 +221,13 @@ export function getRadialControls(shape){
         constrain:{
           type:'vector',
           value:{
-            plane:shape.radialPlanes[j],
+            plane: {
+              origin: new Vector3,
+              normal: shape.pointIndex[`${j},r`],
+            },
             vector: new Vector3().crossVectors(
-              shape.radialPlanes[j].normal, 
-              shape.crossSlicePlanes[i].normal)
+              radialPlane(j).normal, 
+              new Vector3(0,1,0))
           }
         }
 
@@ -155,7 +238,7 @@ export function getRadialControls(shape){
           ix: ixs(+1),
           constrain:{
             type: 'plane',
-            value: shape.radialPlanes[j]
+            value: radialPlane(j)
           }
 
         });
@@ -165,7 +248,7 @@ export function getRadialControls(shape){
           ix: ixs(-1),
           constrain:{
             type:'plane',
-            value:shape.radialPlanes[j]
+            value:radialPlane(j)
           }
         })
 
@@ -173,22 +256,29 @@ export function getRadialControls(shape){
   }
 
   return controls;
+  function radialPlane(i){
+    return { 
+      origin: new Vector3,
+      normal: shape.pointIndex[`${i},r`]
+    }
+
+  }
   function createPlaneRotationControl(j, i){
     let pt = shape.pointIndex[`${i},${j}`].clone();
-    let plane = shape.radialPlanes[j];
-    let slicesPlane = shape.crossSlicePlanes[i];
-    let d = pt.clone().sub(slicesPlane.origin);
+    let planeNormal = shape.pointIndex[`${j},r`].clone();
+    let slicesPlaneO = shape.pointIndex[`${i}`];
+    let d = pt.clone().sub(slicesPlaneO);
     let distance = d.length();
     let dir = d.normalize();
     let extend = distance * 1.3;
-    let newPoint = dir.multiplyScalar(extend).add(plane.origin);
+    let newPoint = dir.multiplyScalar(extend);
     controls.push({
       point:newPoint,
       ix: `${j},r`,
       constrain:{
         type:'rotation',
-        pivot: slicesPlane.origin.clone(),
-        axis: new Vector3().crossVectors(dir, plane.normal).normalize()
+        pivot: slicesPlaneO.clone(),
+        axis: new Vector3().crossVectors(dir, planeNormal).normalize()
       }
     })
 
@@ -199,7 +289,11 @@ export function getSliceControls(shape) {
   let {sliceAmount, radialAmount, pointIndex} = shape;
   let controls = [];
   for(let i =sliceAmount-1; i >= 0; --i){
-    let plane = shape.crossSlicePlanes[i];
+    let plane = {
+      origin: shape.pointIndex[`${i}`],
+      normal: new Vector3(0,1,0)
+    }
+
     controls.push({
       point: pointIndex[`${i}`],
       ix:`${i}`,
@@ -217,7 +311,7 @@ export function getSliceControls(shape) {
     for(let j = 0; j< radialAmount; ++j){
       let isTopTip = i == sliceAmount-1 && shape._initialProps.topCone;
       let isBottomTip = i == 0 && shape._initialProps.bottomCone;
-      let radialPlane = shape.radialPlanes[j];
+      let radialPlaneNormal = shape.pointIndex[`${j},r`];
       if(isTopTip || isBottomTip){
         if(isTopTip)
           controls.push({
@@ -225,7 +319,10 @@ export function getSliceControls(shape) {
             point: pt(`${i}-,${j}`),
             constrain:{
               type:'plane',
-              value: radialPlane,
+              value: {
+                origin: new Vector3, 
+                normal:radialPlaneNormal.clone()
+              },
             }
           })
         else
@@ -234,12 +331,13 @@ export function getSliceControls(shape) {
             point: pt(`${i}+,${j}`),
             constrain:{
               type:'plane',
-              value: radialPlane,
+              value: {
+                origin: new Vector3, 
+                normal:radialPlaneNormal.clone()
+              },
             }
           });
       }else{
-        if(i == 0 && j == 0)
-          console.log(radialPlane.normal, j)
         controls.push({
           ix: `${i},${j}`, 
           point: pt(`${i},${j}`),
@@ -247,7 +345,7 @@ export function getSliceControls(shape) {
             type:'vector', 
             value: {
               vector: new Vector3()
-                .crossVectors(plane.normal, radialPlane.normal),
+                .crossVectors(plane.normal, radialPlaneNormal),
               plane: plane
             }}});
         controls.push({
@@ -307,11 +405,9 @@ function lengthPointsShift(part, fromL){
   let patchAmount = radialAmount - 1;
   let hasTopCone = props.topCone;
   let hasBottomCone = props.bottomCone;
-  
-
   for(let j = part.sliceAmount-1; j > fromL; --j){
     let pointsToMove = [];
-    pointsToMove.push([`${j}`,`${j+1}`])
+    pointsToMove.push([`${j}`,`${j+1}`]) // crossPlanes centers
     if(j == part.sliceAmount-1 && hasTopCone){
       for(let i = 0; i < radialAmount; ++i){
         pointsToMove.push([`${j}-,${i}`, `${j+1}-,${i}`]);
@@ -351,6 +447,16 @@ function radialPointsShift(part, fromR){
   let patchAmount = sliceAmount - 1;
   let hasTopCone = props.topCone;
   let hasBottomCone = props.bottomCone;
+  let pointsToMove = [];
+  for(let j = part.radialAmount-1; j >= fromR; --j){
+    pointsToMove.push([`${j},r`, `${j+1},r`])
+  }
+
+  pointsToMove.forEach(([from,to])=>{
+    let p = pointIndex[from];
+    delete pointIndex[from];
+    pointIndex[to] = p
+  })
 
 
   for(let i = 0; i < patchAmount; ++i){
@@ -427,27 +533,23 @@ export function splitPartAtS(part, S){
         patchSubstitution.push([part, fromR, toR, i, i+1, q1, q2 ]);
       }
 
+      let prevPlaneO = part.pointIndex[`${i}`];
+      let nextPlaneO = part.pointIndex[`${i+1}`];
+
       lengthPointsShift(part, i);
       patchSubstitution.forEach(pp=>{
           insertQuadWeightsVertically(...pp);
       })
-      let prevPlane = part.crossSlicePlanes[i];
-      let nextPlane = part.crossSlicePlanes[i+1];
-      newSlicePlane = {
-        origin: new Vector3().lerpVectors(prevPlane.origin, nextPlane.origin, s),
-        normal: new Vector3().lerpVectors(prevPlane.normal, nextPlane.normal)
-      }
-      part.pointIndex[`${i+1}`] = newSlicePlane.origin.clone();
+      part.pointIndex[`${i+1}`] = new Vector3().lerpVectors(prevPlaneO, nextPlaneO, s)
       console.log("add point ",i);
-
     break;
     }
   }
 
   part.lengthDivision= [...part.lengthDivision.slice(0, division), S, 
     ...part.lengthDivision.slice(division)];
-  part.crossSlicePlanes= [...part.crossSlicePlanes.slice(0, division), newSlicePlane, 
-    ...part.crossSlicePlanes.slice(division)];
+  //part.crossSlicePlanes= [...part.crossSlicePlanes.slice(0, division), newSlicePlane, 
+    //...part.crossSlicePlanes.slice(division)];
   part.sliceAmount += 1;
 
   recreatePatchesFromPoints(part);
@@ -486,6 +588,9 @@ export function splitPartAtT(part, t){
         }
       }
 
+      let prevPlaneN = part.pointIndex[`${i},r`];
+      let nextPlaneN = part.pointIndex[`${i+1},r`];
+
       radialPointsShift(part,i+1);
       patchSubstitution.forEach(pp=>{
         if(pp[pp.length-1] == 'triangle')
@@ -493,20 +598,15 @@ export function splitPartAtT(part, t){
         else
           insertQuadWeights(...pp);
       })
-      let prevPlane = part.radialPlanes[i];
-      let nextPlane = part.radialPlanes[(i+1)%part.radialAmount];
-      newSlicePlane = {
-        origin: new Vector3().lerpVectors(prevPlane.origin, nextPlane.origin, s),
-        normal: new Vector3().lerpVectors(prevPlane.normal, nextPlane.normal)
-      }
+
+      let newNormal = new Vector3().lerpVectors(nextPlaneN, prevPlaneN, s);
+      part.pointIndex[`${i+1},r`] = newNormal;
       break;
     }
   }
 
   part.radialDivision = [...part.radialDivision.slice(0, division), t, 
     ...part.radialDivision.slice(division)];
-  part.radialPlanes= [...part.radialPlanes.slice(0, division), newSlicePlane, 
-    ...part.radialPlanes.slice(division)];
 
   part.radialAmount += 1;
 
@@ -787,7 +887,7 @@ function renderTrianglePatch(pointIndex, collection, patchId, steps = 10){
 
 function createPatches(part, props){
   let {topCone, bottomCone, radialSegments} = props;
-  part.pointIndex = {};
+  if(!part.pointIndex) part.pointIndex = {};
   part.patchIndex = {};
   if(bottomCone)props.lengthSegments+=1;
   if(topCone) props.lengthSegments+=1
@@ -796,6 +896,7 @@ function createPatches(part, props){
   if(topCone)
     createConeAt(part, props, 1);
   createCylinders(part, props);
+  recalculateInterpolatedWeights(shape);
   recreatePatchesFromPoints(part);
 
 }
@@ -1049,6 +1150,7 @@ function createSliceFromRadialSegments(part, orientation, t){
 function createInitialSlices(part, props){
   part.sliceAmount = props.lengthSegments+1;
   part.radialAmount = props.radialSegments;
+  part.pointIndex = {};
   part.crossSlicePlanes = [];
   part.radialPlanes = [];
 
@@ -1068,13 +1170,16 @@ function createInitialSlices(part, props){
   for(let i = 0; i < part.radialAmount; ++i){
     let planeOrigin = new Vector3;
     let firstDirection = new Vector3(0,1,0);
-    let a = i / part.radialAmount * Math.PI * 2;
+    let a = (1 - i / part.radialAmount) * Math.PI * 2;
+    a-=Math.PI/2;
     let p = new Vector3(Math.cos(a), 0, Math.sin(a));
+    // let q = new Quaternion().setFromAxisAngle(new Vector3(0,1,0), Math.PI/2);
     let plane = {
       origin: planeOrigin.clone(),
-      normal: new Vector3().crossVectors(firstDirection, p)
+      normal: p // .applyQuaternion(q)
     }
-    part.radialPlanes.push(plane);
+    console.log(plane.normal);
+    part.pointIndex[`${i},r`] = plane.normal.clone();
   }
 
   ts.push(1);
@@ -1087,12 +1192,14 @@ function createInitialSlices(part, props){
     };
     if(id == 0 && props.bottomCone || id == part.sliceAmount -1 && props.topCone){
       let plane = getSlicePlane(part, props.orientation, slice.t);
-      part.crossSlicePlanes.push(plane);
+      // part.crossSlicePlanes.push(plane);
+      part.pointIndex[`${id}`] = plane.origin.clone();
       slice.weights = [...circleInPlane(plane,props.radialSegments, props.radius * 0.4)];
       slice.plane = plane;
     }else{
       let plane = getSlicePlane(part, props.orientation, slice.t);
-      part.crossSlicePlanes.push(plane);
+      // part.crossSlicePlanes.push(plane);
+      part.pointIndex[`${id}`] = plane.origin.clone();
       slice = {
         ...createSliceFromRadialSegments(part, props.orientation, slice.t),
         ...slice,
@@ -1233,6 +1340,7 @@ function createConeAt(part, props, tCone){
       .multiplyScalar(-way*coneBaseWeight1)
 
 
+
     let p300 = tipSlice.plane.origin.clone();
     let p030 = baseSlice.points[`${ix}`].clone();
     let p003 = baseSlice.points[`${nextIndex}`].clone();
@@ -1241,6 +1349,7 @@ function createConeAt(part, props, tCone){
     let p021 = baseSlice.points[`${ix}+`].clone();
     let p012 = baseSlice.points[`${nextIndex}-`].clone();
 
+    /*
     let [_p210, _p201] = [p210, p201].map(p=>p.clone().sub(p300));
     let [_p120, _p021] = [p120, p021].map(p=>p.clone().sub(p030));
     let [_p102, _p012] = [p102, p012].map(p=>p.clone().sub(p003));
@@ -1251,8 +1360,8 @@ function createConeAt(part, props, tCone){
       .map(p=>p.multiplyScalar(1/3.0))
       .reduce((p,p1)=>{p.add(p1);return p;}, new Vector3);
 
-    // let p111 = pathCentral.add(tri111Weight); 
-    
+   */ 
+   p111 = new Vector3;
     
    mkPoint(`${lengthIndex}`, p300);
                                                                                    

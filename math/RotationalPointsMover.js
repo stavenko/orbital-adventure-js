@@ -1,6 +1,7 @@
 import {Vector3} from 'three/src/math/Vector3';
 import {Plane} from 'three/src/math/Plane';
 import {Quaternion} from 'three/src/math/Quaternion';
+import {recalculateInterpolatedWeights} from './RotationalShape.js';
 
 export class PointsMover{
   constructor(shape, fromEvent, ix, fromRay, constrain, editorMode){
@@ -106,6 +107,7 @@ export class PointsMover{
         if(i > 0)
           pts.push(`${i}-,${st[0]}`);
       }
+      pts.push(pointIndex);
       return pts;
     }else{
       
@@ -179,8 +181,12 @@ export class PointsMover{
       pi[ix] = this.shape.pointIndex[ix].clone();
     }
     this.movePoint(pi);
+    let shp = {...shape};
+    shp.pointIndex = pi
+    recalculateInterpolatedWeights(shp);
     return pi;
   }
+
   getPointIndex(){
     return this.calculateNewPointIndex();
   }
