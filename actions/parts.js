@@ -55,6 +55,14 @@ export function changePartPoints(pointIndex){
   }
 }
 
+export const CREATE_CUTTING_PLANE = 'CREATE_CUTTING_PLANE';
+export function createCuttingPlane(plane){
+  return {
+    type:CREATE_CUTTING_PLANE,
+    plane
+  }
+}
+
 export const SELECT_MODE = 'SELECT_MODE';
 export function selectMode(mode){
   return {

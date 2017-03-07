@@ -45,12 +45,45 @@ function ShapeControls(props){
         Edit Radials
       </div>
       <div className='btn' 
-        onClick={()=>actions.selectMode('add-plane-cutter')} 
+        onClick={()=>actions.selectMode('plane-cutter')} 
       >
         Add Plane cutter
       </div>
+      <PlaneCutterControl {...props} />
 
   </div>
+}
+
+const defaultPlane = {
+  origin: [0,0,0],
+  normal: [0,-1,0],
+  shift: 0,
+  roundness: 0,
+  bevel: 0
+}
+
+function PlaneCutterControl(props){
+  let editorState = props.state.get('editorState').toJS();
+  let part = props.state.get('currentPart').toJS();
+  let planes = part.calculated.cuttingPlanes;
+  if(editorState.mode !== 'plane-cutter') return null;
+  return <div>
+    {planes.map((plane,id)=><PlaneCutter plane={plane} id={id} key={id} {...props} />}
+    <div className='btn btn-primary' onClick=()=>{actions.createCuttingPlane(defaultPlane)}> 
+      Add 
+    </div>
+  </div>
+}
+
+function PlaneCutter({plane, actions}){
+  return <div >
+    <pre> Lets manage plane params: 
+      1. planeShift - how low below plane we begin to cut mesh
+      2. roundness - radius of transition from mesh, to plane
+      3. bevel width - width of bevelfrom mesh to plane contour
+    </pre>
+  </div>
+  
 }
 
 function ShapeCreator(props){
