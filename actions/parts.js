@@ -63,6 +63,14 @@ export function createCuttingPlane(plane){
   }
 }
 
+export const SELECT_PLANE = 'SELECT_PLANE';
+export function selectPlane(plane){
+  return {
+    type:SELECT_PLANE,
+    plane
+  }
+}
+
 export const SELECT_MODE = 'SELECT_MODE';
 export function selectMode(mode){
   return {

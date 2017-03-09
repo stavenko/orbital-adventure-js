@@ -63,27 +63,36 @@ const defaultPlane = {
 }
 
 function PlaneCutterControl(props){
+  let {actions} = props;
   let editorState = props.state.get('editorState').toJS();
   let part = props.state.get('currentPart').toJS();
-  let planes = part.calculated.cuttingPlanes;
+  let planes = part.calculated.cuttingPlanes || [];
   if(editorState.mode !== 'plane-cutter') return null;
   return <div>
-    {planes.map((plane,id)=><PlaneCutter plane={plane} id={id} key={id} {...props} />)}
+    {planes.map((plane,id)=><PlaneCutter plane={plane} selected={editorState.selectedPlane} id={id} key={id} {...props} />)}
     <div className='btn btn-primary' onClick={()=>{actions.createCuttingPlane(defaultPlane)}}> 
       Add 
     </div>
   </div>
 }
 
-function PlaneCutter({plane, actions}){
-  return <div >
-    <pre> Lets manage plane params: 
-      1. planeShift - how low below plane we begin to cut mesh
-      2. roundness - radius of transition from mesh, to plane
-      3. bevel width - width of bevelfrom mesh to plane contour
-    </pre>
+function PlaneCutter({plane, id, selected, actions}){
+  let cls = classnames('plane-control', {'selected':selected == id});
+  return <div className={cls}>
+    <div onClick={()=>actions.selectPlane(id)}> Plane #{id} </div>
+    {inputs()}
   </div>
   
+
+  function inputs(){
+    if(selected != id) return null;
+    return [
+      <input value={plane.shift}/>,
+      <input value={plane.roundness}/>,
+      <input value={plane.bevel}/>
+
+    ]
+  }
 }
 
 function ShapeCreator(props){
