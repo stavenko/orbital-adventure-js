@@ -68,8 +68,8 @@ function PlaneCutterControl(props){
   let planes = part.calculated.cuttingPlanes;
   if(editorState.mode !== 'plane-cutter') return null;
   return <div>
-    {planes.map((plane,id)=><PlaneCutter plane={plane} id={id} key={id} {...props} />}
-    <div className='btn btn-primary' onClick=()=>{actions.createCuttingPlane(defaultPlane)}> 
+    {planes.map((plane,id)=><PlaneCutter plane={plane} id={id} key={id} {...props} />)}
+    <div className='btn btn-primary' onClick={()=>{actions.createCuttingPlane(defaultPlane)}}> 
       Add 
     </div>
   </div>

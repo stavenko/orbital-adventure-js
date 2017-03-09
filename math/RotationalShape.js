@@ -65,15 +65,16 @@ function getSideCurves(shape){
 
 export function recalculateInterpolatedWeights(shape){
   for(let j =0; j< shape.radialAmount; ++j){
-    let from = shape._initialProps.bottomCone?0:1;
-    let to = shape._initialProps.topCone?shape.sliceAmount: shape.sliceAmount-1;
+    let from = shape._initialProps.bottomCone?1:0;
+    let to = shape._initialProps.topCone?(shape.sliceAmount-1): shape.sliceAmount;
+    to-=1;
     if(shape._initialProps.bottomCone){
-      recalculate111(shape, j, -1);
-    }
-    if(shape._initialProps.topCone){
       recalculate111(shape, j, 1);
     }
-    for(let i = from; i< to; ++i){
+    if(shape._initialProps.topCone){
+      recalculate111(shape, j, -1);
+    }
+    for(let i = from; i < to; ++i){
       recalculateQuadFour(shape, i, j);
     }
   }
@@ -93,13 +94,16 @@ function recalculateQuadFour(shape, L, R){
   function calculate(l,r, ll,rr){
     let b = base(l, r);
     let o = b().clone();
-    let r = b(0,rr).clone();
-    let l = b(ll,0);
-    b(ll,rr).copy(r.add(l).sub(o.multiplyScalar(2)));
+    let left = b(0,rr).clone().sub(o);
+    let right= b(ll,0).clone().sub(o);
+
+    b(ll,rr).copy(left.add(right).add(o));
   }
 
   function base(l,r){
-    return (ll,rr)=>shape.pointIndex[`${l}${S(ll)},${r}${S(rr)}`];
+    return (ll,rr)=>{
+      return shape.pointIndex[`${l}${S(ll)},${r}${S(rr)}`];
+    }
   }
 
   function S(t){
@@ -116,6 +120,7 @@ function recalculate111(shape, r, way){
   let nr = (r + 1) % shape.radialAmount;
   let tip = 0;
   if(way < 0) tip = shape.sliceAmount-1;
+  console.log('111', tip, r, nr);
   let p300 = pointIndex[`${tip}`];
   let p030 = pointIndex[`${tip+way},${r}`];
   let p003 = pointIndex[`${tip+way},${nr}`];
@@ -896,7 +901,7 @@ function createPatches(part, props){
   if(topCone)
     createConeAt(part, props, 1);
   createCylinders(part, props);
-  recalculateInterpolatedWeights(shape);
+  recalculateInterpolatedWeights(part);
   recreatePatchesFromPoints(part);
 
 }
@@ -1361,7 +1366,7 @@ function createConeAt(part, props, tCone){
       .reduce((p,p1)=>{p.add(p1);return p;}, new Vector3);
 
    */ 
-   p111 = new Vector3;
+   let p111 = new Vector3;
     
    mkPoint(`${lengthIndex}`, p300);
                                                                                    
