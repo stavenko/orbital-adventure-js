@@ -55,8 +55,8 @@ function ShapeControls(props){
 }
 
 const defaultPlane = {
-  origin: [0,0,0],
-  normal: [0,-1,0],
+  origin: [0,0,0.5],
+  normal: [0.8944,0.1, 0.4472],
   shift: 0,
   roundness: 0,
   bevel: 0
@@ -87,9 +87,9 @@ function PlaneCutter({plane, id, selected, actions}){
   function inputs(){
     if(selected != id) return null;
     return [
-      <input value={plane.shift}/>,
-      <input value={plane.roundness}/>,
-      <input value={plane.bevel}/>
+      <input key='1' value={plane.shift}/>,
+      <input key='2' value={plane.roundness}/>,
+      <input key='3' value={plane.bevel}/>
 
     ]
   }

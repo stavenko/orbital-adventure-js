@@ -17,7 +17,7 @@ import {PointsMover} from '../../math/RotationalPointsMover.js';
 import * as RotationalShape from '../../math/RotationalShape.js'
 import * as THREE from 'three/src/constants'
 import * as Path from '../../math/Path.js';
-import {QuadBezierBufferGeometry, TriangleBezierBufferGeometry} from '../../math/Geometry.js';
+import {QuadBezierBufferGeometry,PlaneGeometry, TriangleBezierBufferGeometry} from '../../math/Geometry.js';
 import {Textures} from '../../Utils/TextureCache.js';
 import * as Quad from './../../math/QuadBezier.js';
 
@@ -201,14 +201,21 @@ export class PartDisplay extends CanvasBase{
     }));
   }
 
+  planeMesh(plane){
+    return {
+      type:Mesh,
+      geometry: {type:PlaneGeometry, arguments:[plane, 1, 1]},
+      material: {type:MeshBasicMaterial, properties:{
+        wireframe: true
+      }}
+    }
+  }
+
   renderEditorScene(calculated){
     let editorState = this.props.state.get('editorState').toJS();
     let mainMeshes = this.renderCreatorScene(calculated);
 
-    // let sliceControls  = RotationalShape.getSliceControls(calculated);
-    // let sideControls  = RotationalShape.getSideLineControls(calculated);
     let color = new Color(0x0000ff);
-    // let cps = this.getControls(sliceControls);
     //
     let controlMeshes = [];
     if(editorState.mode == 'edit-slices'){
@@ -220,7 +227,13 @@ export class PartDisplay extends CanvasBase{
       mainMeshes = this.renderCurves(RotationalShape.getCurves(calculated));
     }
 
-    // debugger;
+    if(editorState.mode == 'plane-cutter'){
+      let planes = calculated.cuttingPlanes || [];
+      let plane = planes[editorState.selectedPlane];
+      if(plane)
+        controlMeshes = [this.planeMesh(plane)];
+    }
+
 
 
     let meshes = [...mainMeshes, 
