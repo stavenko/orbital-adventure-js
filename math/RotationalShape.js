@@ -844,10 +844,6 @@ function getGeometryAttributes(part, patch){
   let attrs = [patch.length];
   let pointIndex = part.pointIndex;
   let weights = patchToWeights(part, patch);
-  //for( let key in patch){
-    //if(pointIndex[patch[key]])
-      //weights[key] = pointIndex[patch[key]].clone();
-  //}
   attrs.push(weights)
   attrs.push(...patch.uv);
   if(patch.length == 10){

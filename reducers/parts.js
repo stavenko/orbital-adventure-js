@@ -5,11 +5,11 @@ import * as RotationalShape from '../math/RotationalShape.js'
 const initialPartConfig = {
   length:1,
   radius: 0.23,
-  lengthSegments: 2,
+  lengthSegments: 0,
   radialSegments: 4,
   topCone: true,
   topConeLength: 0.33,
-  bottomCone: false,
+  bottomCone: true,
   bottomConeLength: 0.33,
   type: 'rotational',
   orientation: 'path-tangent'

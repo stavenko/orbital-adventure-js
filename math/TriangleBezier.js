@@ -117,6 +117,104 @@ export function getGeometryLineAtS(weights, s, steps){
 
 }
 
+
+export function patchGeometryCreator(multigeometryManager){
+  let G = multigeometryManager;
+  return (patch, patchIndexes, steps=10)=>{
+    let way = patch.way;
+    let FI = 0, 
+      LI = steps, 
+      inc = (i)=>i+1;
+    if(way > 0){
+      FI = steps;
+      LI = 0; 
+      inc = (i)=>i-1;
+    }
+    for(let i =FI; i != LI; i=inc(i)){
+      for(let j=0; j < steps; ++j){
+        let ni = inc(i);
+        let nj = (j + 1);
+        let lb = getPoint(i,j);
+        let lt = getPoint(i,nj);
+        let rb = getPoint(ni,j);
+        let rt = getPoint(ni,nj);
+        let face1, face2;
+        if(way> 0){
+          face1 = [lb, lt, rt];
+          face2 = [lb, rt, rb];
+        }else{
+          face1 = [lb, rt, lt];
+          face2 = [lb, rb, rt];
+        }
+        G.pushFace(...face1, ...face2);
+      }
+    }
+
+    function getPoint(i, j){
+
+      return G.getPointIndex(()=>{
+        return pointCreator(i, j);
+      },(patchIndexes.i*steps)+i, (patchIndexes.j*(steps+1))+j, );
+    }
+
+    function uvw(i,j){
+      let u = i / steps;
+      if(way>0) u=1-u;
+      let v = (j / steps)*(1-u);
+      let w = 1.0 - v - u;
+      return [u,v,w]
+    }
+
+    function pointCreator(i, j){
+      return getPointBezier(...uvw(i,j), patch);
+    }
+
+    function getPointBezier(u,v,w, patch){
+      const delta = 0.0001;
+      let point = new Vector3;
+      let [uvFrom, uvTo] = patch.uv;
+
+      let uvDiff = [0,1].map(i=>uvTo[i] - uvFrom[i]);
+
+      let pT = new Vector3;
+      let pS = new Vector3;
+      let u1 = u + delta,
+          v1 = v + delta;
+      if(u - 1 < delta) u1 = u - delta;
+      if(v - 1 < delta) v1 = v - delta;
+
+      let keys = ['300', '210', '201', '120', '111', '102', '030', '021', '012', '003'];
+
+      keys.forEach(key=>{
+        let pp = patch[key].clone();
+        let k=parseInt(key[0]),
+            j=parseInt(key[1]),
+            i=parseInt(key[2]);
+
+        point.add(pp.clone().multiplyScalar(Bernstein([i,j,k], [u,v,w])));
+        pT.add(pp.clone().multiplyScalar(Bernstein([i,j,k], [u, v1, 1. -u-v1])));
+        pS.add(pp.clone().multiplyScalar(Bernstein([i,j,k], [u1, v, 1.0-u1-v])));
+      })
+      let tangentS = pS.sub(point), 
+          tangentT = pT.sub(point);
+      if(u1 < u) tangentT.negate();
+      if(v1 < v) tangentS.negate();
+      let vuw = [u, v, w];
+
+      let MaxR = 1-u; 
+      let uT = w/MaxR;
+      let vt = u;
+      if(way > 0) vt = 1.0-u;
+      let uv = new Vector2(uT * uvDiff[0] + uvFrom[0],
+                           vt * uvDiff[1] + uvFrom[1]);
+
+
+      return {position:point ,tangentS, tangentT, uv, 
+        normal: new Vector3().crossVectors(tangentT, tangentS).normalize().negate() };
+    }
+  }
+}
+
 export function getGeometryFromPatch(weights, uvFrom, uvTo, invert, steps = 10){
   let geometry = { indices:[], positions: [],
     faces:[], pointsIx: {}, normals:[], uvs:[] }
@@ -130,16 +228,11 @@ export function getGeometryFromPatch(weights, uvFrom, uvTo, invert, steps = 10){
     let first = getPoint(i  ,0, patch);
     let top   = getPoint(i+1,0, patch);
     let second = getPoint(i, 1, patch);
-    // geometry.indices.push(first, top, second);
 
     let last = getPoint(i,  steps-i, patch);
     let topl = getPoint(i+1,steps-(i+1),patch);
     let preLast = getPoint(i, steps-i-1, patch);
-    if(way < 0)
-      geometry.indices.push(last, preLast, topl);
-    else
-      geometry.indices.push(last, topl, preLast);
-    for(let j=0; j < to-1; ++j){
+    for(let j=0; j < steps; ++j){
       let ni = (i + 1)
       let nj = (j + 1)
       let lb = getPoint(i,j, patch);
@@ -154,11 +247,6 @@ export function getGeometryFromPatch(weights, uvFrom, uvTo, invert, steps = 10){
         face1 = [lb, rt, lt];
         face2 = [lb, rb, rt];
       }
-
-      let u = i / steps;
-      let v = j / steps;
-      let w = 1.0 - v - u;
-
       geometry.indices.push(...face1, ...face2);
     }
   }
@@ -181,8 +269,10 @@ export function getGeometryFromPatch(weights, uvFrom, uvTo, invert, steps = 10){
 
   function uvw(i,j){
     let u = i / steps;
-    let v = j / steps;
+    let v = (j / steps)*(1-u);
     let w = 1.0 - v - u;
+    if(u+v+w > 1)
+      console.log(u,v,w);
     return [u,v,w]
   }
 

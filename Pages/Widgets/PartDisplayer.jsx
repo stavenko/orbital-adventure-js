@@ -17,7 +17,11 @@ import {PointsMover} from '../../math/RotationalPointsMover.js';
 import * as RotationalShape from '../../math/RotationalShape.js'
 import * as THREE from 'three/src/constants'
 import * as Path from '../../math/Path.js';
-import {QuadBezierBufferGeometry,PlaneGeometry, TriangleBezierBufferGeometry} from '../../math/Geometry.js';
+import {QuadBezierBufferGeometry,
+  PlaneGeometry, 
+  RotationalPartGeometry,
+  TriangleBezierBufferGeometry
+} from '../../math/Geometry.js';
 import {Textures} from '../../Utils/TextureCache.js';
 import * as Quad from './../../math/QuadBezier.js';
 
@@ -164,6 +168,20 @@ export class PartDisplay extends CanvasBase{
   }
 
   renderCreatorScene(calculated){
+    let c = this.randomColors[0];
+    return [{
+      type:Mesh,
+      geometry: {type:RotationalPartGeometry, arguments:[calculated]},
+        position: new Vector3,
+        material:{
+          type: MeshLambertMaterial, properties:{
+            color: c,
+            // map: Textures.earthMap,
+            wireframe: true,
+            side: THREE.FrontSide
+          }
+        }
+    }];
     return RotationalShape.getRotationalGeometry(calculated).map((attrs,ix)=>{
       let c = this.randomColors[ix];
       return {
@@ -179,7 +197,7 @@ export class PartDisplay extends CanvasBase{
           type: MeshLambertMaterial, properties:{
             color: c,
             // map: Textures.earthMap,
-            wireframe:true,
+            wireframe: true,
             side: THREE.FrontSide
           }
         }

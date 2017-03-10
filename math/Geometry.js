@@ -1,9 +1,12 @@
+import {patchToWeights} from './Utils.js';
+import {MultigeometryManager} from './MultigeometryManager.js';
 import {Vector3} from 'three/src/math/Vector3';
 import {BufferGeometry} from 'three/src/core/BufferGeometry';
 import {BufferAttribute} from 'three/src/core/BufferAttribute';
 import {toArray} from './Math.js';
 import * as Quad from './QuadBezier.js'
 import * as Triangle from './TriangleBezier.js'
+
 
 
 export function PlaneGeometry(plane, sizex, sizey){
@@ -78,6 +81,41 @@ export function QuadGeometry(tSteps, sSteps){
 QuadGeometry.prototype = Object.create(BufferGeometry.prototype);
 QuadGeometry.prototype.constructor = BufferGeometry;
 
+
+export function RotationalPartGeometry(shape){
+  BufferGeometry.call(this);
+  let stepsPerPart = 10;
+  let I = shape.radialAmount*stepsPerPart + 1;
+  let G = new MultigeometryManager((i,j)=>`${i},${j}`);
+  let creatorTri = Triangle.patchGeometryCreator(G);
+  for(let key in shape.patchIndex){
+    let patch = patchToWeights(shape, shape.patchIndex[key]);
+    let [i, j] = key.split(',').map(i=>parseInt(i));
+    if(patch.length <= 10){
+      creatorTri(patch, {i,j});
+    }
+  }
+  this.setIndex(new BufferAttribute(toArray(Uint16Array, G.faces), 1));
+  for(let b in G.arrays){
+    let size = 3;
+    if(b == 'uv') size == 2;
+    console.log("add",b);
+    this.addAttribute(b, new BufferAttribute(toArray(Float32Array,G.arrays[b]), size));
+  }
+  check();
+
+  function check(){
+    G.posArray.forEach(v=>{
+
+      console.log(G.posArray.filter(vv=>{
+        return vv.distanceTo(v) < 0.0001;
+      }).map(v=>[v.x,v.y,v.z].map(f=>f.toFixed(2)).join(',')));
+    })
+  }
+}
+
+RotationalPartGeometry.prototype = Object.create(BufferGeometry.prototype);
+RotationalPartGeometry.prototype.constructor = BufferGeometry;
 
 export function TriangleBezierBufferGeometry(weights,uvStart, uvEnd, invert, sSteps){
   BufferGeometry.call(this);
