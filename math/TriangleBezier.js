@@ -118,7 +118,7 @@ export function getGeometryLineAtS(weights, s, steps){
 }
 
 
-export function patchGeometryCreator(multigeometryManager){
+export function patchGeometryCreator(multigeometryManager, max){
   let G = multigeometryManager;
   return (patch, patchIndexes, steps=10)=>{
     let way = patch.way;
@@ -151,16 +151,15 @@ export function patchGeometryCreator(multigeometryManager){
     }
 
     function getPoint(i, j){
-
       return G.getPointIndex(()=>{
         return pointCreator(i, j);
-      },(patchIndexes.i*steps)+i, (patchIndexes.j*(steps+1))+j, );
+      },((patchIndexes.i*steps)+i)%max.i, ((patchIndexes.j*(steps))+j)%max.j, );
     }
 
     function uvw(i,j){
       let u = i / steps;
       if(way>0) u=1-u;
-      let v = (j / steps)*(1-u);
+      let v = (1-(j / steps))*(1-u);
       let w = 1.0 - v - u;
       return [u,v,w]
     }

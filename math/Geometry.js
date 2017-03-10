@@ -87,7 +87,7 @@ export function RotationalPartGeometry(shape){
   let stepsPerPart = 10;
   let I = shape.radialAmount*stepsPerPart + 1;
   let G = new MultigeometryManager((i,j)=>`${i},${j}`);
-  let creatorTri = Triangle.patchGeometryCreator(G);
+  let creatorTri = Triangle.patchGeometryCreator(G, {i:Infinity, j:stepsPerPart*shape.radialAmount});
   for(let key in shape.patchIndex){
     let patch = patchToWeights(shape, shape.patchIndex[key]);
     let [i, j] = key.split(',').map(i=>parseInt(i));
@@ -105,11 +105,12 @@ export function RotationalPartGeometry(shape){
   check();
 
   function check(){
-    G.posArray.forEach(v=>{
-
-      console.log(G.posArray.filter(vv=>{
-        return vv.distanceTo(v) < 0.0001;
-      }).map(v=>[v.x,v.y,v.z].map(f=>f.toFixed(2)).join(',')));
+    G.posArray.forEach(([ixx,v])=>{
+      let fs = G.posArray.filter(vv=>{
+        return (vv[1].distanceTo(v) < 0.0001 && ixx != vv[0]);
+      }).map(([ix, v])=>[ix,[v.x,v.y,v.z].map(f=>f.toFixed(2)).join(',')].join(':'))
+      if(fs.length > 0)
+        console.log(ixx, fs);
     })
   }
 }
