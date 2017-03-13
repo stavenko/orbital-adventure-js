@@ -17,6 +17,7 @@ export function PlaneGeometry(plane, sizex, sizey){
   let z = new Vector3(0,0,1);
   let pn = new Vector3(...plane.normal);
   let po = new Vector3(...plane.origin);
+  console.log('-----', plane.normal, plane.origin);
 
   let dots = [x,y,z].map(v=>v.dot(pn)).map((d,ix)=>[d,ix]).sort((a,b)=>b[0] - a[0]);
   let best = [x,y,z][dots[0][1]];

@@ -24,6 +24,7 @@ import {QuadBezierBufferGeometry,
 } from '../../math/Geometry.js';
 import {Textures} from '../../Utils/TextureCache.js';
 import * as Quad from './../../math/QuadBezier.js';
+import {getPlaneControls, PlaneModifier} from './../../math/PlaneControls.js';
 
 export class PartDisplay extends CanvasBase{
   constructor(props){
@@ -113,14 +114,46 @@ export class PartDisplay extends CanvasBase{
     return this.props.state.get('currentPart').toJS();
   }
 
+  startDrag(ix, constrain, e,wv,ray){
+    let mode = this.props.state.getIn(['editorState', 'mode']);
+    if(mode == 'edit-slices' || mode == 'edit-radials' ){
+      this.setState({
+        pointsMover: new PointsMover(
+          this.getShape(),e, ix, ray, constrain,
+          this.props.state.getIn(['editorState','mode'])) 
+      });
+    }else if(mode =='plane-cutter'){
+      let part = this.props.state.get('currentPart').toJS();
+      let planeId = this.props.state.getIn(['editorState','selectedPlane']);
+      let planes = part.calculated.cuttingPlanes || [];
+      let plane = planes[planeId];
+      this.setState({
+        pointsMover: new PlaneModifier(plane, e, ix, ray, constrain, this.props.state.getIn(['editorState','mode']))
+      })
+
+    }
+  }
+
   finalizeDrag(){
-    this.props.actions.changePartPoints(this.state.pointsMover.getPointIndex())
+    let mode = this.props.state.getIn(['editorState', 'mode']).toJS();
+    if(mode == 'edit-slices' || mode == 'edit-radials' ){
+      this.props.actions.changePartPoints(this.state.pointsMover.getPointIndex())
+    }else if(mode == 'plane-cutter'){
+      let ix = this.props.state.getIn(['editorState', 'selectedPlane']).toJS();
+      this.props.actions.changePlane(ix, this.state.pointsMover.getPlane())
+    }
 
   }
 
   dragControlPoint(ray, e){
     this.state.pointsMover.move(ray, e);
-    return this.props.actions.changePartPoints(this.state.pointsMover.getPointIndex());
+    let mode = this.props.state.getIn(['editorState', 'mode']);
+    if(mode == 'edit-slices' || mode == 'edit-radials' ){
+      return this.props.actions.changePartPoints(this.state.pointsMover.getPointIndex());
+    }else if(mode == 'plane-cutter'){
+      let ix = this.props.state.getIn(['editorState', 'selectedPlane']);
+      return this.props.actions.changePlane(ix, this.state.pointsMover.getPlane());
+    }
   }
    
   getControls(controlsArray, cpColor = new Color(0xff9900)){
@@ -141,11 +174,7 @@ export class PartDisplay extends CanvasBase{
         onEnter: ()=>{this.setState({hovered:ix})},
         onLeave: ()=>{this.setState({hovered:null})},
         onDragEnds: ()=>{this.finalizeDrag()},
-        onDragStart:(e, wv, ray)=>this.setState({
-          pointsMover: new PointsMover(
-            this.getShape(),e, ix, ray, constrain,
-            this.props.state.getIn(['editorState','mode'])) 
-        }),
+        onDragStart:(a,b,c)=>this.startDrag(ix, constrain, a,b,c),
         onDrag:(e, diff, vs, ray)=>{this.dragControlPoint(ray,e)},
         geometry,
         material: {type:MeshLambertMaterial, properties:{
@@ -248,8 +277,13 @@ export class PartDisplay extends CanvasBase{
     if(editorState.mode == 'plane-cutter'){
       let planes = calculated.cuttingPlanes || [];
       let plane = planes[editorState.selectedPlane];
-      if(plane)
-        controlMeshes = [this.planeMesh(plane)];
+      if(plane){
+        let planeControls = getPlaneControls({
+          origin: new Vector3(...plane.origin),
+          normal: new Vector3(...plane.normal)
+        })
+        controlMeshes = [this.planeMesh(plane), ...this.getControls(planeControls)];
+      }
     }
 
 

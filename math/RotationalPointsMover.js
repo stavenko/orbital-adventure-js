@@ -181,7 +181,7 @@ export class PointsMover{
       pi[ix] = this.shape.pointIndex[ix].clone();
     }
     this.movePoint(pi);
-    let shp = {...shape};
+    let shp = {...this.shape};
     shp.pointIndex = pi
     recalculateInterpolatedWeights(shp);
     return pi;

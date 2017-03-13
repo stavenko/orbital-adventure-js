@@ -71,6 +71,15 @@ export function partsEditor(state = initialState, action){
     case A.SELECT_PLANE:{
       return state.setIn(['editorState', 'selectedPlane'], action.plane);
     }
+    case A.CHANGE_PLANE:{
+      let plane = action.plane;
+      plane.origin = plane.origin.toArray();
+      plane.normal = plane.normal.toArray();
+      let part = state.get('currentPart').toJS();
+      part.calculated.cuttingPlanes[action.ix] = plane;
+      return state.setIn(['currentPart', 'calculated'], part.calculated);
+    }
+
     case A.CREATE_CUTTING_PLANE:{
       let part = state.get('currentPart').toJS();
       if(!part.calculated.cuttingPlanes) part.calculated.cuttingPlanes = [];

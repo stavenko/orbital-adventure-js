@@ -71,6 +71,14 @@ export function selectPlane(plane){
   }
 }
 
+export const CHANGE_PLANE = 'CHANGE_PLANE';
+export function changePlane(ix, plane){
+  return {
+    type:CHANGE_PLANE,
+    plane, ix
+  }
+}
+
 export const SELECT_MODE = 'SELECT_MODE';
 export function selectMode(mode){
   return {
