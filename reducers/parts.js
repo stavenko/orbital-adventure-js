@@ -77,7 +77,8 @@ export function partsEditor(state = initialState, action){
       plane.normal = plane.normal.toArray();
       let part = state.get('currentPart').toJS();
       part.calculated.cuttingPlanes[action.ix] = plane;
-      return state.setIn(['currentPart', 'calculated'], part.calculated);
+      console.log(part.calculated.cuttingPlanes[action.ix]);
+      return state.setIn(['currentPart', 'calculated'], fromJS(part.calculated));
     }
 
     case A.CREATE_CUTTING_PLANE:{
