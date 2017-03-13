@@ -228,6 +228,75 @@ export function getGeometryLineAtS(weights, s, steps){
 
 }
 
+export function patchGeometryCreator(multigeometryManager, max){
+  let G = multigeometryManager;
+  return (patch, patchIndexes, steps=10)=>{
+    for(let i = 0; i < steps; ++i){
+      for(let j = 0; j< steps; ++j){
+        let lb = getPoint(i,j);
+        let lt = getPoint(i,j+1);
+        let rb = getPoint(i+1,j);
+        let rt = getPoint(i+1,j+1);
+        let face1 = [lb, lt, rt];
+        let face2 = [lb, rt, rb];
+        G.pushFace(...face1, ...face2);
+      }
+    }
+
+    function getPoint(i,j){
+      return G.getPointIndex(()=>{
+        return pointCreator(i,j);
+      }, (patchIndexes.i*steps +i) % max.i, (patchIndexes.j*steps +j)%max.j);
+    }
+
+    function pointCreator(i,j){
+     return getPointBezier(...ts(i,j));
+    }
+
+    function ts(i,j){
+      return [i/steps, j/steps];
+    }
+
+    function getPointBezier(t,s){
+      const delta = 0.0001;
+      let point = new Vector3;
+      let [uvFrom, uvTo] = patch.uv;
+      let uvDist = [0,1].map(i=>uvTo[i] - uvFrom[i]);
+      let ts = [ s, t];
+      let pT = new Vector3;
+      let pS = new Vector3;
+      let t1 = t + delta,
+          s1 = s + delta;
+      if(t - 1 < delta) t1 = t - delta;
+      if(s - 1 < delta) s1 = s - delta;
+      
+      for(let i = 0; i < 4; ++i){
+        for(let j=0;j<4; ++j){
+          let key = `${i}${j}`;
+          let pp = patch[key].clone();
+          let bi = Bernstein(4, i, t);
+          let bi1 = Bernstein(4, i, t1);
+          let bj = Bernstein(4, j, s); 
+          let bj1 = Bernstein(4, j, s1); 
+          point.add(pp.clone().multiplyScalar(bi*bj));
+          pT.add(pp.clone().multiplyScalar(bi1*bj));
+          pS.add(pp.clone().multiplyScalar(bi*bj1));
+        }
+      }
+      let tangentS = pS.sub(point), 
+          tangentT = pT.sub(point);
+      if(t1 < t) tangentT.negate();
+      if(s1 < s) tangentS.negate();
+
+      let uv = new Vector2(...[0,1].map(i=>uvDist[i]*ts[i] + uvFrom[i]));
+
+      return {position:point, tangentS, tangentT, uv,
+        normal: new Vector3().crossVectors(tangentT, tangentS).normalize()
+      };
+    }
+  }
+}
+
 export function getGeometryFromPatch(weights, uvFrom, uvTo, steps = 10){
 
   let patch = weights

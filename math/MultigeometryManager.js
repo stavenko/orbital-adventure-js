@@ -16,9 +16,6 @@ export class MultigeometryManager{
   getPointIndex(pointCreator, ...args){
     let index = this.indexator(...args)
     if(this.pointIx.has(index)) {
-      if(args[0]%10==0 || args[1]%10==0){
-        console.log('HIT', index);
-      }
       return this.pointIx.get(index);
     }
     let point = pointCreator(...args);

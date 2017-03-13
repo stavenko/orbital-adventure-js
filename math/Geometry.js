@@ -88,21 +88,22 @@ export function RotationalPartGeometry(shape){
   let I = shape.radialAmount*stepsPerPart + 1;
   let G = new MultigeometryManager((i,j)=>`${i},${j}`);
   let creatorTri = Triangle.patchGeometryCreator(G, {i:Infinity, j:stepsPerPart*shape.radialAmount});
+  let creatorQuad = Quad.patchGeometryCreator(G, {i:Infinity, j:stepsPerPart*shape.radialAmount});
   for(let key in shape.patchIndex){
     let patch = patchToWeights(shape, shape.patchIndex[key]);
     let [i, j] = key.split(',').map(i=>parseInt(i));
     if(patch.length <= 10){
       creatorTri(patch, {i,j});
+    }else{
+      creatorQuad(patch, {i,j});
     }
   }
   this.setIndex(new BufferAttribute(toArray(Uint16Array, G.faces), 1));
   for(let b in G.arrays){
     let size = 3;
     if(b == 'uv') size == 2;
-    console.log("add",b);
     this.addAttribute(b, new BufferAttribute(toArray(Float32Array,G.arrays[b]), size));
   }
-  check();
 
   function check(){
     G.posArray.forEach(([ixx,v])=>{
