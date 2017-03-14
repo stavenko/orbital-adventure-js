@@ -14,8 +14,8 @@ export function PlaneCutGeometry(geometry, planes){
   planes.forEach(plane=>{
     let [intersected, deletedIx, deletedFa] = findFaces(geometry.index, geometry.attributes.position);
     let [newFaces, pointCircle] = cutFaces(geometry.attributes.position, intersected, plane);
-    let [newIndex, newPositions] = removeDeletedFaces(deleted, deletedFa, index, geometry.attributes.position);
-    putNewFaces(newFaces,newIndex, newPositions);
+    putNewFaces(newFaces, geometry.attributes);
+    let [newIndex, newPositions] = removeDeletedFaces(deleted, deletedFa, index, geometry.attributes);
   })
 
 }
@@ -23,10 +23,38 @@ export function PlaneCutGeometry(geometry, planes){
 PlaneCutGeometry.prototype = Object.create(BufferGeometry.prototype);
 PlaneCutGeometry.prototype.constructor = BufferGeometry;
 
-function removeDeletedFaces(deletedIx, deletedFa, index, position){
-  let deletion = new Map; // (positionId)=>decreaseIndexOn
+function putNewFaces(newFaces, newIndex, newPositions) {
 
-  for(
+}
+
+function removeDeletedFaces(deletedIx, deletedFa, index, arrays){
+  let deletion = new Map; // (positionId)=>decreaseShift
+  let newIndex = [];
+  let newArrays = {};
+  let currentMinoring;
+  for(let i=0; i< (index.array.length/3); ++i){
+    let ix = i * 3;
+    if(deletedFa.find(ix) !== -1) continue;
+    newIndex.push(...index.array.slice(ix, ix+3).map(j=>{
+      let denom = deletedIx.findIndex(a=>j>a) +1;
+      return j-denom;
+    }));
+  }
+  for(let key in arrays){
+    newArrays[key] = [];
+  }
+  let arrayCount = arrays.position.count;
+
+  for(let i=0; i< arrayCount; ++i){
+    if(deletedIx.findIndex(i) !== -1) continue;
+
+    for(let key in arrays){
+      let array = arrays[key];
+      let ix = i * array.itemSize;
+      newArrays[key].push(...position.array.slice(ix,ix + array.itemSize))
+    }
+  }
+  return [newIndex, newPositions];
 
 }
 
@@ -44,16 +72,18 @@ function findFaces(index, position, plane){
     let vertices = face.map(j=> pa.slice(j*ps, j*ps + ps));
     let dots = vertices.map(v=>[0,1,2].map(ix=>(v[ix]-o[ix])*n[ix]).reduce((a,v)=>a+v,0));
     let hasDeleted = 0;
-    dots.forEach((dot,ix)=>{
+    dots.forEach((dot,id)=>{
       if(dot < 0) return;
+      deletedIndexes.add(face[id]);
       ++hasDeleted;
     })
     if(hasDeleted >0 && hasDeleted < 3) {
       intersectedFaces.push(face);
-      deletedFaces.set(ix);
+      deletedFaces.add(ix);
     }
   }
-  return [intersectedFaces, deletedPointsIndexes, deletedFaces]
+  let deletedIx = [...deletedIndexes.entries()].map(a=>a[0]).sort();
+  return [intersectedFaces, deletedIx, deletedFaces]
 }
 
 function cutFaces(position, intersectedFaces, plane){
