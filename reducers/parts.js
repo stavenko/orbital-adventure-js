@@ -20,12 +20,48 @@ const createInitialNewPart = state => ({
 
 
 });
+
 const initialState = fromJS({
   editorState:{
     symmetryMode: null, // {'type': ['plane', 'point'], 'amount': [2-10] 
                         // in case of point} or null, if no symmetry
   }
 });
+
+const PartType = {
+  name:'solid-fuel-engine-1',
+  uiControls:{
+    height: {}, 
+    fuelRadius: {},
+    nozzleRadius: {}
+  },
+  attributes:{
+    timeToFire: 1
+  },
+  shape:function(params){}
+
+}
+
+const partExample={
+  type:{
+    name:'shape', // or other part class
+    shape:{
+      type: 'rotational',
+      value: {/* rotational shape */}
+    }
+  },
+  material: { // Physical material like stell or plastic
+  },
+  thickness: 0.001, // thickness of part in meters
+  weilds:[
+    {
+      position,
+      quaternion,
+      part:{ /*partDescription or link*/ }
+    }
+  ]
+
+}
 
 export function partsEditor(state = initialState, action){
   switch(action.type){
