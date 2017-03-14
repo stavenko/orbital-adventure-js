@@ -8,6 +8,114 @@ import * as Quad from './QuadBezier.js'
 import * as Triangle from './TriangleBezier.js'
 
 
+export function PlaneCutGeometry(geometry, planes){
+  BufferGeometry.call(this);
+  this.type = 'PlaneCutGeometry';
+  planes.forEach(plane=>{
+    let [intersected, deletedIx, deletedFa] = findFaces(geometry.index, geometry.attributes.position);
+    let [newFaces, pointCircle] = cutFaces(geometry.attributes.position, intersected, plane);
+    let [newIndex, newPositions] = removeDeletedFaces(deleted, deletedFa, index, geometry.attributes.position);
+    putNewFaces(newFaces,newIndex, newPositions);
+  })
+
+}
+
+PlaneCutGeometry.prototype = Object.create(BufferGeometry.prototype);
+PlaneCutGeometry.prototype.constructor = BufferGeometry;
+
+function removeDeletedFaces(deletedIx, deletedFa, index, position){
+  let deletion = new Map; // (positionId)=>decreaseIndexOn
+
+  for(
+
+}
+
+function findFaces(index, position, plane){
+  let intersectedFaces=[];
+  let deletedIndexes = new Set;
+  let deletedFaces = new Set;
+  let pa = position.array;
+  let ps = position.itemSize;
+  let o = plane.origin;
+  let n = plane.normal;
+  for(let i = 0; i < index.count; ++i){
+    let ix = i * 3;
+    let face = index.array.slice(ix,  ix+3);
+    let vertices = face.map(j=> pa.slice(j*ps, j*ps + ps));
+    let dots = vertices.map(v=>[0,1,2].map(ix=>(v[ix]-o[ix])*n[ix]).reduce((a,v)=>a+v,0));
+    let hasDeleted = 0;
+    dots.forEach((dot,ix)=>{
+      if(dot < 0) return;
+      ++hasDeleted;
+    })
+    if(hasDeleted >0 && hasDeleted < 3) {
+      intersectedFaces.push(face);
+      deletedFaces.set(ix);
+    }
+  }
+  return [intersectedFaces, deletedPointsIndexes, deletedFaces]
+}
+
+function cutFaces(position, intersectedFaces, plane){
+  let pa = position.array;
+  let ps = position.itemSize;
+  let o = plane.origin;
+  let n = plane.normal;
+  let newFaces = [];
+  let circle = [];
+  for(let i =0; i<intersectedFaces.length; ++i){
+    let face = intersectedFaces[i];
+    let vertices = face.map(j=> pa.slice(j*ps, j*ps + ps));
+    let ix = vertices.findIndex(v=>dotPlane(v, o, n) < 0);
+    let rFace = [ix, ix+1, ix+2].map(j=>face[j%3])
+    let [B, V0, V1] = rFace.map(j=> pa.slice(j*ps, j*ps + ps));
+    // B now is below plane;
+    let V0below = dotPlane(V0, o,n) < 0;
+    let V1below = dotPlane(V1, o,n) < 0;
+    
+    if(V0below && V1below){
+      let [e0, e1] = [V0, V1].map(v=>[0,1,2].map(j=>v[j]-B[j]))
+      let t1 = rayPlane(B, e0, o, n);
+      let t1 = rayPlane(B, e1, o, n);
+      let p1 = [0,1,2].map(j=>e0[j]*t1 + B[j]);
+      let p2 = [0,1,2].map(j=>e1[j]*t2 + B[j]);
+      newFaces.push([{ix:rFace[0]}, {p:p1}, {p:p2}]);
+      circle.push({from:p1, to:p2});
+    }else if(V0below && !V1below){
+      let e0 = [0,1,2].map(j=>V0[j]-B[j]);
+      let e1 = [0,1,2].map(j=>V1[j]-V0[j]);
+      let t1 = rayPlane(B, e0, o, n);
+      let t2 = rayPlane(V0, e1, o, n);
+      let p1 = [0,1,2].map(j=>e0[j]*t1+B[j]);
+      let p2 = [0,1,2].map(j=>e1[j]*t1+V0[j]);
+      newFaces.push([{ix:rFace[0]},{p:p1},{p:p2}])
+      newFaces.push([{ix:rFace[0]},{p:p2},{ix:rFace[2]}])
+      circle.push({from:p1, to:p2});
+    }else if(V1below && !V0below){
+      let e0 = [0,1,2].map(j=>V1[j]-V0[j]);
+      let e1 = [0,1,2].map(j=>V1[j]-B[j]);
+      let t1 = rayPlane(V0, e0, o, n);
+      let t2 = rayPlane(B, e1, o, n);
+      let p1 = [0,1,2].map(j=>e0[j]*t1 + V0[j]);
+      let p2 = [0,1,2].map(j=>e1[j]*t1 + B[j]);
+      newFaces.push([{ix:rFace[0]},{p:p1},{p:p2}])
+      newFaces.push([{ix:rFace[0]},{p:p2},{ix:rFace[2]}])
+      circle.push({from:p1, to:p2});
+    }
+  }
+  return [newFaces, circle];
+}
+
+function rayPlane(ro, e, o, n){
+  let u = [0,1,2].map(j=>n[j] * (o[j] - ro[j])).reduce((a,b)=>a+b);
+  let d = [0,1,2].map(j=>n[j] * e[j]).reduce((a,b)=>a+b);
+  return u / d;
+
+}
+
+function dotPlane(v, o, n){
+  return [0,1,2].map(ix=>(v[ix]-o[ix])*n[ix]);
+}
 
 export function PlaneGeometry(plane, sizex, sizey){
   BufferGeometry.call(this);
@@ -17,7 +125,6 @@ export function PlaneGeometry(plane, sizex, sizey){
   let z = new Vector3(0,0,1);
   let pn = new Vector3(...plane.normal);
   let po = new Vector3(...plane.origin);
-  console.log('-----', plane.normal, plane.origin);
 
   let dots = [x,y,z].map(v=>v.dot(pn)).map((d,ix)=>[d,ix]).sort((a,b)=>b[0] - a[0]);
   let best = [x,y,z][dots[0][1]];
@@ -81,7 +188,6 @@ export function QuadGeometry(tSteps, sSteps){
 
 QuadGeometry.prototype = Object.create(BufferGeometry.prototype);
 QuadGeometry.prototype.constructor = BufferGeometry;
-
 
 export function RotationalPartGeometry(shape){
   BufferGeometry.call(this);
