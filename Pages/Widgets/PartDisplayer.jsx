@@ -20,6 +20,7 @@ import * as Path from '../../math/Path.js';
 import {QuadBezierBufferGeometry,
   PlaneGeometry, 
   RotationalPartGeometry,
+  PlaneCutGeometry,
   TriangleBezierBufferGeometry
 } from '../../math/Geometry.js';
 import {Textures} from '../../Utils/TextureCache.js';
@@ -200,7 +201,7 @@ export class PartDisplay extends CanvasBase{
     let c = this.randomColors[0];
     return [{
       type:Mesh,
-      geometry: {type:RotationalPartGeometry, arguments:[calculated]},
+      geometry:{type: PlaneCutGeometry, arguments:[{type:RotationalPartGeometry, arguments:[calculated]}, calculated.cuttingPlanes]},
         position: new Vector3,
         material:{
           type: MeshLambertMaterial, properties:{

@@ -55,13 +55,13 @@ const partExample={
   thickness: 0.001, // thickness of part in meters
   weilds:[
     {
-      position,
-      quaternion,
-      part:{ /*partDescription or link*/ }
+      mainMount: {/* position, quaternion */},
+      partMount: {/* position, quaternion*/},
+      part: { /*partDescription or link*/ }
     }
   ]
-
 }
+
 
 export function partsEditor(state = initialState, action){
   switch(action.type){

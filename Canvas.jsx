@@ -7,8 +7,8 @@ import {WebGLRenderer} from 'three/src/renderers/WebGLRenderer';
 import {OrthographicCamera} from 'three/src/cameras/OrthographicCamera';
 import {PerspectiveCamera} from 'three/src/cameras/PerspectiveCamera';
 import {Raycaster} from 'three/src/core/Raycaster';
-import {BufferGeometry} from 'three/src/core/BufferGeometry';
-import {BufferAttribute} from 'three/src/core/BufferAttribute';
+// import {BufferGeometry} from 'three/src/core/BufferGeometry';
+// import {BufferAttribute} from 'three/src/core/BufferAttribute';
 import {Vector2} from 'three/src/math/Vector2';
 import {Vector3} from 'three/src/math/Vector3';
 import {AxisHelper} from 'three/src/extras/helpers/AxisHelper';
@@ -17,6 +17,7 @@ import {Matrix4} from 'three/src/math/Matrix4';
 import {Vector4} from 'three/src/math/Vector4';
 import {Camera} from './Camera.js';
 import isEqual from 'lodash/isEqual';
+import * as GeometryManager from './GeometryManager.js';
 
 const defaultParameters = {
   position: new Vector3,
@@ -274,9 +275,9 @@ export class CanvasBase extends React.Component{
       let G, M;
 
       if(geometry.type){
-        G = this.createGeometry(geometry);
+        G = GeometryManager.createGeometry(geometry);
       }else{
-        G = this.createBufferGeometry(geometry);
+        G = GeometryManager.createBufferGeometry(geometry);
       }
 
       M = this.createMaterial(material);
@@ -317,6 +318,8 @@ export class CanvasBase extends React.Component{
       return M;
     }
 
+    /*
+
     createGeometry(props){
       let geometry = new props.type(...props.arguments);
       this.geometryCache[geometry.uuid] = props;
@@ -349,12 +352,13 @@ export class CanvasBase extends React.Component{
       return geometry;
     }
 
+*/
 
     updateMeshGeometry(mesh, geometry){
       if(geometry.type){
-        mesh.geometry = this.replaceGeometryIfNeeded(geometry, mesh.geometry);
+        mesh.geometry = GeometryManager.replaceGeometryIfNeeded(geometry, mesh.geometry);
       }else{
-        mesh.geometry = this.createBufferGeometry(geometry);
+        mesh.geometry = GeometryManager.createBufferGeometry(geometry);
       }
     }
 
