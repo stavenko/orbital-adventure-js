@@ -1,3 +1,4 @@
+import isEqual from 'lodash/isEqual';
 import {BufferGeometry} from 'three/src/core/BufferGeometry';
 
 const GeometryCache = {};
@@ -6,8 +7,9 @@ const ActualGeometry = {};
 
 export function getOrCreateGeometry(props){
   if(!props.id) console.warn('Cannot rely on props id');
-  let cached = PropsCache[props.id];
+  let cached = PropsCache[props.id] || {};
   if(props.type == cached.type && isEqual(props.arguments, cached.arguments)){
+    return ActualGeometry[props.id];
   }
   delete PropsCache[props.id];
   delete ActualGeometry[props.id];

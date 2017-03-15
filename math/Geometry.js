@@ -15,9 +15,14 @@ export function PlaneCutGeometry(geometryDescriptor, planes){
   this.type = 'PlaneCutGeometry';
 
   let geometry = GeometryManager.getOrCreateGeometry(geometryDescriptor);
+  if(!planes){
+    Object.assign(this.attributes, geometry.attributes);
+    this.index = geometry.index;
+    return;
+  }
 
   planes.forEach(plane=>{
-    let [intersected, deletedIx, deletedFa] = findFaces(geometry.index, geometry.attributes.position);
+    let [intersected, deletedIx, deletedFa] = findFaces(geometry.index, geometry.attributes.position,plane);
     let [newFaces, pointCircle] = cutFaces(geometry.attributes, intersected, plane);
     let [attributeLists, indexList] = putNewFaces(newFaces, geometry.index, geometry.attributes);
     let [newIndex, newArrays] = removeDeletedFaces(deleted, deletedFa, attributeLists, indexList, geometry.attributes);
@@ -28,7 +33,7 @@ export function PlaneCutGeometry(geometryDescriptor, planes){
     let oldAttr = geometry.attributes[k];
     this.addAttribute(k, new BufferAttribute(toArray(Float32Array,newArrays[k]), oldAttr.itemSize));
   }
-  debugger;
+  // debugger;
 }
 
 PlaneCutGeometry.prototype = Object.create(BufferGeometry.prototype);
