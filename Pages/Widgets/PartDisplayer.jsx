@@ -201,7 +201,16 @@ export class PartDisplay extends CanvasBase{
     let c = this.randomColors[0];
     return [{
       type:Mesh,
-      geometry:{type: PlaneCutGeometry, arguments:[{type:RotationalPartGeometry, arguments:[calculated]}, calculated.cuttingPlanes]},
+      geometry:{
+        type: PlaneCutGeometry, 
+        arguments:[
+          {
+            type:RotationalPartGeometry, 
+            arguments:[calculated],
+            id:'main-mesh'
+          }, 
+          calculated.cuttingPlanes
+        ]},
         position: new Vector3,
         material:{
           type: MeshLambertMaterial, properties:{
@@ -212,7 +221,8 @@ export class PartDisplay extends CanvasBase{
           }
         }
     }];
-    return RotationalShape.getRotationalGeometry(calculated).map((attrs,ix)=>{
+
+    /*return RotationalShape.getRotationalGeometry(calculated).map((attrs,ix)=>{
       let c = this.randomColors[ix];
       return {
         type:Mesh,
@@ -232,7 +242,7 @@ export class PartDisplay extends CanvasBase{
           }
         }
       }
-    });
+      }); */
   }
 
   renderCurves(curveGeometries, withColor = new Color(0x9999ff)){
@@ -250,10 +260,17 @@ export class PartDisplay extends CanvasBase{
   }
 
   planeMesh(plane){
+    let ix = this.props.state.getIn(['editorState', 'selectPlane']);
     return {
       type:Mesh,
-      geometry: {type:PlaneGeometry, arguments:[plane, 1, 1]},
+      geometry: {
+        type:PlaneGeometry, 
+        arguments:[plane, 1, 1], 
+        id:`plane-${ix}`
+      },
+      position: new Vector3(0,0,0),
       material: {type:MeshBasicMaterial, properties:{
+        color: new Color(0xffffff),
         wireframe: true
       }}
     }
@@ -291,9 +308,6 @@ export class PartDisplay extends CanvasBase{
 
     let meshes = [...mainMeshes, 
       ...controlMeshes,
-      //...this.getControls(sliceControls),
-      //...this.getControls(sideControls),
-      //...this.getControls(RotationalShape.getSurfaceControls(calculated), new Color(0x00ff99))
     ]
 
     if(this.sceneIntersection){

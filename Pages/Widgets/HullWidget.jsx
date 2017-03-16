@@ -55,8 +55,8 @@ function ShapeControls(props){
 }
 
 const defaultPlane = {
-  origin: [0,0,0.5],
-  normal: [0.8944,0.1, 0.4472],
+  origin: [0,0.2,0],
+  normal: [0, Math.sin(Math.PI/4), Math.cos(Math.PI/4) ],
   shift: 0,
   roundness: 0,
   bevel: 0

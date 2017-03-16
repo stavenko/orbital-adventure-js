@@ -1,4 +1,5 @@
 import isEqual from 'lodash/isEqual';
+import {BufferAttribute} from 'three/src/core/BufferAttribute';
 import {BufferGeometry} from 'three/src/core/BufferGeometry';
 
 const GeometryCache = {};
@@ -27,7 +28,7 @@ export function createGeometry(props){
 }
 
 export function replaceGeometryIfNeeded(props, oldGeometry){
-  console.warn("TODO: replace this function call");
+  // console.warn("TODO: replace this function call");
   let cached = GeometryCache[oldGeometry.uuid] || {};
   if(props.type == cached.type && isEqual(props.arguments, cached.arguments)){
     return oldGeometry;
