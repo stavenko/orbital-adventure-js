@@ -34,8 +34,6 @@ export function PlaneCutGeometry(geometryDescriptor, planes){
     }
   })
 
-  debugger;
-
   this.setIndex(geometry.index);
   Object.assign(this.attributes, geometry.attributes);
 }
@@ -343,13 +341,12 @@ export function RotationalPartGeometry(shape){
   let stepsPerPart = 10;
   let I = shape.radialAmount*stepsPerPart + 1;
   let G = new MultigeometryManager((i,j)=>`${i},${j}`);
-  let creatorTri = Triangle.patchGeometryCreator(G, {i:Infinity, j:stepsPerPart*shape.radialAmount});
-  let creatorQuad = Quad.patchGeometryCreator(G, {i:Infinity, j:stepsPerPart*shape.radialAmount});
+  let creatorTri = Triangle.patchGeometryCreator(G, {i:Infinity, j:stepsPerPart*shape.radialAmount+1});
+  let creatorQuad = Quad.patchGeometryCreator(G, {i:Infinity, j:stepsPerPart*shape.radialAmount+1});
   for(let key in shape.patchIndex){
     let patch = patchToWeights(shape, shape.patchIndex[key]);
     let [i, j] = key.split(',').map(i=>parseInt(i));
 
-    if(j >1)continue;
     if(patch.length <= 10){
       creatorTri(patch, {i,j});
     }else{
@@ -359,7 +356,7 @@ export function RotationalPartGeometry(shape){
   this.setIndex(new BufferAttribute(toArray(Uint16Array, G.faces), 1));
   for(let b in G.arrays){
     let size = 3;
-    if(b == 'uv') size == 2;
+    if(b == 'uv') size = 2;
     this.addAttribute(b, new BufferAttribute(toArray(Float32Array,G.arrays[b]), size));
   }
 

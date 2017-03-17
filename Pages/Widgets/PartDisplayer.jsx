@@ -212,11 +212,13 @@ export class PartDisplay extends CanvasBase{
           calculated.cuttingPlanes
         ]},
         position: new Vector3,
+        onMouseMove: this.onMeshMouseMove,
+        onMouseUp: this.onMeshMouseClick,
         material:{
           type: MeshLambertMaterial, properties:{
-            color: c,
-            // map: Textures.earthMap,
-            wireframe: true,
+            //color: c,
+            map: Textures.earthMap,
+            wireframe: false,
             side: THREE.FrontSide
           }
         }

@@ -139,7 +139,7 @@ export function patchGeometryCreator(multigeometryManager, max){
         let rb = getPoint(ni,j);
         let rt = getPoint(ni,nj);
         let face1, face2;
-        if(way> 0){
+        if(way < 0){
           face1 = [lb, lt, rt];
           face2 = [lb, rt, rb];
         }else{
@@ -209,7 +209,7 @@ export function patchGeometryCreator(multigeometryManager, max){
 
 
       return {position:point ,tangentS, tangentT, uv, 
-        normal: new Vector3().crossVectors(tangentT, tangentS).normalize().negate() };
+        normal: new Vector3().crossVectors(tangentT, tangentS).normalize() };
     }
   }
 }

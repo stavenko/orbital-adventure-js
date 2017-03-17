@@ -291,7 +291,7 @@ export function patchGeometryCreator(multigeometryManager, max){
       let uv = new Vector2(...[0,1].map(i=>uvDist[i]*ts[i] + uvFrom[i]));
 
       return {position:point, tangentS, tangentT, uv,
-        normal: new Vector3().crossVectors(tangentT, tangentS).normalize()
+        normal: new Vector3().crossVectors(tangentT, tangentS).normalize().negate()
       };
     }
   }

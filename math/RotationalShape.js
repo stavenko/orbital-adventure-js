@@ -120,7 +120,6 @@ function recalculate111(shape, r, way){
   let nr = (r + 1) % shape.radialAmount;
   let tip = 0;
   if(way < 0) tip = shape.sliceAmount-1;
-  console.log('111', tip, r, nr);
   let p300 = pointIndex[`${tip}`];
   let p030 = pointIndex[`${tip+way},${r}`];
   let p003 = pointIndex[`${tip+way},${nr}`];
@@ -546,7 +545,6 @@ export function splitPartAtS(part, S){
           insertQuadWeightsVertically(...pp);
       })
       part.pointIndex[`${i+1}`] = new Vector3().lerpVectors(prevPlaneO, nextPlaneO, s)
-      console.log("add point ",i);
     break;
     }
   }
@@ -626,7 +624,6 @@ function insertQuadWeightsVertically(part, fromR, toR, fromL, toL, q1,q2){
   let nl = (toL+1)%(nla)
   let pl = (toL-1 + nla)%(nla);
 
-  console.info('rad', fromR, toR);
 
   let newMap = {
     [`${fromL},${fromR}`]: q1['00'],
@@ -662,7 +659,6 @@ function insertQuadWeightsVertically(part, fromR, toR, fromL, toL, q1,q2){
       if( pointIndex[k].x != newMap[k].x || 
           pointIndex[k].y != newMap[k].y || 
           pointIndex[k].z != newMap[k].z ) {
-        // console.info('Diff point', k, pointIndex[k].clone(), newMap[k].clone());
       }
     }
     pointIndex[k] = newMap[k].clone();
@@ -718,15 +714,8 @@ function insertTriangleWeights(part, fromR, toR, L, t1, t2){
   let way = L ==0?1:-1;
   let fromL = L
   let toL   = fromL + way;
-  //let way='+';
-  //let opway='-';
   let S = a=>a<0?'-':'+';
 
-  //let fromR = parseInt(originalPatch['210'].split(','));
-  //let toR   = parseInt(originalPatch['201'].split(',')[1]);
-
-  // let's just assume, that points for other patches are saved
-  // We must put SEVEN new trianle points from both triangles
   let nra = part.radialAmount + 1;
   let nr = (toR+1)%(nra)
   let pr = (toR-1 + nra)%(nra);
@@ -745,7 +734,6 @@ function insertTriangleWeights(part, fromR, toR, L, t1, t2){
     [`${toL},${nr}-`] :t2['012'],
   }
   
-  console.log('create', `${fromL}:111,${fromR}`,`${fromL}:111,${toR}`);
   for(let k in newMap){
     pointIndex[k] = newMap[k].clone();
     if(pointIndex[k] && fromL == 0){
@@ -1179,7 +1167,6 @@ function createInitialSlices(part, props){
       origin: planeOrigin.clone(),
       normal: p // .applyQuaternion(q)
     }
-    console.log(plane.normal);
     part.pointIndex[`${i},r`] = plane.normal.clone();
   }
 
