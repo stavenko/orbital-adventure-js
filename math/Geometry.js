@@ -51,7 +51,7 @@ function putNewFaces(newFaces,index, attributes) {
   Object.keys(attributes).forEach(a=>additionalAttributes[a] = []);
   newFaces.forEach(face=>{
     let faceIx = face.map(pointData=>{
-      if(pointData.ix) return pointData.ix;
+      if(pointData.ix !== undefined) return pointData.ix;
       return pushPoint(pointData);
     })
     addIndex.push(...faceIx);
@@ -109,11 +109,10 @@ function removeDeletedFaces(deletedIx, deletedFa, index, arrays, attributes){
     newIndex.push(...index.slice(ix, ix+3).map(j=>{
       let denom = deletedIx.findIndex(a=>j<a);
       if(denom == -1) denom = deletedIx.length;
-       else denom -= 1;
-      return j;// -denom;
+       //else denom -= 1;
+      return j - denom;
     }));
   }
-  // console.log("WAS", was, "BECOME", become);
 
   for(let key in arrays){
     newArrays[key] = [];
@@ -122,7 +121,7 @@ function removeDeletedFaces(deletedIx, deletedFa, index, arrays, attributes){
 
   for(let i=0; i< arrayCount; ++i){
     
-    // if(deletedIx.indexOf(i) !== -1) continue;
+    if(deletedIx.indexOf(i) !== -1) continue;
 
     for(let key in arrays){
       let array = arrays[key];
@@ -154,8 +153,9 @@ function findFaces(index, position, plane){
       deletedIndexes.add(face[id]);
       ++hasDeleted;
     })
-    if(hasDeleted >0 && hasDeleted < 3) {
-      intersectedFaces.push(face);
+    if(hasDeleted > 0) {
+      if(hasDeleted < 3)
+        intersectedFaces.push(face);
       deletedFaces.add(ix);
     }
   }
@@ -191,7 +191,6 @@ function cutFaces(attributes, intersectedFaces, plane){
     let V1upper = dotPlane(V1, o,n) > 0;
     
     if(V0upper && V1upper){
-      console.log('both');
       let [e0, e1] = [V0, V1].map(v=>[0,1,2].map(j=>v[j]-B[j]))
       let t1 = rayPlane(B, e0, o, n);
       let t2 = rayPlane(B, e1, o, n);
@@ -203,7 +202,6 @@ function cutFaces(attributes, intersectedFaces, plane){
                     Object.assign({position:p2}, lerpAttrs(t1, rFace[0], rFace[2])) ]);
       circle.push({from:p1, to:p2});
     }else if(V0upper && !V1upper){
-      console.log("one------");
       let e0 = [0,1,2].map(j=>V0[j]-B[j]);
       let e1 = [0,1,2].map(j=>V1[j]-V0[j]);
       let t1 = rayPlane(B, e0, o, n);
@@ -218,7 +216,6 @@ function cutFaces(attributes, intersectedFaces, plane){
                     {ix:rFace[2]}])
       circle.push({from:p1, to:p2});
     }else if(V1upper && !V0upper){
-      console.log("-----------one");
       let e0 = [0,1,2].map(j=>V1[j]-V0[j]);
       let e1 = [0,1,2].map(j=>V1[j]-B[j]);
       let t1 = rayPlane(V0, e0, o, n);
@@ -237,7 +234,6 @@ function cutFaces(attributes, intersectedFaces, plane){
                    )
       circle.push({from:p1, to:p2});
     }else{
-      console.log('nothin!-----', V0upper, V1upper);
       debugger;
     }
   }
@@ -303,7 +299,6 @@ export function PlaneGeometry(plane, sizex, sizey){
   this.setIndex(new BufferAttribute(toArray(Uint16Array, faces), 1));
   this.addAttribute('position', new BufferAttribute(toArray(Float32Array, positions),3));
 
-  // console.log("Created plane");
   function getP(s,t){
     let p = new Vector3(...plane.origin);
     p.add(px.clone().multiplyScalar(s*sizex));
