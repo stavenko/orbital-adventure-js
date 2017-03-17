@@ -27,6 +27,8 @@ export function PlaneCutGeometry(geometryDescriptor, planes){
     let [attributeLists, indexList] = putNewFaces(newFaces, geometry.index, geometry.attributes);
     let [newIndex, newArrays] = removeDeletedFaces(deletedIx, deletedFa, indexList, attributeLists, geometry.attributes, geometry.index);
 
+    let circleList = connectCircle(pointCircle);
+    debugger;
     geometry.setIndex(new BufferAttribute(toArray(Uint16Array, newIndex), 1));
     for(let k in newArrays){
       let oldAttr = geometry.attributes[k];
@@ -168,6 +170,59 @@ const indexes = [
   [0,1,2]
 ];
 
+function vecDistance(a,b, s = 3){
+  return indexes[s].map(i=>Math.pow(a[i]-b[i],2)).reduce((a,b)=>a+b,0);
+}
+
+function vecEqual(a,b){
+  // console.log(vecDistance(a,b));
+  return vecDistance(a,b) < 1e-4;
+}
+
+function connectCircle(circle){
+  let first = circle.shift();
+  let list = [first.to, first.from];
+  while(circle.length !=0){
+    let way = 1;
+    let switchPair = false;
+    let last = list[list.length-1];
+    let nextIx = circle.findIndex(({from, to})=> vecEqual(from, last));
+    if(nextIx == -1){
+      nextIx = circle.findIndex(({from, to})=> vecEqual(to, last));
+      switchPair = true;
+      console.log('switch pair +', nextIx)
+    }
+    if(nextIx === -1) {
+      let first = list[0];
+      nextIx = circle.findIndex(({from, to})=> vecEqual(to, first));
+      let way = -1;
+      console.warn("other way", nextIx);
+      if(nextIx == -1){
+        nextIx = circle.findIndex(({from, to})=> vecEqual(from, first));
+        switchPair = true;
+        console.log('switch pair-', nextIx)
+      }
+
+    }
+    if(nextIx == -1)break;
+    console.log('---------------------------');
+    if(way > 0){
+      let [next] = circle.splice(nextIx, 1);
+      if(switchPair)
+        list.push(next.from);
+      else
+        list.push(next.to);
+    }else{
+      let [next] = circle.splice(nextIx, 1);
+      if(switchPair)
+        list.unshift(next.to);
+      else
+        list.unshift(next.from);
+    }
+  }
+  return list;
+
+}
 
 function cutFaces(attributes, intersectedFaces, plane){
   let position = attributes.position;
@@ -223,6 +278,7 @@ function cutFaces(attributes, intersectedFaces, plane){
       newFaces.push([{ix:rFace[0]},
                     Object.assign({position:p1}, lerpAttrs(t1,rFace[1], rFace[2] )),
                     Object.assign({position:p2}, lerpAttrs(t2,rFace[0], rFace[2] ))
+
       ])
       newFaces.push([
         {ix:rFace[0]}, 
@@ -235,7 +291,6 @@ function cutFaces(attributes, intersectedFaces, plane){
       debugger;
     }
   }
-  //return [[],[]];
   return [newFaces, circle];
   function lerpAttrs(t, fid, tid){
     let vals = {};
