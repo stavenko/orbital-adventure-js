@@ -10,6 +10,18 @@ import isEqual from 'lodash/isEqual';
 import * as GeometryManager from '../GeometryManager.js';
 
 
+export function getLodGeometry(){
+  let pg = new PlaneGeometry({
+    normal:new Vector3(0,0,-1), 
+    origin: new Vector3(0,0,0),
+    basis:{
+      x: new Vector3(1,0,0),
+      y: new Vector3(0,1,0)
+    }
+  }, 100, 100, 4);
+  return pg;
+}
+
 export function PlaneCutGeometry(geometryDescriptor, planes){
   BufferGeometry.call(this);
   this.type = 'PlaneCutGeometry';
@@ -28,7 +40,6 @@ export function PlaneCutGeometry(geometryDescriptor, planes){
     let [newIndex, newArrays] = removeDeletedFaces(deletedIx, deletedFa, indexList, attributeLists, geometry.attributes, geometry.index);
 
     let circleList = connectCircle(pointCircle);
-    debugger;
     geometry.setIndex(new BufferAttribute(toArray(Uint16Array, newIndex), 1));
     for(let k in newArrays){
       let oldAttr = geometry.attributes[k];
@@ -319,7 +330,7 @@ function dotPlane(v, o, n){
   return [0,1,2].map(ix=>(v[ix]-o[ix])*n[ix]).reduce((a,b)=>a+b,0);
 }
 
-export function PlaneGeometry(plane, sizex, sizey){
+export function PlaneGeometry(plane, sizex, sizey, steps=10){
   BufferGeometry.call(this);
   this.type='PlaneGeometry';
   let x = new Vector3(1,0,0);
@@ -330,9 +341,14 @@ export function PlaneGeometry(plane, sizex, sizey){
 
   let dots = [x,y,z].map(v=>v.dot(pn)).map((d,ix)=>[d,ix]).sort((a,b)=>b[0] - a[0]);
   let best = [x,y,z][dots[0][1]];
-  let px = best.sub(pn.clone().multiplyScalar(dots[0][0])).normalize(); 
-  let py = new Vector3().crossVectors(pn, px).normalize();
-  let steps = 10
+  let px, py;
+  if(!plane.basis){
+    px = best.sub(pn.clone().multiplyScalar(dots[0][0])).normalize(); 
+    py = new Vector3().crossVectors(pn, px).normalize();
+  }else{
+    px = plane.basis.x.clone();
+    py = plane.basis.y.clone();
+  }
   let pIndex = {};
   let positions = [];
   let faces = [];
@@ -340,7 +356,7 @@ export function PlaneGeometry(plane, sizex, sizey){
   for(let i = 0; i< steps; ++i){
     for(let j =0; j< steps; ++j){
       let s = i/steps - 0.5;
-      let t = i/steps - 0.5;
+      let t = j/steps - 0.5;
       let a = getIx(i,j);
       let b = getIx(i,j+1);
       let c = getIx(i+1,j+1);

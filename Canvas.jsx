@@ -44,7 +44,6 @@ export class CanvasBase extends React.Component{
     this.lights.forEach(l=>this.scene.add(l));
   }
 
-
   pickMesh(event){
     let normalizedMouse = new Vector2;
     normalizedMouse.x = ( (event.clientX - this.nodeRect.left) / this.refs.node.width ) * 2 - 1;
@@ -240,6 +239,8 @@ export class CanvasBase extends React.Component{
       this.updateLights();
       this.updateMeshes(this.scene, components);
       this.scene.add(new AxisHelper(1));
+      let flags = this.prerender();
+      this.renderer.clear(...flags);
       this.renderer.render(this.scene, this.camera);
 
     }
@@ -294,12 +295,13 @@ export class CanvasBase extends React.Component{
         mesh.material = this.createMaterial(props);
       else{
         if(mesh.material.uniforms)
-          for(let uname in properties.unifoms){
-            mesh.material.unifoms[uname].value = properties.uniforms[uname];
+          for(let uname in properties.uniforms){
+            mesh.material.uniforms[uname].value = properties.uniforms[uname];
           }
 
         for(let p in properties) {
           if(p == 'uniforms') continue;
+          if(p == 'staticUniforms') continue;
           mesh.material[p] = properties[p];
         }
         mesh.material.needsUpdate=true;
@@ -309,12 +311,6 @@ export class CanvasBase extends React.Component{
     createMaterial(props){
       let {type, properties} = props;
       let M = new type(properties);
-      // if(!M.uniforms) return M;
-
-      //console.log(props);
-      //for(let uname in unifoms){
-      //M.unifoms[uname].value = uniforms[uname];
-      //}
       return M;
     }
 
@@ -451,11 +447,15 @@ export class CanvasBase extends React.Component{
 
       this.renderer = new WebGLRenderer({canvas: this.refs.node, antialias:true});
 
-      this.camera =  // new PerspectiveCamera(45, width/height, 0.01,20);
+      this.camera =  //  new PerspectiveCamera(45, width/height, 0.01,20);
       new OrthographicCamera(-width/2 , width/2, height/2, -height/2, 0.1, 50);
       this.cameraHandler = new Camera(this.camera, this.refs.node);
 
-      this.renderer.setClearColor(0x096dc7);
+      this.renderer.setClearColor(0x096dc7, 0);
+      this.renderer.autoClear= false;
+      this.renderer.autoClearColor = false;
+      this.renderer.autoClearDepth = false;
+      this.renderer.autoClearStencil = false;
       this.setupCamera();
       this.setState({});
     }

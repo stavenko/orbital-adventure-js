@@ -1,4 +1,5 @@
 @import './parts-editor';
+@import './world.scss';
 
 #content{
   &>div{
@@ -11,4 +12,14 @@
 }
 body{
   background-color: #111;
+}
+.scene{
+  display:flex;
+  align-self:stretch;
+  align-content:stretch;
+}
+.menu{
+  a{
+    margin-right:10px;
+  }
 }

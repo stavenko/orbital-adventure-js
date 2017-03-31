@@ -6,6 +6,7 @@ import { Router, Route, IndexRoute, browserHistory, hashHistory } from 'react-ro
 import {rootReducer} from './reducers.js';
 import { syncHistoryWithStore } from 'react-router-redux'
 import {CurveEditorWidget} from './Pages/CurveEditor.jsx';
+import {World} from './Pages/World.jsx';
 import {PartsEditor as PartsEditorWidget} from './Pages/PartsEditor.jsx';
 import {PathEditor as PathEditorWidget} from './Pages/PathEditor.jsx';
 import {ObjectEditor as ObjectEditorWidget} from './Pages/ObjectEditor.jsx';
@@ -23,6 +24,7 @@ export function RootComponent(){
     <Router history={history} >
       <Route path="/" component={Root}>
         <Route path="editor" component={PartsEditor} />
+        <Route path="world" component={WorldView} />
         <Route path="bar" component={Bar} />
       </Route>
     </Router>
@@ -38,6 +40,7 @@ const PathEditor = connect(mapStateToProps, mapDispatchToProps)(PathEditorWidget
 const CurveEditor = connect(mapStateToProps, mapDispatchToProps)(CurveEditorWidget);
 const ObjectEditor = connect(mapStateToProps, mapDispatchToProps)(ObjectEditorWidget);
 const PartsEditor = connect(mapStateToProps, mapDispatchToProps)(PartsEditorWidget);
+const WorldView = connect(mapStateToProps, mapDispatchToProps)(World);
 
 function Bar(props){
   return <div> Im bar </div>

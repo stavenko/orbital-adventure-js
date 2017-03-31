@@ -32,6 +32,7 @@ module.exports = {
       {test: /\.eot$/, loader: "file-loader"},
       {test: /\.svg$/, loader: "file-loader"},
       {test: /\.glsl$/, loader: "raw"},
+      {test: /\.json$/, loader: "json"},
       {
         test: /\.styl/,
         // loader: 'css-loader!stylus-loader'
