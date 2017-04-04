@@ -18,7 +18,7 @@ export function getLodGeometry(){
       x: new Vector3(1,0,0),
       y: new Vector3(0,1,0)
     }
-  }, 100, 100, 4);
+  }, 1, 1, 4);
   return pg;
 }
 

@@ -37,7 +37,7 @@ export class WorldCanvas extends CanvasBase{
 
     let planet = planets.planets[0];
     let p = new Vector3(...planet.spatial.position);
-    let n = new Vector3(0,1,0);
+    let n = new Vector3(0,0,1);
 
     p.add(n.multiplyScalar(planet.spatial.radius + 100000));
     this.planetRenderer = new PlanetRenderer(this.camera,this.renderer, planets, p);

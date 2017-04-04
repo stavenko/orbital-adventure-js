@@ -240,7 +240,7 @@ export class CanvasBase extends React.Component{
       this.updateMeshes(this.scene, components);
       this.scene.add(new AxisHelper(1));
       let flags = this.prerender();
-      this.renderer.clear(...flags);
+      //this.renderer.clear(...flags);
       this.renderer.render(this.scene, this.camera);
 
     }

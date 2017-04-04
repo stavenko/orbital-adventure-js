@@ -1,0 +1,30 @@
+{
+  "sun":{
+    "position":[50000000,0,0]
+  },
+
+  "planets":[
+    {
+      "phisical":{
+        "density": 1,
+        "mass": 100
+      },
+      "spatial":{
+        "position": [0,0,0],
+        "north":[0,1,0],
+        "radius": 1000000
+      }
+    },
+    {
+      "phisical":{
+        "density": 1,
+        "mass": 100
+      },
+      "spatial":{
+        "position": [0,0, 40000000],
+        "north":[0,1,0],
+        "radius": 500000
+      }
+    }
+  ]
+}
