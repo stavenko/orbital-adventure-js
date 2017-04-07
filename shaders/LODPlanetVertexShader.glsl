@@ -11,6 +11,9 @@ uniform mat4 viewM;
 uniform mat4 viewInverseM;
 uniform mat4 projectionM;
 
+varying vec3 sphereNormal;
+vec3 defaultNorth = vec3(0.0, 1.0, 0.0);
+
 vec4 conjugate(vec4 q){
   return vec4(q.xyz * -1.0, q.w);
 }
@@ -42,19 +45,36 @@ vec4 fromAxisAngle(vec3 axis, float angle){
   return quat;
 }
 
+float angleBetween(vec3 nv, vec3 nu){
+  return acos(dot(nv, nu));
+}
+
 void main(){
   vec2 xy = position.xy;
 
   vec3 northAligned = north * xy.y + east * xy.x;
   vec3 inGridPosition = vec3(northAligned*size);
+  float northAngle = angleBetween(defaultNorth, north);
+  vec3 northAxis = normalize(cross(defaultNorth, north));
 
   vec3 gridPosition =  inGridPosition+ center;
   float lengthToPosition = length(inGridPosition);
   vec3 v = center - planetCenter;
   vec3 v0 = gridPosition - planetCenter;
-  vec3 axis = normalize(cross(v, v0));
   float angle = lengthToPosition / radius;
-  vec3 finalPosition = rotate(v, fromAxisAngle(axis, angle));
+  vec3 finalPosition;
+  if(angle > 1e-4){
+    vec3 axis = normalize(cross(v, v0));
+    finalPosition = rotate(v, fromAxisAngle(axis, angle));
+  }else{
+    finalPosition = v;
+  }
+
+  sphereNormal = normalize(finalPosition);
+  if(northAngle> 1e-4){
+    sphereNormal = rotate(sphereNormal, fromAxisAngle(northAxis, northAngle));
+  }
+
 
   mat4 pv1 = projectionM * viewInverseM;
 

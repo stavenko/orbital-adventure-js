@@ -31,7 +31,6 @@ export class WorldCanvas extends CanvasBase{
 
     this.camera = new PerspectiveCamera(fov, aspect, near, far);
     this.camera.position.z = -10;
-    this.camera.lookAt(new Vector3);
 
     this.cameraHandler = new Camera(this.camera, this.refs.node);
 
@@ -40,10 +39,33 @@ export class WorldCanvas extends CanvasBase{
     let n = new Vector3(0,0,1);
 
     p.add(n.multiplyScalar(planet.spatial.radius + 100000));
-    this.planetRenderer = new PlanetRenderer(this.camera,this.renderer, planets, p);
+    this.globalCameraOpts = {position: new Vector3, lookAt: new Vector3}
+    this.planetRenderer = new PlanetRenderer(this.camera,this.renderer, planets, this.globalCameraOpts);
+    this.startLoop(this.cameraChange.bind(this));
+  }
+
+  cameraChange(ts){
+    let radius = 39e6;
+    let planet = planets.planets[1];
+    let pos = new Vector3(...planet.spatial.position);
+    let v1 = new Vector3(1.0, 0, 0);
+    let v2 = new Vector3(0.0, 1, 0);
+    let lookAt = pos.clone();
+
+    let a  = ts / 10000;
+    pos.add(v1.multiplyScalar(Math.cos(a)*radius));
+    pos.add(v2.multiplyScalar(Math.sin(a)*radius));
+    
+    this.globalCameraOpts.position.copy(pos);
+    this.globalCameraOpts.lookAt.copy(lookAt);
   }
 
   setupCamera(){
+  }
+
+  componentWillUnmount(){
+    super.componentWillUnmount();
+    this.stopLoop();
   }
 
   prerender(){

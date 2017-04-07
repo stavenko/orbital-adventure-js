@@ -234,6 +234,31 @@ export class CanvasBase extends React.Component{
       //console.log(this.scene);
     }
 
+    stopLoop(){
+      this.runningLoop = false;
+    }
+
+    startLoop(eachLoop){
+      let tick;
+      if(eachLoop) tick = (ts)=>{ 
+          eachLoop(ts)
+          this.renderCanvas();
+          if(!this.runningLoop)return;
+          console.log("tick");
+          window.requestAnimationFrame(tick)
+        };
+      else tick = (ts)=>{
+        this.renderCanvas();
+        if(!this.runningLoop)return;
+        window.requestAnimationFrame(tick)
+      }
+
+      this.runningLoop = true;
+      window.requestAnimationFrame(tick);
+    }
+
+    prerender(){ }
+
     renderCanvas(){
       let components = this.renderScene();
       this.updateLights();
@@ -421,6 +446,7 @@ export class CanvasBase extends React.Component{
 
     render() {
       if(this.refs.node) this.renderCanvas();
+      console.log("RENDER CANVAS");
       return <canvas ref='node' style={{width:'100%', height:'100%'}} />
     }
 
@@ -472,7 +498,7 @@ export class CanvasBase extends React.Component{
 
     unbindEvents(){
       if(this._events.length) {
-          this._events.forEach(e=>e.t.removeEndEventListener(e.e, e.f));
+          this._events.forEach(e=>e.t.removeEventListener(e.e, e.f));
           this._events = [];
       }
     }
