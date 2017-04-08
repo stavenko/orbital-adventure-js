@@ -1,5 +1,9 @@
+import {Vector3} from 'three/src/math/Vector3';
+import ZipWorker from 'worker!../Utils/zip/zipWorker.js';
+
 export class PlanetTextureManager{
   constructor(){
+    
     this.texturesIndex = {
       back: [],
       left: [],
@@ -13,6 +17,7 @@ export class PlanetTextureManager{
       back:0, left:1, front:2, right:3,
       top:4, bottom:5
     }
+    this.faceNames = ['back', 'left', 'front', 'right', 'top', 'bottom'];
     this.faceColors = [
       [1.0, 0, 0],
       [0, 1, 0 ],
@@ -23,7 +28,26 @@ export class PlanetTextureManager{
 
     ]
 
+    this.textureDownload();
+    this.zipWorker = new ZipWorker();
+
     this.textures = [];
+  }
+
+  textureDownload(){
+    let xhr = new XMLHttpRequest();
+    xhr.responseType = 'arraybuffer';
+    xhr.onload= ()=>{
+      //let ab = new Uint8Array(xhr.response);
+      this.zipWorker.postMessage({type:'inflate', array: xhr.response},[xhr.response]);
+      console.log(xhr.response);
+
+      //let r =  Date.now();
+      //let res = pako.inflate(ab);
+      // console.log('inflate time', Date.now() - r, r);
+    }
+    xhr.open('GET', '/build/synth.raw');
+    xhr.send();
   }
 
   stToGeo(s,t,face){
@@ -44,7 +68,30 @@ export class PlanetTextureManager{
     return [theta, phi];
   }
 
-  initialize(radius, division=8, lod = 0){
+  createLodIndex(){
+    this.lodIndex = []
+    const maxLOD = 8;
+    const faces = 6;
+    for(let lod = 0; lod < maxLOD; ++lod){
+      let division = Math.pow(2,lod);
+      let inc = 1.0 / division;
+      this.lodIndex.push([]);
+      for(let face =0; face < faces; ++face){
+        for(let i = 0; i < division; ++i){
+          for(let j = 0; j < division; ++j){
+            let s = i * inc;
+            let t = j * inc;
+            let geoBounds = [[0,0], [0,1], [1,0], [1,1]]
+              .map(x=>x.map((n,i)=>n*inc+[s,t][i]))
+              .map(st=>this.stToGeo(...st, this.faceNames[face]));
+            this.lodIndex[lod].push({geoBounds, s, t, face});
+          }
+        }
+      }
+    }
+  }
+
+  initialize(radius, division=1, lod = 0){
     let zc = 0;
     let {texturesIndex} = this;
     let res = 16;
@@ -58,12 +105,22 @@ export class PlanetTextureManager{
           let color = this.faceColors[this.faceIx[ix]];
           let ab = new Uint8Array(res*res*4);
           
+          let faceNum = ix;
+          
           for(let ii = 0; ii < res; ++ii){
             for(let jj = 0; jj < res; ++jj){
-              let ix = (ii*res+jj)*4;
-              ab[ix ] = color[0]*255;
-              ab[ix+1] = color[1]*255;
-              ab[ix+2] = color[2]*255;
+              let ss = ii / res /division;
+              let tt = jj / res /division;
+              let n = new Vector3(...this.stToNormal(s + ss, t+tt, faceNum)).normalize();
+              let c = color;
+              if(Math.abs(n.dot(new Vector3(1, 0,0))) < 0.1)
+                 c = [0,1,1]
+
+              let ix;
+              ix = (jj*res+ii)*4;
+              ab[ix ] = c[0]*255;
+              ab[ix+1] = c[1]*255;
+              ab[ix+2] = c[2]*255;
               ab[ix+3] = 255;
             }
           }
