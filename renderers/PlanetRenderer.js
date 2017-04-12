@@ -9,13 +9,11 @@ import {LODMaterial} from '../materials/PlanetaryMaterial.jsx';
 import {getLodGeometry} from '../math/Geometry.js';
 import {MeshBasicMaterial} from 'three/src/materials/MeshBasicMaterial';
 import {SphereBufferGeometry} from 'three/src/geometries/SphereBufferGeometry';
-import {DataTexture} from 'three/src/textures/DataTexture.js'
-import {PlanetTextureManager} from '../materials/TextureManager.jsx';
 
 const colors = [[0.5,0.5,0], [0.0, 1.0, 0.0], [0.3, 0.7, 1]];
 
 export class PlanetRenderer{
-  constructor(camera, renderer, planets, globalPosition){
+  constructor(camera, renderer, planets, globalPosition, worldManager){
     this.globalPosition = globalPosition;
     this.camera = camera;
     this.renderer = renderer;
@@ -23,6 +21,8 @@ export class PlanetRenderer{
     this.prepareArrays();
     this.planets = planets;
     this.globalPosition = globalPosition;
+    this.worldManager = worldManager;
+    this.textureTypes = ['height', 'specular', 'color', 'normal'];
     this.planetSpheres = planets.planets.map((planet,ix)=>{
       let {spatial} = planet;
       let geometry = new SphereBufferGeometry(spatial.radius*0.999, 100,100);
@@ -32,9 +32,6 @@ export class PlanetRenderer{
       mesh.updateMatrixWorld();
       return mesh;
     });
-    this.textureManager = new PlanetTextureManager();
-    this.textureManager.stupid();
-    this.textureManager.initialize();
     this.lodMesh.material.transparent = true;
   }
 
@@ -149,51 +146,55 @@ export class PlanetRenderer{
       modelM:  this.lodMesh.matrixWorld.clone(),
       projectionM:  withCamera.projectionMatrix.clone()
     })
-    //debugger;
-    //this.textureManager.stupid();
     let planetPoint = lodCenter.clone().sub(planetPosition).normalize();
     let lambda = Math.atan2(planetPoint.y, planetPoint.x);
     let r = Math.hypot(planetPoint.x, planetPoint.y);
     let phi = Math.atan2(planetPoint.z, r);
 
-    let textureList = this.textureManager.getList([lambda, phi], size/2,radius);
+    let textureList = this.worldManager.getTileIndexes([lambda, phi], size/2, radius, distanceToCamera - radius);
     
-    // console.log('-----------------------');
-    textureList.forEach(this.renderTextureWithLOD(planet, withCamera));
+    textureList.forEach(this.renderTexturesWithLOD(planet, withCamera));
 
-    //this.renderer.render(this.lodMesh, withCamera);
   }
 
-  renderTextureWithLOD(planet, camera){
+  initTextureCaches(to){
+    to.texturesCache = {};
+    this.textureTypes.forEach(t=>to.texturesCache[t] = []);
+  }
+
+  renderTexturesWithLOD(planet, camera){
     this.noMoreRendering = false;
-    return ({s, t, division, lod, ab, tix, face, resolution})=>{
+    return params => {
+      console.log('need texture', params, planet);
+      let {s, t, division, lod, ab, tix, face, resolution} = params;
+      let d = Math.pow(2, lod);
+      let tile = s*d + t;
+
       if(this.noMoreRendering) return;
-      if(!planet.texturesCache) planet.texturesCache=[];
-      if(!planet.texturesCache[lod])
-        planet.texturesCache[lod] = new Map
-      if(!planet.texturesCache[lod].has(tix))
-        this.prepareTexture(planet, lod, tix, resolution, ab);
-
-
-      let texture = planet.texturesCache[lod].get(tix);
-      texture.needsUpdate = true;
-      this.material.uniforms.cubicPatch = {value:texture};
+      if(!planet.texturesCache) this.initTextureCaches(planet);
+      this.textureTypes.forEach(textureType=>{
+        if(!planet.texturesCache[textureType][lod])
+          planet.texturesCache[textureType][lod] = new Map;
+        if(!planet.texturesCache[textureType][lod].has(tile))
+          this.prepareTexture(planet, {...params, tile, textureType});
+        
+        let texture = planet.texturesCache[textureType][lod].get(tile);
+        texture.needsUpdate = true;
+        this.material.uniforms[textureType+'Map'] = {value:texture};
+      })
       this.material.uniforms.division={value:division};
       this.material.uniforms.resolution={value:resolution};
       this.material.uniforms.samplerStart={value:new Vector2(s,t)};
       this.material.uniforms.fface={value:face};
       this.material.needsUpdate = true;
-      if(face == 0){
-        //console.log([s,t], division);
-      }
-      // if(tix > 60) return;
       this.renderer.render(this.lodMesh, camera);
     }
   }
 
-  prepareTexture(planet, lod, tix, resolution, ab){
-    let t= new DataTexture(ab, resolution, resolution, THREE.RGBAFormat, THREE.UnsignedByteType);
-    planet.texturesCache[lod].set(tix, t);
+  prepareTexture(planet, params){
+    let {textureType, lod, tile} = params;
+    let t = this.worldManager.getTexture(planet.uuid, params.textureType, params);
+    planet.texturesCache[textureType][lod].set(tile, t);
   }
 
   setupUniforms(values){

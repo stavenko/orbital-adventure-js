@@ -1,4 +1,8 @@
-uniform sampler2D cubicPatch;
+uniform sampler2D colorMap;
+uniform sampler2D specularMap;
+uniform sampler2D normalMap;
+uniform sampler2D heightMap;
+
 uniform float division;
 uniform float resolution;
 uniform vec2 samplerStart;
@@ -86,7 +90,7 @@ void main(){
     
     vec2 uv = mod(st, vec2(1.0/division)) / vec2(1.0/division);
 
-    vec4 texel = texture2D(cubicPatch, uv);
+    vec4 texel = texture2D(heightMap, uv);
     gl_FragColor = texel;
   }else{
     gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);

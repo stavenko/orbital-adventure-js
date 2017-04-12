@@ -1,7 +1,9 @@
+import * as THREE from 'three/src/constants.js';
 import {Vector3} from 'three/src/math/Vector3';
 import ZipWorker from 'worker!../Utils/zip/zipWorker.js';
+import {DataTexture} from 'three/src/textures/DataTexture.js'
 
-export class PlanetTextureManager{
+export class WorldManager{
   constructor(){
     
     this.texturesIndex = {
@@ -28,36 +30,124 @@ export class PlanetTextureManager{
 
     ]
 
-    this.textureDownload();
     this.zipWorker = new ZipWorker();
+    this.zipWorker.addEventListener('message',this.unpackComplete.bind(this))
 
     this.textures = [];
+    this.createLodIndex();
   }
 
-  textureDownload(){
+  unpackComplete(event){
+    let {key, texture} = event.data;
+    this.texturesIndex[key].image={
+      width: 2048,
+      height: 2048,
+      data: texture
+    }
+    this.texturesIndex[key].needsUpdate = true;
+  }
+
+  getWorldsHostUrl(path){
+    let host = window.location.hostname;
+    let port = 8082;
+    let proto = window.location.protocol;
+    return `${proto}//${host}:${port}${path}`;
+  }
+
+  getWorldList(fn) {
+    this.get(this.getWorldsHostUrl('/get-list'), response=>{
+      try{
+        fn(JSON.parse(response));
+      }catch(e){
+        console.error('coudn`t parse JSON', e);
+      }
+    })
+  }
+
+  get(url, fn){
+    let xhr = new XMLHttpRequest;
+    xhr.open('GET', url);
+    xhr.onload = ()=>fn(xhr.response);
+    xhr.send();
+  }
+
+  post(url, data, fn){
+    let xhr = new XMLHttpRequest;
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('Content-Type', 'application/json;charset=utf-8');
+    xhr.onload = ()=>fn(xhr.response);
+    xhr.send(JSON.stringify(data));
+  }
+  
+  createWorld(props, fn){
+    let url = this.getWorldsHostUrl('/create-world');
+    this.post(url, props, fn);
+  }
+
+  downloadTexture(url) {
+
+    let Url = this.getWorldsHostUrl(url);
+    this.download(Url, array=>{
+      this.queueUnpack(array, url);
+    })
+  }
+
+  getTexture(forWorld, type, params){
+    let {face, lod, tile} = params;
+    let url = `/${forWorld}/${type}/${lod}/${face}/${tile}.raw`;
+    if(this.texturesIndex[url])
+      return this.texturesIndex[url];
+    let texture = new DataTexture([], 0, 0, THREE.RGBAFormat, THREE.UnsignedByteType);
+    this.texturesIndex[url] = texture;
+    this.checkIfTextureExists(url, err=>{
+      if(err) return this.requestTextureGeneration(forWorld, type, params, url)
+      this.downloadTexture(url);
+    })
+    return texture;
+  }
+
+  checkIfTextureExists(url, cb){
+    let xhr = new XMLHttpRequest;
+    xhr.open('HEAD', url);
+    xhr.onloadend = ()=>{
+      if(xhr.status == 404)
+        return cb("Not found");
+      cb();
+
+    }
+    xhr.send();
+  }
+
+
+  requestTextureGeneration(forWorld, type, params, url){
+    let data = {
+      planetUUID: forWorld.uuid,
+      textureType: type,
+      ...params
+    }
+    let genUrl = this.getWorldsHostUrl('/generate-texture/');
+    this.post(genUrl, data, ()=>{
+      this.downloadTexture(url);
+    })
+  }
+
+
+  download(url, fn){
     let xhr = new XMLHttpRequest();
     xhr.responseType = 'arraybuffer';
     xhr.onload= ()=>{
-      //let ab = new Uint8Array(xhr.response);
-      this.zipWorker.postMessage({type:'inflate', array: xhr.response},[xhr.response]);
-      console.log(xhr.response);
-
-      //let r =  Date.now();
-      //let res = pako.inflate(ab);
-      // console.log('inflate time', Date.now() - r, r);
+      fn(xhr.response);
     }
-    xhr.open('GET', '/build/synth.raw');
+    xhr.open('GET', url);
     xhr.send();
+  }
+
+  queueUnpack(array, key){
+    this.zipWorker.postMessage({type:'inflate', array, key}, [array]);
   }
 
   stToGeo(s,t,face){
     let normal = this.stToNormal(s,t, face);
-
-    /*
-    let theta = Math.atan2(normal[1], normal[0]);
-    let r = Math.hypot(normal[0], normal[1]);
-    let phi = Math.atan2(normal[2], r);
-    */
 
     let [x,y,z] = normal;
 
@@ -138,88 +228,8 @@ export class PlanetTextureManager{
     }
   }
   
-
-
-  stupid(){
-    let imgSize = 8*4;
-    let edge = imgSize / 4;
-    let CF;
-    let IX = {};
-    this.IX = IX;
-    for(let i =0 ;i< imgSize; ++i){
-      let face = Math.floor(i/edge);
-      let from = edge;
-      let to = edge * 2;
-      if(face == 2) {
-        from = 0; to = edge*3;
-      }
-      for(let j = from; j < to; ++j){
-        let f = face;
-        if(j < edge) f= 4;
-        if(j >= edge*2) f= 5;
-        if(CF !== f) {
-          CF = f;
-        }
-
-        let n = outImgToXYZ(i,j,f,edge);
-        if(!IX[f]) IX[f] = [];
-        let s = (i%edge)/edge;
-        let t = (j%edge)/edge;
-        IX[f].push({s,t,n});
-
-      }
-    }
-
-    function outImgToXYZ(i,j,face,edge){
-      let a = 2.0 * i / edge;
-      let b = 2.0 * j / edge;
-      //if(face == 4)
-      //debugger;
-      switch(face){
-        case 0: // back
-          return [-1.0, 1.0-a, 3.0 - b]
-        case 1: // left
-          return [a-3.0, -1.0, 3.0 - b]
-        case 2: // front
-          return [1.0, a - 5.0, 3.0 - b]
-        case 3: // right
-          return [7.0-a, 1.0, 3.0 - b]
-        case 4: // top
-          return [b-1.0, a -5.0, 1.0]
-        case 5: // bottom
-          return [5.0-b, a-5.0, -1.0]
-      }
-    }
-
-    /*
-
-     *def convertBack(imgIn,imgOut):
-    inSize = imgIn.size
-    outSize = imgOut.size
-    inPix = imgIn.load()
-    outPix = imgOut.load()
-    edge = inSize[0]/4   # the length of each edge in pixels
-    for i in xrange(outSize[0]):
-        face = int(i/edge) # 0 - back, 1 - left 2 - front, 3 - right
-        if face==2:
-            rng = xrange(0,edge*3)
-        else:
-            rng = xrange(edge,edge*2)
-
-        for j in rng:
-            if j<edge:
-                face2 = 4 # top
-            elif j>=2*edge:
-                face2 = 5 # bottom
-            else:
-                face2 = face
-
-            (x,y,z) = outImgToXYZ(i,j,face2,edge) */
-  }
-
   stToNormal(s,t, face){
     let faceIx = this.faceIx[face];
-    //s*=2; t*=2;
     let ss = s * 2 - 1;
     let tt = t * 2 - 1;
 
@@ -232,10 +242,7 @@ export class PlanetTextureManager{
       return res;
     }
 
-
-
     if(face == 'left'){
-      //let res = [ss, -1.0, tt];
       let res = [ss, -1.0, -tt];
       return res;
     }
@@ -243,7 +250,6 @@ export class PlanetTextureManager{
       let res = [ss, 1.0, tt];
       return res;
     }
-
 
     if(face == 'top'){
       let res = [ss, -tt, 1.0];
@@ -264,8 +270,35 @@ export class PlanetTextureManager{
     return radius * c;
   }
 
-  getList(center, size, radius){
+  getHighestLod(viewSize, radius, distance){
+    let normalizedDistance = 1.0 / Math.min(1.0, distance/radius);
+    return Math.ceil(Math.log2(normalizedDistance));
+  }
+
+  getTileIndexes(center, viewSize, radius, distanceToSurface){
+    let highestLod = this.getHighestLod(viewSize, radius, distanceToSurface) - 1;
+    let lod = Math.max(0.0, highestLod - 1);
+    let lowerLodTextures = this.getList(lod, center, viewSize, radius);
+    let higherLod = [];
+    if(highestLod > 0)
+      higherLod = this.getList(lod+1, center, viewSize/2, radius);
+
+    return [...lowerLodTextures, ...higherLod];
+
+  }
+
+  getList(lod, center, viewSize, radius){
     let textures = [];
+    let textureIndex = this.lodIndex[lod];
+    for(let i =0; i < textureIndex.length; ++i){
+      let {geoBounds, s,t,face} = textureIndex[i];
+      if(geoBounds.filter(geo=>this.ditance(center, geo, radius) < viewSize).length > 0) 
+        textures.push({s,t,face, lod});
+    }
+    return textures; 
+
+    /*
+
     for(let face in this.texturesIndex){
       this.texturesIndex[face].forEach(texture=>{
         let {geoBounds, tix} = texture;
@@ -276,6 +309,7 @@ export class PlanetTextureManager{
       })
     }
     return textures;
+    */
 
   }
 
