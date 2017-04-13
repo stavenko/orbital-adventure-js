@@ -180,7 +180,6 @@ export class PlanetRenderer{
         
         let texture = planet.texturesCache[textureType][face][lod].get(tile);
         if(!texture) return;
-        texture.needsUpdate = true;
         this.material.uniforms[textureType+'Map'] = {value:texture};
       })
       this.material.uniforms.logDepthBufC={
@@ -190,7 +189,7 @@ export class PlanetRenderer{
       this.material.uniforms.lod={value:lod};
       this.material.uniforms.samplerStart={value:new Vector2(s,t)};
       this.material.uniforms.fface={value:face};
-      this.material.needsUpdate = true;
+      // this.material.needsUpdate = true;
       this.renderer.render(this.lodMesh, camera);
     }
   }
