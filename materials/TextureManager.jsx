@@ -5,6 +5,8 @@ import {DataTexture} from 'three/src/textures/DataTexture.js'
 
 export class WorldManager{
   constructor(){
+    this.busy = false;
+    this.unpackQueue = [];
     
     this.texturesIndex = {
       back: [],
@@ -42,9 +44,11 @@ export class WorldManager{
     this.texturesIndex[key].image={
       width: 2048,
       height: 2048,
-      data: texture
+      data: new Uint8Array(texture)
     }
     this.texturesIndex[key].needsUpdate = true;
+    this.busy = false;
+    this.tryLaunchNextUnpack();
   }
 
   getWorldsHostUrl(path){
@@ -85,19 +89,17 @@ export class WorldManager{
   }
 
   downloadTexture(url) {
-
-    let Url = this.getWorldsHostUrl(url);
-    this.download(Url, array=>{
+    this.download(url, array=>{
       this.queueUnpack(array, url);
     })
   }
 
   getTexture(forWorld, type, params){
     let {face, lod, tile} = params;
-    let url = `/${forWorld}/${type}/${lod}/${face}/${tile}.raw`;
+    let url = this.getWorldsHostUrl(`/texture/${forWorld}/${type}/${lod}/${face}/${tile}.raw`);
     if(this.texturesIndex[url])
       return this.texturesIndex[url];
-    let texture = new DataTexture([], 0, 0, THREE.RGBAFormat, THREE.UnsignedByteType);
+    let texture = new DataTexture(new Uint8Array(16), 2, 2, THREE.RGBAFormat, THREE.UnsignedByteType);
     this.texturesIndex[url] = texture;
     this.checkIfTextureExists(url, err=>{
       if(err) return this.requestTextureGeneration(forWorld, type, params, url)
@@ -120,8 +122,9 @@ export class WorldManager{
 
 
   requestTextureGeneration(forWorld, type, params, url){
+    console.log('request', url);
     let data = {
-      planetUUID: forWorld.uuid,
+      planetUUID: forWorld,
       textureType: type,
       ...params
     }
@@ -133,6 +136,8 @@ export class WorldManager{
 
 
   download(url, fn){
+    console.log('download', url);
+
     let xhr = new XMLHttpRequest();
     xhr.responseType = 'arraybuffer';
     xhr.onload= ()=>{
@@ -143,7 +148,15 @@ export class WorldManager{
   }
 
   queueUnpack(array, key){
-    this.zipWorker.postMessage({type:'inflate', array, key}, [array]);
+    this.unpackQueue.push([{type:'inflate', array, key}, [array]])
+    this.tryLaunchNextUnpack();
+  }
+
+  tryLaunchNextUnpack(){
+    if(this.busy || this.unpackQueue.length == 0) return;
+    let params = this.unpackQueue.shift();
+    this.busy = true;
+    this.zipWorker.postMessage(...params);
   }
 
   stToGeo(s,t,face){

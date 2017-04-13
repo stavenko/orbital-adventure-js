@@ -102,26 +102,28 @@ export class WorldCanvas extends CanvasBase{
     p.add(n.multiplyScalar(planet.spatial.radius + 100000));
     this.globalCameraOpts = {position: new Vector3, lookAt: new Vector3}
     this.planetRenderer = new PlanetRenderer(this.camera,this.renderer, planets, this.globalCameraOpts, this.worldManager);
-    this.startLoop(this.cameraChange.bind(this));
+    this.startLoop(this.cameraChange(planets));
     this.renderingFunction = ()=>{
       this.planetRenderer.render();
     }
   }
 
-  cameraChange(ts){
-    let radius = 39e6;
-    let planet = planets.planets[1];
-    let pos = new Vector3(...planet.spatial.position);
-    let v1 = new Vector3(1.0, 0, 0);
-    let v2 = new Vector3(0.0, 1, 0);
-    let lookAt = pos.clone();
+  cameraChange(planets){
+    return ts=>{
+      let radius = 39e6;
+      let planet = planets.planets[1];
+      let pos = new Vector3(...planet.spatial.position);
+      let v1 = new Vector3(1.0, 0, 0);
+      let v2 = new Vector3(0.0, 0, 1);
+      let lookAt = pos.clone();
 
-    let a  = ts / 10000;
-    pos.add(v1.multiplyScalar(Math.cos(a)*radius));
-    pos.add(v2.multiplyScalar(Math.sin(a)*radius));
-    
-    this.globalCameraOpts.position.copy(pos);
-    this.globalCameraOpts.lookAt.copy(lookAt);
+      let a  = ts / 10000;
+      pos.add(v1.multiplyScalar(Math.cos(a)*radius));
+      pos.add(v2.multiplyScalar(Math.sin(a)*radius));
+      
+      this.globalCameraOpts.position.copy(pos);
+      this.globalCameraOpts.lookAt.copy(lookAt);
+    }
   }
 
   setupCamera(){

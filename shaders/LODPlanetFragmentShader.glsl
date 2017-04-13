@@ -3,54 +3,31 @@ uniform sampler2D specularMap;
 uniform sampler2D normalMap;
 uniform sampler2D heightMap;
 
+uniform float lod;
 uniform float division;
-uniform float resolution;
 uniform vec2 samplerStart;
 uniform float fface;
 
 uniform vec3 someColor;
 varying vec3 sphereNormal;
-/*
-   SAVED;
 int determineFace(vec3 n){
   float ax = abs(n.x);
   float ay = abs(n.y);
   float az = abs(n.z);
 
   if(ay > ax && ay > az){
-    if(sphereNormal.y > 0.0) return 1;
-    else return 3;
-  } 
-
-  if(ax > ay && ax > az){
-    if(sphereNormal.x > 0.0) return 0;
-    else return 2;
-  }
-
-  if(az > ay && az > ax){
-    if(sphereNormal.z > 0.0) return 4;
-    else return 5;
-  }
-}
- */
-int determineFace(vec3 n){
-  float ax = abs(n.x);
-  float ay = abs(n.y);
-  float az = abs(n.z);
-
-  if(ay > ax && ay > az){
-    if(sphereNormal.y > 0.0) return 3;
+    if(n.y > 0.0) return 3;
     else return 1;
   } 
 
 
   if(ax > ay && ax > az){
-    if(sphereNormal.x > 0.0) return 2;
+    if(n.x > 0.0) return 2;
     else return 0;
   }
 
   if(az > ay && az > ax){
-    if(sphereNormal.z > 0.0) return 4;
+    if(n.z > 0.0) return 4;
     else return 5;
   }
 }
@@ -72,13 +49,15 @@ bool isWithinUV(vec2 st){
   bool y = st.y < samplerStart.y;
   if((st.x < samplerStart.x) || (st.x > samplerEnd.x) ||
       (st.y < samplerStart.y) || (st.y > samplerEnd.y)) 
-  return false;
+    return false;
   return true;
-
 }
+
 void main(){
   int face = int(fface);
   int nFace = determineFace(sphereNormal);
+  //gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);
+  //return;
   if(nFace == face){
 
     vec2 st = (getSt(sphereNormal, face) + vec2(1.0,1.0)) / vec2(2.0,2.0);
@@ -93,7 +72,7 @@ void main(){
     vec4 texel = texture2D(heightMap, uv);
     gl_FragColor = texel;
   }else{
-    gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
+    gl_FragColor = vec4(0.0, 0.0 , 0.0, 0.0);
   // discard;
   }
 }

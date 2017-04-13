@@ -159,31 +159,32 @@ export class PlanetRenderer{
 
   initTextureCaches(to){
     to.texturesCache = {};
-    this.textureTypes.forEach(t=>to.texturesCache[t] = []);
+    this.textureTypes.forEach(t=>to.texturesCache[t] = [[],[],[],[],[],[],[]]);
   }
 
   renderTexturesWithLOD(planet, camera){
     this.noMoreRendering = false;
     return params => {
-      console.log('need texture', params, planet);
-      let {s, t, division, lod, ab, tix, face, resolution} = params;
-      let d = Math.pow(2, lod);
-      let tile = s*d + t;
+      let {s, t, lod,  face } = params;
+      let division = Math.pow(2, lod);
+      let tile = s*division + t;
 
       if(this.noMoreRendering) return;
       if(!planet.texturesCache) this.initTextureCaches(planet);
       this.textureTypes.forEach(textureType=>{
-        if(!planet.texturesCache[textureType][lod])
-          planet.texturesCache[textureType][lod] = new Map;
-        if(!planet.texturesCache[textureType][lod].has(tile))
+
+        if(!planet.texturesCache[textureType][face][lod])
+          planet.texturesCache[textureType][face][lod] = new Map;
+        if(!planet.texturesCache[textureType][face][lod].has(tile))
           this.prepareTexture(planet, {...params, tile, textureType});
         
-        let texture = planet.texturesCache[textureType][lod].get(tile);
+        let texture = planet.texturesCache[textureType][face][lod].get(tile);
+        if(!texture) return;
         texture.needsUpdate = true;
         this.material.uniforms[textureType+'Map'] = {value:texture};
       })
       this.material.uniforms.division={value:division};
-      this.material.uniforms.resolution={value:resolution};
+      this.material.uniforms.lod={value:lod};
       this.material.uniforms.samplerStart={value:new Vector2(s,t)};
       this.material.uniforms.fface={value:face};
       this.material.needsUpdate = true;
@@ -192,9 +193,10 @@ export class PlanetRenderer{
   }
 
   prepareTexture(planet, params){
-    let {textureType, lod, tile} = params;
+    let {textureType, lod, face, tile} = params;
+    if(textureType !== 'height') return;
     let t = this.worldManager.getTexture(planet.uuid, params.textureType, params);
-    planet.texturesCache[textureType][lod].set(tile, t);
+    planet.texturesCache[textureType][face][lod].set(tile, t);
   }
 
   setupUniforms(values){
