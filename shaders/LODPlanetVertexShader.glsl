@@ -11,8 +11,12 @@ uniform mat4 viewM;
 uniform mat4 viewInverseM;
 uniform mat4 projectionM;
 
+uniform float logDepthBufC;
+
 varying vec3 sphereNormal;
 vec3 defaultNorth = vec3(0.0, 1.0, 0.0);
+
+#define EPSILON 1e-6
 
 vec4 conjugate(vec4 q){
   return vec4(q.xyz * -1.0, q.w);
@@ -79,4 +83,7 @@ void main(){
   mat4 pv1 = projectionM * viewInverseM;
 
   gl_Position =  pv1 * vec4(finalPosition+ planetCenter, 1.0);
+  float z = log2(max(EPSILON, gl_Position.w + 1.0 )) * logDepthBufC;
+
+  gl_Position.z = (z - 1.0) * gl_Position.w;
 }

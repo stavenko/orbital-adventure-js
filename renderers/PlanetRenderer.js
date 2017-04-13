@@ -44,8 +44,8 @@ export class PlanetRenderer{
     let c = this.camera.clone();
     c.position.copy(this.globalPosition.position);
     c.lookAt(this.globalPosition.lookAt.clone());
-    c.near = 1000;
-    c.far = 100000000;
+    c.near = 1e-3;
+    c.far = 1e10;
     c.updateMatrix();
     c.updateMatrixWorld();
     c.updateProjectionMatrix();
@@ -55,10 +55,10 @@ export class PlanetRenderer{
   renderPlanets(camera){
     this.planets.planets.forEach((planet, ix)=>{
       let mesh = this.planetSpheres[ix];
-      this.setupClipping(planet, camera);
+      // this.setupClipping(planet, camera);
       // this.renderSphere(mesh,camera);
       this.renderLOD(planet, camera);
-      this.renderer.clearDepth();
+      // this.renderer.clearDepth();
     })
   }
 
@@ -73,9 +73,9 @@ export class PlanetRenderer{
     let nearerPoint = Math.abs(distance - radius ) * 0.2;
     let near = Math.max(0.01, distance - radius - nearerPoint);
     let far = distance + radius;
-    //withCamera.near = near;
-    //withCamera.far = far;
-    //withCamera.updateProjectionMatrix();
+    withCamera.near = near;
+    withCamera.far = far;
+    withCamera.updateProjectionMatrix();
   }
 
   renderSphere(mesh, camera){
@@ -85,7 +85,7 @@ export class PlanetRenderer{
   renderPlanetSpheres(withCamera){
     this.planetSpheres.forEach((mesh,ix)=>{
       this.renderer.render(mesh, withCamera);
-      this.renderer.clearDepth();
+      // this.renderer.clearDepth();
     })
   }
 
@@ -183,6 +183,9 @@ export class PlanetRenderer{
         texture.needsUpdate = true;
         this.material.uniforms[textureType+'Map'] = {value:texture};
       })
+      this.material.uniforms.logDepthBufC={
+        value:  2.0 / ( Math.log( camera.far + 1.0 ) / Math.LN2 ) 
+      };
       this.material.uniforms.division={value:division};
       this.material.uniforms.lod={value:lod};
       this.material.uniforms.samplerStart={value:new Vector2(s,t)};
