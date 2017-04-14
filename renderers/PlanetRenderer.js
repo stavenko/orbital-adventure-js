@@ -43,7 +43,9 @@ export class PlanetRenderer{
     this.clearing();
     let c = this.camera.clone();
     c.position.copy(this.globalPosition.position);
-    c.lookAt(this.globalPosition.lookAt.clone());
+    //c.lookAt(this.globalPosition.lookAt.clone());
+    c.quaternion.copy(this.globalPosition.quaternion);
+
     c.near = 1e-3;
     c.far = 1e10;
     c.updateMatrix();

@@ -6,6 +6,7 @@ export class World extends React.Component{
     super(props)
   }
 
+
   render(){
     
     return <div className='canvas-container'>
