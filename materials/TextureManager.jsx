@@ -96,6 +96,7 @@ export class WorldManager{
 
   getTexture(forWorld, type, params){
     let {face, lod, tile} = params;
+    console.log("get texture", face, lod, tile);
     let url = this.getWorldsHostUrl(`/texture/${forWorld}/${type}/${lod}/${face}/${tile}.raw`);
     if(this.texturesIndex[url])
       return this.texturesIndex[url];
@@ -184,10 +185,11 @@ export class WorldManager{
           for(let j = 0; j < division; ++j){
             let s = i * inc;
             let t = j * inc;
+            let tile = j * division + i;
             let geoBounds = [[0,0], [0,1], [1,0], [1,1]]
               .map(x=>x.map((n,i)=>n*inc+[s,t][i]))
               .map(st=>this.stToGeo(...st, this.faceNames[face]));
-            this.lodIndex[lod].push({geoBounds, s, t, face});
+            this.lodIndex[lod].push({geoBounds, s, t, tile, face});
           }
         }
       }
@@ -205,6 +207,7 @@ export class WorldManager{
         for(let j=0; j < division; ++j){
           let s = i / division;
           let t = j / division;
+          let tile = j * division + i;
           let color = this.faceColors[this.faceIx[ix]];
           let ab = new Uint8Array(res*res*4);
           
@@ -232,7 +235,7 @@ export class WorldManager{
             .map(x=>x.map((n,i)=>n/division+[s,t][i]))
             .map(st=>this.stToGeo(...st, ix))
             ;
-          textures.push({t,s, division, face:this.faceIx[ix] ,geoBounds, tix, lod, resolution:res });
+          textures.push({t,s, tile, division, face:this.faceIx[ix] ,geoBounds, tix, lod, resolution:res });
 
           // debugger;
           // debugger;
@@ -284,11 +287,12 @@ export class WorldManager{
   }
 
   getHighestLod(viewSize, radius, distance){
-    let normalizedDistance = 1.0 / Math.min(1.0, distance/radius);
+    let normalizedDistance = 1.0 / Math.min(1.0, distance/(radius*3));
     return Math.ceil(Math.log2(normalizedDistance));
   }
 
   getTileIndexes(center, viewSize, radius, distanceToSurface){
+    // console.log('normalize distance', distanceToSurface/radius)
     let highestLod = this.getHighestLod(viewSize, radius, distanceToSurface) - 1;
     let lod = Math.max(0.0, highestLod - 1);
     let lowerLodTextures = this.getList(lod, center, viewSize, radius);
@@ -304,9 +308,9 @@ export class WorldManager{
     let textures = [];
     let textureIndex = this.lodIndex[lod];
     for(let i =0; i < textureIndex.length; ++i){
-      let {geoBounds, s,t,face} = textureIndex[i];
+      let {geoBounds, s,t,face, tile} = textureIndex[i];
       if(geoBounds.filter(geo=>this.ditance(center, geo, radius) < viewSize).length > 0) 
-        textures.push({s,t,face, lod});
+        textures.push({s,t,face, tile, lod});
     }
     return textures; 
 

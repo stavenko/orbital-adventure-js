@@ -101,12 +101,10 @@ export class PlanetRenderer{
 
     let lodCenter = planetPosition.clone().add(cameraDir.negate().multiplyScalar(radius));
 
-    // let distanceToCamera = planetPosition.distanceTo(withCamera.position);
 
     let size = Math.acos(radius / distanceToCamera) * 2 * radius;
 
     let northVector = new Vector3(...north);
-    //northVector.applyQuaternion(new Quaternion().setFromAxisAngle(new Vector3(0,0,1), Math.PI/4.0));
     let eastVector = new Vector3().crossVectors(northVector, cameraDir ).normalize().negate();
 
     //cubemap lookup
@@ -154,7 +152,6 @@ export class PlanetRenderer{
     let textureList = this.worldManager.getTileIndexes([lambda, phi], size/2, radius, distanceToCamera - radius);
     
     textureList.forEach(this.renderTexturesWithLOD(planet, withCamera));
-
   }
 
   initTextureCaches(to){
@@ -165,9 +162,8 @@ export class PlanetRenderer{
   renderTexturesWithLOD(planet, camera){
     this.noMoreRendering = false;
     return params => {
-      let {s, t, lod,  face } = params;
+      let {s, t, lod, tile, face } = params;
       let division = Math.pow(2, lod);
-      let tile = s*division + t;
 
       if(this.noMoreRendering) return;
       if(!planet.texturesCache) this.initTextureCaches(planet);
@@ -189,7 +185,6 @@ export class PlanetRenderer{
       this.material.uniforms.lod={value:lod};
       this.material.uniforms.samplerStart={value:new Vector2(s,t)};
       this.material.uniforms.fface={value:face};
-      // this.material.needsUpdate = true;
       this.renderer.render(this.lodMesh, camera);
     }
   }

@@ -110,14 +110,24 @@ export class WorldCanvas extends CanvasBase{
 
   cameraChange(planets){
     return ts=>{
-      let radius = 39e6;
       let planet = planets.planets[1];
+
+      let maxRadius = 39e6;//planet.spatial.radius + 1000e3;
+      let minRadius = 39e6;//planet.spatial.radius + 100e3 ;
+
       let pos = new Vector3(...planet.spatial.position);
       let v1 = new Vector3(1.0, 0, 0);
       let v2 = new Vector3(0.0, 0, 1);
       let lookAt = pos.clone();
 
-      let a  = ts / 10000;
+      let pi2 = Math.PI * 2;
+      let a  = ts / 20000;
+      let phi = a / pi2;
+      phi = a - (Math.floor(phi) * pi2);
+      let t = Math.abs(phi/pi2 - 0.5)*2;
+
+      let radius = maxRadius * t + (1-t)*minRadius;
+
       pos.add(v1.multiplyScalar(Math.cos(a)*radius));
       pos.add(v2.multiplyScalar(Math.sin(a)*radius));
       
