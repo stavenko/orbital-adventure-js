@@ -78,9 +78,9 @@ export class WorldManager{
   post(url, data, fn){
     let xhr = new XMLHttpRequest;
     xhr.open('POST', url, true);
-    xhr.setRequestHeader('Content-Type', 'application/json;charset=utf-8');
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
     xhr.onload = ()=>fn(xhr.response);
-    xhr.send(JSON.stringify(data));
+    xhr.send(`json=${encodeURIComponent(JSON.stringify(data))}`);
   }
   
   createWorld(props, fn){
