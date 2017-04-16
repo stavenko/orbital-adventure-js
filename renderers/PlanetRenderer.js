@@ -153,6 +153,7 @@ export class PlanetRenderer{
 
     let textureList = this.worldManager.getTileIndexes([lambda, phi], size/2, radius, distanceToCamera - radius);
     
+    console.log("textures to render" , textureList.length);
     textureList.forEach(this.renderTexturesWithLOD(planet, withCamera));
   }
 
