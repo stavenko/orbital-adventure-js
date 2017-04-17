@@ -103,9 +103,7 @@ export class WorldCanvas extends CanvasBase{
     })
 
     let spdMul = Math.pow(minDistance / (planetRadius*3),2);
-    console.log(spdMul);
 
-    console.log('kd', evt.keyCode)
     let x = new Vector3(1,0,0);
     let y = new Vector3(0,1,0);
     let z = new Vector3(0,0,1);

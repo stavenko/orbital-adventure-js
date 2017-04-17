@@ -306,6 +306,118 @@ export class WorldManager{
     return Math.ceil(Math.log2(normalizedDistance));
   }
 
+  determineFace(n){
+    let abs = Math.abs;
+    let ax = abs(n.x);
+    let ay = abs(n.y);
+    let az = abs(n.z);
+
+    if(ay > ax && ay > az){
+      if(n.y > 0.0) return 3;
+      else return 1;
+    } 
+
+    if(ax > ay && ax > az){
+      if(n.x > 0.0) return 2;
+      else return 0;
+    }
+
+    if(az > ay && az > ax){
+      if(n.z > 0.0) return 4;
+      else return 5;
+    }
+  }
+
+  determineST(n, f){
+    let abs = Math.abs;
+
+    if(f == 2) return vec2(-n.z/ abs(n.x), -n.y/abs(n.x)); 
+    if(f == 0) return vec2(n.z/ abs(n.x), -n.y/abs(n.x)); 
+
+    if(f == 4) return vec2(n.x/ abs(n.z), -n.y/abs(n.z)); 
+    if(f == 5) return vec2(-n.x/ abs(n.z), -n.y/abs(n.z)); 
+
+    if(f == 3) return vec2(n.x/ abs(n.y), n.z/abs(n.y)); 
+    if(f == 1) return vec2(n.x/ abs(n.y), -n.z/abs(n.y)); 
+
+    function vec2(x,y){
+      return [x,y];
+    }
+  }
+  allZeroLodFaces(){
+    return [
+      {face:0, lod:0, s:0, t:0, tile:0},
+      {face:1, lod:0, s:0, t:0, tile:0},
+      {face:2, lod:0, s:0, t:0, tile:0},
+      {face:3, lod:0, s:0, t:0, tile:0},
+      {face:4, lod:0, s:0, t:0, tile:0},
+      {face:5, lod:0, s:0, t:0, tile:0},
+    ]
+  }
+
+  lookupPosX({face, lod, I, J}){
+    let size = Math.pow(2,lod);
+    let s = J / size;
+    let t = I / size;
+    if(t >= 1) 
+      return {face: 1, t: 1 - s; s: 2-t } // face: -y
+
+  }
+
+  getAdjusentFaceTile({face, lod, I,J}){
+    if(face == 2){
+      return this.lookupPosX({face,lod,I,J});
+    }
+    
+  }
+
+  getAdjusentTiles(tile){
+    let {face,lod, I,J} = tile
+    let tiles = Math.pow(2,lod);
+
+    let diffs = [
+      [-1,-1], [-1,0], [-1,1],
+      [0,-1], [0,0], [0,1],
+      [1,-1], [1,0], [1,1]];
+
+    let adjusentTiles = [tile];
+    for(let i = 0; i<diffs.length; ++i){
+      let [di,dj]  = diffs[i];
+      let ni = I + di;
+      let nj = J + dj;
+      if(ni >= 0 && ni < tiles && nj >= 0 && nj < tiles){
+        let s = nj / tiles;
+        let t = ni / tiles;
+        let tileNum = nj * tiles + ni;
+        adjusentTiles.push({s, t, tile:tileNum, face, lod});
+      }else{
+        console.log("need to search tiles on other faces");
+      }
+    }
+    return adjusentTiles;
+  }
+
+  getTileIndexesByNormal(normal, radius, distanceToSurface){
+    let lod = this.getHighestLod(null, radius, distanceToSurface);
+    let face = this.determineFace(normal);
+    let [s,t] = this.determineST(normal, face);
+    s = (s+1) / 2;
+    t = (t+1) / 2;
+    let size = 1/ Math.pow(2, lod);
+    let J = Math.floor(s / size);
+    let I = Math.floor(t / size);
+    let tile = J *Math.pow(2,lod) + I;
+    let MAX = Math.pow(2,lod)-1;
+    let MAXT = MAX * Math.pow(2,lod) + MAX;
+
+    if(tile > MAXT) debugger;
+    if(face == 0) return this.allZeroLodFaces();
+
+    return this.getAdjusentTiles({face, lod, tile, I, J, s:J*size,t:I*size});
+
+
+  }
+
   getTileIndexes(center, viewSize, radius, distanceToSurface){
     // console.log('normalize distance', distanceToSurface/radius)
     let highestLod = this.getHighestLod(viewSize, radius, distanceToSurface) - 1;
@@ -320,6 +432,9 @@ export class WorldManager{
   }
 
   getList(lod, center, viewSize, radius){
+
+
+
     let textures = [];
     let textureIndex = this.lodIndex[lod];
     for(let i =0; i < textureIndex.length; ++i){
@@ -329,19 +444,6 @@ export class WorldManager{
     }
     return textures; 
 
-    /*
-
-    for(let face in this.texturesIndex){
-      this.texturesIndex[face].forEach(texture=>{
-        let {geoBounds, tix} = texture;
-        if(geoBounds.filter(geo=>this.ditance(center, geo, radius) < size).length > 0)
-          textures.push({...texture, ab: this.textures[tix]});
-
-
-      })
-    }
-    return textures;
-    */
 
   }
 

@@ -151,9 +151,8 @@ export class PlanetRenderer{
     let r = Math.hypot(planetPoint.x, planetPoint.y);
     let phi = Math.atan2(planetPoint.z, r);
 
-    let textureList = this.worldManager.getTileIndexes([lambda, phi], size/2, radius, distanceToCamera - radius);
-    
-    console.log("textures to render" , textureList.length);
+    let textureList = this.worldManager.getTileIndexesByNormal(planetPoint, radius, distanceToCamera - radius)
+
     textureList.forEach(this.renderTexturesWithLOD(planet, withCamera));
   }
 
