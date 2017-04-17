@@ -36,9 +36,26 @@ export class WorldManager{
     this.zipWorker.addEventListener('message',this.unpackComplete.bind(this))
 
     this.textures = [];
+    this.serverGenerationTasks = {};
     this.createLodIndex();
+    this.serverCheckInterval = setInterval(()=>this.checkServerTasks(), 2000);
   }
 
+  checkServerTasks(){
+    let uuids = Object.keys(this.serverGenerationTasks);
+    this.post(this.getWorldsHostUrl('/get-task-list-state'), uuids, (state)=>{
+      state = JSON.parse(state);
+      for(let k in state){
+        if(state[k] == 'completed' || state[k] == 'notfound'){
+          let url = this.serverGenerationTasks[k];
+          if(url){
+            this.downloadTexture(url);
+            delete this.serverGenerationTasks[k]
+          }
+        }
+      }
+    })
+  }
   unpackComplete(event){
     let {key, texture} = event.data;
     this.texturesIndex[key].image={
@@ -130,8 +147,8 @@ export class WorldManager{
       ...params
     }
     let genUrl = this.getWorldsHostUrl('/generate-texture/');
-    this.post(genUrl, data, ()=>{
-      this.downloadTexture(url);
+    this.post(genUrl, data, (uuid)=>{
+      this.serverGenerationTasks[uuid] = url;
     })
   }
 
@@ -237,8 +254,6 @@ export class WorldManager{
             ;
           textures.push({t,s, tile, division, face:this.faceIx[ix] ,geoBounds, tix, lod, resolution:res });
 
-          // debugger;
-          // debugger;
         }
       }
     }
