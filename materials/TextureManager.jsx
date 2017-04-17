@@ -359,16 +359,20 @@ export class WorldManager{
     let size = Math.pow(2,lod);
     let s = J / size;
     let t = I / size;
-    if(t >= 1) 
-      return {face: 1, t: 1 - s; s: 2-t } // face: -y
-
+    if(t >= 1) return {face: 1, t: s; s: 2-t } // face: -y
+    if(t  < 0) return {face: 3, t: s; s: 1+t } // face: +y
+    if(s >= 1) return {face: 5, t: t; s: s-1 } // face: -z
+    if(s  < 0) return {face: 4, t: t; s: 1+s } // face: +z
   }
 
   getAdjusentFaceTile({face, lod, I,J}){
+    let tileWithST = null;
     if(face == 2){
-      return this.lookupPosX({face,lod,I,J});
+      console.log("face - is positive X");
+      tileWithST = this.lookupPosX({face,lod,I,J});
     }
     
+
   }
 
   getAdjusentTiles(tile){
