@@ -354,15 +354,65 @@ export class WorldManager{
       {face:5, lod:0, s:0, t:0, tile:0},
     ]
   }
+  lookupPosZ({face, lod, I, J}){
+    let size = Math.pow(2,lod);
+    let s = J / size;
+    let t = I / size;
+    if(t >= 1) return {face: 1, t: t-1, s:s} // face: -y
+    if(t  < 0) return {face: 3, t: 1+t, s:s} // face: +y
+    if(s >= 1) return {face: 2, t: t, s:s-1} // face: +x
+    if(s  < 0) return {face: 0, t: t, s:1+s} // face: -x
+  }
+
+  lookupNegZ({face, lod, I, J}){
+    let size = Math.pow(2,lod);
+    let s = J / size;
+    let t = I / size;
+    if(t >= 1) return {face: 1, t: 2-t, s:1-s} // face: -z
+    if(t  < 0) return {face: 3, t: -t , s:1-s} // face: +z
+    if(s >= 1) return {face: 0, t: t, s: s-1} // face: -x
+    if(s  < 0) return {face: 2, t: t, s: 1+s} // face: +x
+  }
+
+  lookupPosY({face, lod, I, J}){
+    let size = Math.pow(2,lod);
+    let s = J / size;
+    let t = I / size;
+    if(t >= 1) return {face: 4, t: 2-t, s: s} // face: +z
+    if(t  < 0) return {face: 5, t: -t, s:1-s } // face: -z
+    if(s >= 1) return {face: 2, t: s-1, s: 1-t } // face: +x
+    if(s  < 0) return {face: 0, t: -s, s: t  } // face: -x
+  }
+
+  lookupNegY({face, lod, I, J}){
+    let size = Math.pow(2,lod);
+    let s = J / size;
+    let t = I / size;
+    if(t >= 1) return {face: 5, t: 2-t, s:1-s} // face: -z
+    if(t  < 0) return {face: 4, t: 1+t, s:s} // face: +z
+    if(s >= 1) return {face: 2, t: 2-s, s:t} // face: +x
+    if(s  < 0) return {face: 0, t: s+1, s:1-t} // face: -x
+  }
+
 
   lookupPosX({face, lod, I, J}){
     let size = Math.pow(2,lod);
     let s = J / size;
     let t = I / size;
-    if(t >= 1) return {face: 1, t: s; s: 2-t } // face: -y
-    if(t  < 0) return {face: 3, t: s; s: 1+t } // face: +y
-    if(s >= 1) return {face: 5, t: t; s: s-1 } // face: -z
-    if(s  < 0) return {face: 4, t: t; s: 1+s } // face: +z
+    if(t >= 1) return {face: 1, t: s, s: 2-t } // face: -y
+    if(t  < 0) return {face: 3, t: s, s: 1+t } // face: +y
+    if(s >= 1) return {face: 5, t: t, s: s-1 } // face: -z
+    if(s  < 0) return {face: 4, t: t, s: 1+s } // face: +z
+  }
+
+  lookupNegX({face, lod, I, J}){
+    let size = Math.pow(2,lod);
+    let s = J / size;
+    let t = I / size;
+    if(t >= 1) return {face: 1, t: 1-s, s: t-1 } // face: -y
+    if(t  < 0) return {face: 3, t: s,   s: -t } // face: +y
+    if(s >= 1) return {face: 4, t: t,   s: s-1 } // face: -z
+    if(s  < 0) return {face: 5, t: t,   s: 1+s } // face: +z
   }
 
   getAdjusentFaceTile({face, lod, I,J}){
@@ -371,8 +421,6 @@ export class WorldManager{
       console.log("face - is positive X");
       tileWithST = this.lookupPosX({face,lod,I,J});
     }
-    
-
   }
 
   getAdjusentTiles(tile){
