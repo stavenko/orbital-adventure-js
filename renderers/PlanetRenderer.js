@@ -71,7 +71,6 @@ export class PlanetRenderer{
     let v = withCamera.position.clone().sub(new Vector3(...position));
     let cameraDir = new Vector3(0,0,1).applyMatrix4(withCamera.matrixWorld).sub(withCamera.position).normalize();
     let distance = cameraDir.dot(v);
-    // console.log(cameraDir);
     let nearerPoint = Math.abs(distance - radius ) * 0.2;
     let near = Math.max(0.01, distance - radius - nearerPoint);
     let far = distance + radius;

@@ -3,6 +3,8 @@ import {Vector3} from 'three/src/math/Vector3';
 import ZipWorker from 'worker!../Utils/zip/zipWorker.js';
 import {DataTexture} from 'three/src/textures/DataTexture.js'
 
+const TextureSize = 512;
+
 export class WorldManager{
   constructor(){
     this.busy = false;
@@ -47,22 +49,70 @@ export class WorldManager{
       state = JSON.parse(state);
       for(let k in state){
         if(state[k] == 'completed' || state[k] == 'notfound'){
-          let url = this.serverGenerationTasks[k];
-          if(url){
-            this.downloadTexture(url);
+          let value = this.serverGenerationTasks[k];
+          if(value){
+            this.downloadTexture(value.url, value.type);
             delete this.serverGenerationTasks[k]
           }
         }
       }
     })
   }
-  unpackComplete(event){
-    let {key, texture} = event.data;
-    this.texturesIndex[key].image={
-      width: 2048,
-      height: 2048,
-      data: new Uint8Array(texture)
+
+  createFloatTextureWithRandomColor(){
+    // const s = 2048
+    // let C = 3
+    // let ab = new Float32Array(s*s*C);
+    // let main  = Math.random()*0.75;
+    // for(let i = 0; i< s; ++i){
+    // for(let j =0; j < s; ++j){
+    // let ix = i*s +j;
+    // ix*=C;
+    // ab[ix] = main * Math.random()*0.25
+    // ab[ix+1] = main * Math.random()*0.25
+    // ab[ix+2] = main * Math.random()*0.25
+    // }
+    // }
+    // return ab;
+  }
+
+  createRGBTextureFromFloat(texture){
+    let f32 = new Float32Array(texture);
+    let s = TextureSize;
+    let C = 3;
+    let ab = new Float32Array(s*s*C);
+    for(let i = 0; i< s; ++i){
+      for(let j =0; j < s; ++j){
+        let ix = i*s +j;
+        let cix = ix * C;
+        ab[cix] = f32[ix];
+      }
     }
+    return ab;
+  }
+
+  processUnpackedTexture(type, array){
+    if(type === 'height'){
+      return{
+        data: this.createRGBTextureFromFloat(array),
+        format: THREE.RGBFormat,
+        type: THREE.FloatType
+      }
+    }
+  }
+
+  unpackComplete(event){
+    let {key, textureType, texture} = event.data;
+    debugger;
+    console.log(key, textureType, '----');
+    let processedTexture = this.processUnpackedTexture(textureType, texture);
+    this.texturesIndex[key].image={
+      width: TextureSize,
+      height: TextureSize,
+      data: processedTexture.data //__floatArr //new Uint8Array(texture)
+    }
+    this.texturesIndex[key].format = processedTexture.format; //THREE.RGBFormat;
+    this.texturesIndex[key].type = processedTexture.type; //THREE.FloatType;
     this.texturesIndex[key].needsUpdate = true;
     this.busy = false;
     this.tryLaunchNextUnpack();
@@ -105,9 +155,9 @@ export class WorldManager{
     this.post(url, props, fn);
   }
 
-  downloadTexture(url) {
+  downloadTexture(url, textureType) {
     this.download(url, array=>{
-      this.queueUnpack(array, url);
+      this.queueUnpack(array, url, textureType);
     })
   }
 
@@ -123,7 +173,7 @@ export class WorldManager{
     this.texturesIndex[url] = texture;
     this.checkIfTextureExists(url, err=>{
       if(err) return this.requestTextureGeneration(forWorld, type, params, url)
-      this.downloadTexture(url);
+      this.downloadTexture(url, type);
     })
     return texture;
   }
@@ -150,7 +200,7 @@ export class WorldManager{
     }
     let genUrl = this.getWorldsHostUrl('/generate-texture/');
     this.post(genUrl, data, (uuid)=>{
-      this.serverGenerationTasks[uuid] = url;
+      this.serverGenerationTasks[uuid] = {url,type};
     })
   }
 
@@ -167,8 +217,8 @@ export class WorldManager{
     xhr.send();
   }
 
-  queueUnpack(array, key){
-    this.unpackQueue.push([{type:'inflate', array, key}, [array]])
+  queueUnpack(array, key, textureType){
+    this.unpackQueue.push([{type:'inflate', array, key, textureType}, [array]])
     this.tryLaunchNextUnpack();
   }
 
