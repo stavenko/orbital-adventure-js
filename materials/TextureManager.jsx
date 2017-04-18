@@ -59,33 +59,19 @@ export class WorldManager{
     })
   }
 
-  createFloatTextureWithRandomColor(){
-    // const s = 2048
-    // let C = 3
-    // let ab = new Float32Array(s*s*C);
-    // let main  = Math.random()*0.75;
-    // for(let i = 0; i< s; ++i){
-    // for(let j =0; j < s; ++j){
-    // let ix = i*s +j;
-    // ix*=C;
-    // ab[ix] = main * Math.random()*0.25
-    // ab[ix+1] = main * Math.random()*0.25
-    // ab[ix+2] = main * Math.random()*0.25
-    // }
-    // }
-    // return ab;
-  }
-
   createRGBTextureFromFloat(texture){
     let f32 = new Float32Array(texture);
     let s = TextureSize;
-    let C = 3;
+    let C = 4;
     let ab = new Float32Array(s*s*C);
     for(let i = 0; i< s; ++i){
       for(let j =0; j < s; ++j){
         let ix = i*s +j;
         let cix = ix * C;
-        ab[cix] = f32[ix];
+        ab[cix]   = f32[cix];
+        ab[cix+1] = f32[cix+1];
+        ab[cix+2] = f32[cix+2];
+        ab[cix+3] = f32[cix+3];
       }
     }
     return ab;
@@ -95,8 +81,9 @@ export class WorldManager{
     if(type === 'height'){
       return{
         data: this.createRGBTextureFromFloat(array),
-        format: THREE.RGBFormat,
-        type: THREE.FloatType
+        format: THREE.RGBAFormat,
+        type: THREE.FloatType,
+        textureSize: TextureSize/2.0
       }
     }
   }
@@ -107,8 +94,8 @@ export class WorldManager{
     console.log(key, textureType, '----');
     let processedTexture = this.processUnpackedTexture(textureType, texture);
     this.texturesIndex[key].image={
-      width: TextureSize,
-      height: TextureSize,
+      width: processedTexture.textureSize,
+      height: processedTexture.textureSize,
       data: processedTexture.data //__floatArr //new Uint8Array(texture)
     }
     this.texturesIndex[key].format = processedTexture.format; //THREE.RGBFormat;

@@ -53,11 +53,25 @@ bool isWithinUV(vec2 st){
   return true;
 }
 
+vec2 getHeightUV(vec2 uv){
+  return mod(uv*vec2(2.0), vec2(1.0));
+}
+
+
+float texelLookup(vec4 texel, vec2 uv){
+  float x = floor(uv.x / 0.5);
+  float y = floor(uv.y / 0.5);
+  int t = int(x*2.0 + y);
+  if(t == 0) return texel.x;
+  if(t == 1) return 0.0;//texel.y;
+  if(t == 2) return 0.0;//texel.z;
+  if(t == 3) return 0.0;//texel.w;
+}
+
 void main(){
   int face = int(fface);
   int nFace = determineFace(sphereNormal);
-  //gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);
-  //return;
+
   if(nFace == face){
 
     vec2 st = (getSt(sphereNormal, face) + vec2(1.0,1.0)) / vec2(2.0,2.0);
@@ -69,8 +83,11 @@ void main(){
     
     vec2 uv = mod(st, vec2(1.0/division)) / vec2(1.0/division);
 
-    vec4 texel = texture2D(heightMap, uv);
-    gl_FragColor = texel;
+    vec2 nuv = getHeightUV(uv);
+    vec4 texel = texture2D(heightMap, nuv);
+    //gl_FragColor = vec4(nuv, 0.0, 1.0);
+    gl_FragColor = vec4(vec3(texel.x), 1.0);
+    //gl_FragColor = vec4(vec3((texelLookup(texel,uv)+1.0) /2.0), 1.0);
   }else{
     gl_FragColor = vec4(0.0, 0.0 , 0.0, 0.0);
   // discard;
