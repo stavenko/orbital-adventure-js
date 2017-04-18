@@ -114,6 +114,8 @@ export class WorldManager{
   getTexture(forWorld, type, params){
     let {face, lod, tile} = params;
     console.log("get texture", face, lod, tile);
+    if(lod == 1 && tile > 3)
+      debugger;
     let url = this.getWorldsHostUrl(`/texture/${forWorld}/${type}/${lod}/${face}/${tile}.raw`);
     if(this.texturesIndex[url])
       return this.texturesIndex[url];
@@ -362,6 +364,7 @@ export class WorldManager{
     if(t  < 0) return {face: 3, t: 1+t, s:s} // face: +y
     if(s >= 1) return {face: 2, t: t, s:s-1} // face: +x
     if(s  < 0) return {face: 0, t: t, s:1+s} // face: -x
+    return {face, s,t}
   }
 
   lookupNegZ({face, lod, I, J}){
@@ -372,6 +375,7 @@ export class WorldManager{
     if(t  < 0) return {face: 3, t: -t , s:1-s} // face: +z
     if(s >= 1) return {face: 0, t: t, s: s-1} // face: -x
     if(s  < 0) return {face: 2, t: t, s: 1+s} // face: +x
+    return {face, s,t}
   }
 
   lookupPosY({face, lod, I, J}){
@@ -382,6 +386,7 @@ export class WorldManager{
     if(t  < 0) return {face: 5, t: -t, s:1-s } // face: -z
     if(s >= 1) return {face: 2, t: s-1, s: 1-t } // face: +x
     if(s  < 0) return {face: 0, t: -s, s: t  } // face: -x
+    return {face, s,t}
   }
 
   lookupNegY({face, lod, I, J}){
@@ -392,6 +397,7 @@ export class WorldManager{
     if(t  < 0) return {face: 4, t: 1+t, s:s} // face: +z
     if(s >= 1) return {face: 2, t: 2-s, s:t} // face: +x
     if(s  < 0) return {face: 0, t: s+1, s:1-t} // face: -x
+    return {face, s,t}
   }
 
 
@@ -403,6 +409,7 @@ export class WorldManager{
     if(t  < 0) return {face: 3, t: s, s: 1+t } // face: +y
     if(s >= 1) return {face: 5, t: t, s: s-1 } // face: -z
     if(s  < 0) return {face: 4, t: t, s: 1+s } // face: +z
+    return {face, s,t}
   }
 
   lookupNegX({face, lod, I, J}){
@@ -413,26 +420,67 @@ export class WorldManager{
     if(t  < 0) return {face: 3, t: s,   s: -t } // face: +y
     if(s >= 1) return {face: 4, t: t,   s: s-1 } // face: -z
     if(s  < 0) return {face: 5, t: t,   s: 1+s } // face: +z
+    return {face, s,t}
   }
 
   getAdjusentFaceTile({face, lod, I,J}){
     let tileWithST = null;
     if(face == 2){
-      console.log("face - is positive X");
       tileWithST = this.lookupPosX({face,lod,I,J});
     }
+    if(face == 0){
+      tileWithST = this.lookupNegX({face,lod,I,J});
+    }
+    if(face == 1){
+      tileWithST = this.lookupNegY({face,lod,I,J});
+    }
+    if(face == 3){
+      tileWithST = this.lookupPosY({face,lod,I,J});
+    }
+    if(face == 4){
+      tileWithST = this.lookupNegZ({face,lod,I,J});
+    }
+    if(face == 5){
+      tileWithST = this.lookupPosZ({face,lod,I,J});
+    }
+
+    // distretize:
+
+    let size = Math.pow(2,lod);
+    if(lod > 0){
+      if(tileWithST.s*size == size){
+        tileWithST.s = 1 - 1/size;
+      }
+      if(tileWithST.t*size == size){
+        tileWithST.t = 1 - 1/size;
+      }
+    }else{
+      tileWithST.s = 0;
+      tileWithST.t = 0;
+    }
+    let ni = tileWithST.t*size,
+        nj = tileWithST.s*size;
+
+    let MAX = Math.pow(2,lod)-1;
+    let MAXT = MAX * Math.pow(2,lod) + MAX;
+    let tile = nj*size + ni;
+    if(tile > MAXT) debugger;
+
+    return {I:ni, J:nj, tile, lod, ...tileWithST}
   }
 
   getAdjusentTiles(tile){
     let {face,lod, I,J} = tile
     let tiles = Math.pow(2,lod);
 
+    let MAX = Math.pow(2,lod)-1;
+    let MAXT = MAX * Math.pow(2,lod) + MAX;
     let diffs = [
       [-1,-1], [-1,0], [-1,1],
       [0,-1], [0,0], [0,1],
       [1,-1], [1,0], [1,1]];
 
-    let adjusentTiles = [tile];
+    let adjusentTiles = [];
     for(let i = 0; i<diffs.length; ++i){
       let [di,dj]  = diffs[i];
       let ni = I + di;
@@ -441,9 +489,11 @@ export class WorldManager{
         let s = nj / tiles;
         let t = ni / tiles;
         let tileNum = nj * tiles + ni;
+        if(tile > MAXT) debugger;
         adjusentTiles.push({s, t, tile:tileNum, face, lod});
       }else{
-        console.log("need to search tiles on other faces");
+        adjusentTiles.push(this.getAdjusentFaceTile({face, lod, I:ni, J:nj}));
+
       }
     }
     return adjusentTiles;
@@ -463,9 +513,18 @@ export class WorldManager{
     let MAXT = MAX * Math.pow(2,lod) + MAX;
 
     if(tile > MAXT) debugger;
-    if(face == 0) return this.allZeroLodFaces();
+    if(lod == 0) return this.allZeroLodFaces();
+    let tile_ = {face, lod, tile, I, J, s:J*size,t:I*size}
+    let tiles = [tile_, ...this.getAdjusentTiles(tile_)];
+    if(lod > 0){
+      let size = 1/ Math.pow(2, lod-1);
+      let J = Math.floor(s / size);
+      let I = Math.floor(t / size);
+      let tile = J *Math.pow(2,lod) + I;
+      tiles.push(...this.getAdjusentTiles({face, lod:lod-1, tile, I, J, s:J*size, t:I*size}))
+    }
 
-    return this.getAdjusentTiles({face, lod, tile, I, J, s:J*size,t:I*size});
+    return tiles
 
 
   }
