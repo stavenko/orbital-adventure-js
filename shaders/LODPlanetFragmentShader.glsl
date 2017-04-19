@@ -63,9 +63,9 @@ float texelLookup(vec4 texel, vec2 uv){
   float y = floor(uv.y / 0.5);
   int t = int(x*2.0 + y);
   if(t == 0) return texel.x;
-  if(t == 1) return 0.0;//texel.y;
-  if(t == 2) return 0.0;//texel.z;
-  if(t == 3) return 0.0;//texel.w;
+  if(t == 1) return texel.y;
+  if(t == 2) return texel.z;
+  if(t == 3) return texel.w;
 }
 
 void main(){
@@ -85,11 +85,8 @@ void main(){
 
     vec2 nuv = getHeightUV(uv);
     vec4 texel = texture2D(heightMap, nuv);
-    //gl_FragColor = vec4(nuv, 0.0, 1.0);
-    gl_FragColor = vec4(vec3(texel.x), 1.0);
-    //gl_FragColor = vec4(vec3((texelLookup(texel,uv)+1.0) /2.0), 1.0);
+    gl_FragColor = vec4(vec3((texelLookup(texel,uv)+1.0) /2.0), 1.0);
   }else{
     gl_FragColor = vec4(0.0, 0.0 , 0.0, 0.0);
-  // discard;
   }
 }

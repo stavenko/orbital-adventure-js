@@ -61,17 +61,18 @@ export class WorldManager{
 
   createRGBTextureFromFloat(texture){
     let f32 = new Float32Array(texture);
-    let s = TextureSize;
+    let s = TextureSize/2;
     let C = 4;
     let ab = new Float32Array(s*s*C);
     for(let i = 0; i< s; ++i){
       for(let j =0; j < s; ++j){
         let ix = i*s +j;
+        
         let cix = ix * C;
-        ab[cix]   = f32[cix];
-        ab[cix+1] = f32[cix+1];
-        ab[cix+2] = f32[cix+2];
-        ab[cix+3] = f32[cix+3];
+        ab[cix]   = f32[i*TextureSize + j];
+        ab[cix+1] = f32[(i+s)*TextureSize + j];
+        ab[cix+2] = f32[i*TextureSize + j + s];
+        ab[cix+3] = f32[(i+s)*TextureSize + j + s];
       }
     }
     return ab;
@@ -90,8 +91,6 @@ export class WorldManager{
 
   unpackComplete(event){
     let {key, textureType, texture} = event.data;
-    debugger;
-    console.log(key, textureType, '----');
     let processedTexture = this.processUnpackedTexture(textureType, texture);
     this.texturesIndex[key].image={
       width: processedTexture.textureSize,
@@ -341,7 +340,7 @@ export class WorldManager{
   }
 
   getHighestLod(viewSize, radius, distance){
-    let normalizedDistance = 1.0 / Math.min(1.0, distance/(radius*3));
+    let normalizedDistance = 1.0 / Math.min(1.0, distance/(radius));
     return Math.ceil(Math.log2(normalizedDistance));
   }
 
@@ -514,7 +513,7 @@ export class WorldManager{
     let MAXT = MAX * Math.pow(2,lod) + MAX;
     let diffs = [
       [-1,-1], [-1,0], [-1,1],
-      [0,-1], [0,0], [0,1],
+      [0,-1], [0,1],
       [1,-1], [1,0], [1,1]];
 
     let adjusentTiles = [];
@@ -536,6 +535,8 @@ export class WorldManager{
     return adjusentTiles;
   }
 
+  
+
   getTileIndexesByNormal(normal, radius, distanceToSurface){
     let lod = this.getHighestLod(null, radius, distanceToSurface);
     let face = this.determineFace(normal);
@@ -552,13 +553,20 @@ export class WorldManager{
     if(tile > MAXT) debugger;
     if(lod == 0) return this.allZeroLodFaces();
     let tile_ = {face, lod, tile, I, J, s:J*size,t:I*size}
-    let tiles = [tile_, ...this.getAdjusentTiles(tile_)];
+    let adjucentHiLod = this.getAdjusentTiles(tile_)
+    let tiles = [];
+    if(lod > 1){
+      tiles.push(...this.allZeroLodFaces());
+    }
+    tiles.push(tile_, ...adjucentHiLod);
     if(lod > 0){
+
       let size = 1/ Math.pow(2, lod-1);
       let J = Math.floor(s / size);
       let I = Math.floor(t / size);
       let tile = J *Math.pow(2,lod) + I;
-      tiles.push(...this.getAdjusentTiles({face, lod:lod-1, tile, I, J, s:J*size, t:I*size}))
+      let adjucentLowerLod = this.getAdjusentTiles({face, lod:lod-1, tile, I, J, s:J*size, t:I*size})
+      tiles.push(...adjucentLowerLod)
     }
 
     return tiles
