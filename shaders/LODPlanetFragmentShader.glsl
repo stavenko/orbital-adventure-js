@@ -5,8 +5,21 @@ uniform sampler2D heightMap;
 
 uniform float lod;
 uniform float division;
+uniform float radius;
 uniform vec2 samplerStart;
 uniform float fface;
+
+const float planetMaxHeight = 21e3;
+
+uniform vec3 north;
+uniform vec3 east;
+
+
+vec3 lightDirection = normalize(vec3(1.0, 0.0, 1.0));
+#define TEXTURE_SIZE 512.0
+#define HEIGHT_TEXTURE_SIZE 256.0
+#define PI 3.141592653589793
+
 
 uniform vec3 someColor;
 varying vec3 sphereNormal;
@@ -68,6 +81,37 @@ float texelLookup(vec4 texel, vec2 uv){
   if(t == 3) return texel.w;
 }
 
+float heightMapLookup(sampler2D map, vec2 uv){
+  vec2 nuv = getHeightUV(uv);
+  vec4 texel = texture2D(heightMap, nuv);
+  return texelLookup(texel,uv);
+}
+
+float calculatePixelSize(){
+  float circleLengthOfRadius = radius * 2.0 * PI;
+  return circleLengthOfRadius / 4.0 / division / HEIGHT_TEXTURE_SIZE;
+
+}
+
+vec3 normalFromHeightMap(sampler2D heightMap, vec2 uv){
+  vec2 size = vec2(2.0, 0.0);
+  vec3 offsetV = vec3(-1.0/HEIGHT_TEXTURE_SIZE, 0.0, 1.0/HEIGHT_TEXTURE_SIZE);
+  float h01 = heightMapLookup(heightMap, uv+offsetV.xy);
+  float h21 = heightMapLookup(heightMap, uv+offsetV.zy);
+  float h10 = heightMapLookup(heightMap, uv+offsetV.yx);
+  float h12 = heightMapLookup(heightMap, uv+offsetV.yz);
+  float pixelSize = calculatePixelSize();
+
+  vec3 v01 = normalize(sphereNormal * radius + north * pixelSize) +
+    (h21-h01) * planetMaxHeight;
+
+
+  vec3 va = normalize(vec3(size.xy, h21-h01));
+  vec3 vb = normalize(vec3(size.yx, h12-h10));
+  return cross(va,vb);
+  
+}
+
 void main(){
   int face = int(fface);
   int nFace = determineFace(sphereNormal);
@@ -83,9 +127,11 @@ void main(){
     
     vec2 uv = mod(st, vec2(1.0/division)) / vec2(1.0/division);
 
-    vec2 nuv = getHeightUV(uv);
-    vec4 texel = texture2D(heightMap, nuv);
-    gl_FragColor = vec4(vec3((texelLookup(texel,uv)+1.0) /2.0), 1.0);
+    float height = heightMapLookup(heightMap, uv);
+    vec3 normal = normalFromHeightMap(heightMap, sphereNormal, uv);
+    float light = dot(normal, lightDirection);
+
+    gl_FragColor = vec4(vec3((height+1.0) /2.0)*light, 1.0);
   }else{
     gl_FragColor = vec4(0.0, 0.0 , 0.0, 0.0);
   }

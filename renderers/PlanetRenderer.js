@@ -192,7 +192,7 @@ export class PlanetRenderer{
 
   prepareTexture(planet, params){
     let {textureType, lod, face, tile} = params;
-    if(textureType !== 'height') return;
+    if(textureType === 'specular' ||  textureType === 'color') return;
     let t = this.worldManager.getTexture(planet.uuid, params.textureType, params);
     planet.texturesCache[textureType][face][lod].set(tile, t);
   }

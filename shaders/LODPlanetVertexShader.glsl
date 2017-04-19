@@ -12,8 +12,8 @@ uniform mat4 viewInverseM;
 uniform mat4 projectionM;
 
 uniform float logDepthBufC;
-
 varying vec3 sphereNormal;
+
 vec3 defaultNorth = vec3(0.0, 1.0, 0.0);
 
 #define EPSILON 1e-6
@@ -52,6 +52,8 @@ vec4 fromAxisAngle(vec3 axis, float angle){
 float angleBetween(vec3 nv, vec3 nu){
   return acos(dot(nv, nu));
 }
+
+
 
 void main(){
   vec2 xy = position.xy;
