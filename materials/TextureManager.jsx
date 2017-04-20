@@ -87,6 +87,14 @@ export class WorldManager{
         textureSize: TextureSize/2.0
       }
     }
+    if(type === 'normal'){
+      return{
+        data: new Uint8Array(array),
+        format: THREE.RGBFormat,
+        type: THREE.UnsignedByteType,
+        textureSize: TextureSize
+      }
+    }
   }
 
   unpackComplete(event){

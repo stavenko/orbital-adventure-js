@@ -128,10 +128,9 @@ void main(){
     vec2 uv = mod(st, vec2(1.0/division)) / vec2(1.0/division);
 
     float height = heightMapLookup(heightMap, uv);
-    vec3 normal = normalFromHeightMap(heightMap, sphereNormal, uv);
-    float light = dot(normal, lightDirection);
+    vec3 textureNormal = texture2D(normalMap, uv).xyz;
 
-    gl_FragColor = vec4(vec3((height+1.0) /2.0)*light, 1.0);
+    gl_FragColor = vec4(vec3(textureNormal), 1.0);
   }else{
     gl_FragColor = vec4(0.0, 0.0 , 0.0, 0.0);
   }
