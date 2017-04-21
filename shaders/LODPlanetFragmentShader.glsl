@@ -8,6 +8,7 @@ uniform float division;
 uniform float radius;
 uniform vec2 samplerStart;
 uniform float fface;
+uniform int shownFaces;
 
 const float planetMaxHeight = 21e3;
 
@@ -117,6 +118,10 @@ void main(){
   int nFace = determineFace(sphereNormal);
 
   if(nFace == face){
+    if(shownFaces == 0){
+      gl_FragColor = vec4(0.0);
+      return;
+    }
 
     vec2 st = (getSt(sphereNormal, face) + vec2(1.0,1.0)) / vec2(2.0,2.0);
     if(!isWithinUV(st)){

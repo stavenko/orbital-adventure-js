@@ -23,6 +23,7 @@ export class PlanetRenderer{
     this.globalPosition = globalPosition;
     this.worldManager = worldManager;
     this.textureTypes = ['height', 'specular', 'color', 'normal'];
+    this.visibleFaces = [ true, true, true, true, true, true ];
     this.planetSpheres = planets.planets.map((planet,ix)=>{
       let {spatial} = planet;
       let geometry = new SphereBufferGeometry(spatial.radius*0.999, 100,100);
@@ -37,6 +38,10 @@ export class PlanetRenderer{
 
   clearing(){
 
+  }
+  setVisibleFaces(faces){
+    console.log(faces);
+    this.visibleFaces = faces;
   }
 
   render(){
@@ -183,8 +188,10 @@ export class PlanetRenderer{
         value:  2.0 / ( Math.log( camera.far + 1.0 ) / Math.LN2 ) 
       };
       this.material.uniforms.division={value:division};
+      this.material.uniforms.division={value:division};
       this.material.uniforms.lod={value:lod};
       this.material.uniforms.samplerStart={value:new Vector2(s,t)};
+      this.material.uniforms.shownFaces={value:this.visibleFaces[face]};
       this.material.uniforms.fface={value:face};
       this.renderer.render(this.lodMesh, camera);
     }
@@ -192,7 +199,10 @@ export class PlanetRenderer{
 
   prepareTexture(planet, params){
     let {textureType, lod, face, tile} = params;
-    if(textureType === 'specular' ||  textureType === 'color' ) return;
+    if(textureType === 'specular' ||  textureType === 'color' 
+       //|| textureType === 'normal'
+      ) 
+      return;
     let t = this.worldManager.getTexture(planet.uuid, params.textureType, params);
     planet.texturesCache[textureType][face][lod].set(tile, t);
   }

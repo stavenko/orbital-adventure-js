@@ -53,6 +53,7 @@ const worldProps = {
 export class WorldCanvas extends CanvasBase{
   constructor(props){
     super(props)
+    this._showFaces = [true, true, true, true, true, true]
   }
 
   componentDidMount(){
@@ -110,37 +111,53 @@ export class WorldCanvas extends CanvasBase{
     let a = Math.PI / 180;
     let speed = 1e5 * spdMul;
 
+    console.log(evt.keyCode);
+    if(evt.keyCode >= 48 && evt.keyCode <= 57) {
+      let btn = evt.keyCode - 49;
+      this._showFaces[btn] = !this._showFaces[btn];
+      this.planetRenderer.setVisibleFaces(this._showFaces);
+
+      evt.preventDefault();
+    }
+
     if(evt.keyCode == 38){
       this.turnCamera(x, a)
+      evt.preventDefault();
     }
     if(evt.keyCode == 40){
       this.turnCamera(x, -a)
+      evt.preventDefault();
     }
 
     if(evt.keyCode == 37){
       this.turnCamera(y, a)
+      evt.preventDefault();
     }
     if(evt.keyCode == 39){
       this.turnCamera(y, -a)
+      evt.preventDefault();
     }
 
     if(evt.keyCode == 87){
       this.moveCamera(z.clone().negate(), speed )
+      evt.preventDefault();
     }
 
     if(evt.keyCode == 83){
       this.moveCamera(z, speed )
+      evt.preventDefault();
     }
 
     if(evt.keyCode == 81){
       this.moveCamera(x.clone().negate(), speed )
+      evt.preventDefault();
     }
 
     if(evt.keyCode == 69){
       this.moveCamera(x, speed )
+      evt.preventDefault();
     }
 
-    evt.preventDefault();
   }
   
 
