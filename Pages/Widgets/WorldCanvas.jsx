@@ -120,6 +120,10 @@ export class WorldCanvas extends CanvasBase{
       evt.preventDefault();
     }
 
+    if(evt.keyCode == 84){
+      this.planetRenderer.setFaceRendering()
+    }
+
     if(evt.keyCode == 38){
       this.turnCamera(x, a)
       evt.preventDefault();

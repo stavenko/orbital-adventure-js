@@ -9,6 +9,7 @@ uniform float radius;
 uniform vec2 samplerStart;
 uniform float fface;
 uniform int shownFaces;
+uniform int textureTypeAsColor;
 
 const float planetMaxHeight = 21e3;
 
@@ -16,7 +17,7 @@ uniform vec3 north;
 uniform vec3 east;
 
 
-vec3 lightDirection = normalize(vec3(1.0, 0.0, 1.0));
+vec3 lightDirection = normalize(vec3(0.0, 1.0, 0.0));
 #define TEXTURE_SIZE 512.0
 #define HEIGHT_TEXTURE_SIZE 256.0
 #define PI 3.141592653589793
@@ -34,7 +35,6 @@ int determineFace(vec3 n){
     else return 1;
   } 
 
-
   if(ax > ay && ax > az){
     if(n.x > 0.0) return 2;
     else return 0;
@@ -47,13 +47,13 @@ int determineFace(vec3 n){
 }
 vec2 getSt(vec3 n, int f){
   
-  if(f == 2) return vec2(-n.z/ abs(n.x), -n.y/abs(n.x)); 
+  if(f == 2) return vec2(-n.z/ abs(n.x), -n.y/abs(n.x)); // +x
   if(f == 0) return vec2(n.z/ abs(n.x), -n.y/abs(n.x)); 
 
-  if(f == 4) return vec2(n.x/ abs(n.z), -n.y/abs(n.z)); 
+  if(f == 4) return vec2(n.x/ abs(n.z), -n.y/abs(n.z)); // +z
   if(f == 5) return vec2(-n.x/ abs(n.z), -n.y/abs(n.z)); 
 
-  if(f == 3) return vec2(n.x/ abs(n.y), n.z/abs(n.y)); 
+  if(f == 3) return vec2(n.x/ abs(n.y), n.z/abs(n.y)); // +y
   if(f == 1) return vec2(n.x/ abs(n.y), -n.z/abs(n.y)); 
 }
 
@@ -113,6 +113,7 @@ vec3 normalFromHeightMap(sampler2D heightMap, vec2 uv){
   
 }
 
+
 void main(){
   int face = int(fface);
   int nFace = determineFace(sphereNormal);
@@ -132,10 +133,20 @@ void main(){
     
     vec2 uv = mod(st, vec2(1.0/division)) / vec2(1.0/division);
 
-    float height = heightMapLookup(heightMap, uv);
-    vec3 textureNormal = texture2D(normalMap, uv).xyz;
+    float height = heightMapLookup(heightMap, uv.yx);
+    //vec3 sphn = -1.0 * sphereNormal;
+    //int ff = determineFace(sphn);
+    //vec2 uvuv = 0.5 * (getSt(sphn, ff) + 1.0);
+    vec3 textureNormal = texture2D(normalMap, uv.xy).xyz*2.0 - 1.0;
 
-    gl_FragColor = vec4(vec3(textureNormal), 1.0);
+    float light = clamp(dot(textureNormal, lightDirection), 0.0, 1.0);
+    float nnn = dot(sphereNormal, lightDirection);
+    float pixelDiffuseColor = 0.5*(height + 1.0);
+    if(textureTypeAsColor!= 0)
+      pixelDiffuseColor = light;
+    
+
+    gl_FragColor = vec4(vec3(pixelDiffuseColor) , 1.0);
   }else{
     gl_FragColor = vec4(0.0, 0.0 , 0.0, 0.0);
   }

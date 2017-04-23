@@ -310,30 +310,30 @@ export class WorldManager{
     let ss = s * 2 - 1;
     let tt = t * 2 - 1;
 
-    if(face == 'back'){
+    if(face == 'back'){ // 0
       let res = [-1, -tt, ss ]
       return res;
     }
-    if(face == 'front'){
+    if(face == 'front'){ // 2
       let res = [1, -tt, -ss];
       return res;
     }
 
-    if(face == 'left'){
+    if(face == 'left'){ // 1
       let res = [ss, -1.0, -tt];
       return res;
     }
-    if(face == 'right'){
+    if(face == 'right'){ // 3
       let res = [ss, 1.0, tt];
       return res;
     }
 
-    if(face == 'top'){
+    if(face == 'top'){ // 4
       let res = [ss, -tt, 1.0];
       return res;
     }
 
-    if(face == 'bottom'){
+    if(face == 'bottom'){ //5
       let res = [-ss, -tt, -1.0];
       return res;
     }
