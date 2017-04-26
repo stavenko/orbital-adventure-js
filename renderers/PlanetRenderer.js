@@ -54,7 +54,6 @@ export class PlanetRenderer{
     this.clearing();
     let c = this.camera.clone();
     c.position.copy(this.globalPosition.position);
-    //c.lookAt(this.globalPosition.lookAt.clone());
     c.quaternion.copy(this.globalPosition.quaternion);
 
     c.near = 1e-3;
@@ -101,6 +100,9 @@ export class PlanetRenderer{
     })
   }
 
+  // findClosestPointInFrustum(planet,)
+
+
 
   renderLOD(planet, withCamera){
 
@@ -138,6 +140,8 @@ export class PlanetRenderer{
 
     // *** stupid setup *** 
     this.lodMesh.scale.set(...[size, size, size]);
+
+    //lodCenter.sub(withCamera.position);
 
     this.lodMesh.position.copy(lodCenter);
     this.lodMesh.updateMatrix();

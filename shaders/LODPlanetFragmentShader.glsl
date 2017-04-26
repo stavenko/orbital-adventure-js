@@ -18,6 +18,7 @@ uniform vec3 east;
 
 
 vec3 lightDirection = normalize(vec3(0.0, 1.0, 0.0));
+vec3 oppoDirection = normalize(vec3(0.0, -1.0, 1.0));
 #define TEXTURE_SIZE 512.0
 #define HEIGHT_TEXTURE_SIZE 256.0
 #define PI 3.141592653589793
@@ -137,13 +138,14 @@ void main(){
     //vec3 sphn = -1.0 * sphereNormal;
     //int ff = determineFace(sphn);
     //vec2 uvuv = 0.5 * (getSt(sphn, ff) + 1.0);
-    vec3 textureNormal = texture2D(normalMap, uv.xy).xyz*2.0 - 1.0;
+    vec3 textureNormal = texture2D(normalMap, uv.yx).xyz*2.0 - 1.0;
 
     float light = clamp(dot(textureNormal, lightDirection), 0.0, 1.0);
-    float nnn = dot(sphereNormal, lightDirection);
+    float oppoLight = clamp(dot(textureNormal, oppoDirection), 0.0, 1.0)*0.5;
+    // float nnn = dot(sphereNormal, lightDirection);
     float pixelDiffuseColor = 0.5*(height + 1.0);
     if(textureTypeAsColor!= 0)
-      pixelDiffuseColor = light;
+      pixelDiffuseColor = light + oppoLight;
     
 
     gl_FragColor = vec4(vec3(pixelDiffuseColor) , 1.0);
