@@ -1,9 +1,12 @@
 import * as THREE from 'three/src/constants.js';
 import {Quaternion} from 'three/src/math/Quaternion';
 import {Matrix4} from 'three/src/math/Matrix4';
+import {Vector4} from 'three/src/math/Vector4';
 import {Vector3} from 'three/src/math/Vector3';
 import {Vector2} from 'three/src/math/Vector2';
 import {Color} from 'three/src/math/Color';
+import {Sphere} from 'three/src/math/Sphere';
+import {Ray} from 'three/src/math/Ray';
 import {Mesh} from 'three/src/objects/Mesh';
 import {LODMaterial} from '../materials/PlanetaryMaterial.jsx';
 import {getLodGeometry} from '../math/Geometry.js';
@@ -53,9 +56,9 @@ export class PlanetRenderer{
   render(){
     this.clearing();
     let c = this.camera.clone();
-    c.position.copy(this.globalPosition.position);
+    // c.position.copy(this.globalPosition.position);
     c.quaternion.copy(this.globalPosition.quaternion);
-
+    c.position.set(0,0,0);
     c.near = 1e-3;
     c.far = 1e10;
     c.updateMatrix();
@@ -67,10 +70,7 @@ export class PlanetRenderer{
   renderPlanets(camera){
     this.planets.planets.forEach((planet, ix)=>{
       let mesh = this.planetSpheres[ix];
-      // this.setupClipping(planet, camera);
-      // this.renderSphere(mesh,camera);
       this.renderLOD(planet, camera);
-      // this.renderer.clearDepth();
     })
   }
 
@@ -96,20 +96,19 @@ export class PlanetRenderer{
   renderPlanetSpheres(withCamera){
     this.planetSpheres.forEach((mesh,ix)=>{
       this.renderer.render(mesh, withCamera);
-      // this.renderer.clearDepth();
     })
   }
 
-  // findClosestPointInFrustum(planet,)
 
 
 
   renderLOD(planet, withCamera){
 
     let {radius, position, north} = planet.spatial;
+    let cameraPosition = this.globalPosition.position.clone();
 
     let planetPosition = new Vector3(...position);
-    let cameraDir = planetPosition.clone().sub(withCamera.position); 
+    let cameraDir = planetPosition.clone().sub(cameraPosition); 
     let distanceToCamera =cameraDir.length();
     cameraDir.normalize();
 
@@ -141,33 +140,125 @@ export class PlanetRenderer{
     // *** stupid setup *** 
     this.lodMesh.scale.set(...[size, size, size]);
 
-    //lodCenter.sub(withCamera.position);
+    lodCenter.sub(cameraPosition);
 
     this.lodMesh.position.copy(lodCenter);
     this.lodMesh.updateMatrix();
     this.lodMesh.updateMatrixWorld();
 
+    withCamera.updateProjectionMatrix();
+    withCamera.updateMatrixWorld();
+    let viewInverse = new Matrix4().getInverse(withCamera.matrixWorld);
     this.setupUniforms({
       center: lodCenter,
-      planetCenter: planetPosition,
+      planetCenter: planetPosition.sub(cameraPosition),
       north: northVector,
       east: eastVector,
       radius,
       size,
       someColor: new Vector3(1,0,0),
-      viewInverseM:  new Matrix4().getInverse(withCamera.matrixWorld),
+      viewInverseM:  viewInverse.clone(),
       viewM:  withCamera.matrixWorld.clone(),
       modelM:  this.lodMesh.matrixWorld.clone(),
       projectionM:  withCamera.projectionMatrix.clone()
     })
-    let planetPoint = lodCenter.clone().sub(planetPosition).normalize();
-    let lambda = Math.atan2(planetPoint.y, planetPoint.x);
-    let r = Math.hypot(planetPoint.x, planetPoint.y);
-    let phi = Math.atan2(planetPoint.z, r);
 
-    let textureList = this.worldManager.getTileIndexesByNormal(planetPoint, radius, distanceToCamera - radius)
+    let fovPerPixel = withCamera.fov/ withCamera.zoom / this.renderer.domElement.height;
+    fovPerPixel = fovPerPixel/180 * Math.PI;
+    let pixelSize =  Math.tan(fovPerPixel/2)*2;
+    let viewProjectionMatrix = new Matrix4().multiplyMatrices(withCamera.projectionMatrix, viewInverse);
 
-    textureList.forEach(this.renderTexturesWithLOD(planet, withCamera));
+    let textures = this.worldManager.findTexturesWithin(viewProjectionMatrix.clone(), radius, planetPosition, pixelSize);
+
+    // let closestPoint = this.findClosestTileInScreenSpace(planetPosition, viewProjectionMatrix);
+    // let spherePointParams = this.intersectPlanet(closestPoint.p, planetPosition, radius, withCamera);
+
+    // console.log(spherePointParams);
+    // if(!spherePointParams.worldPosition) return;
+    
+    // let textureList = this.worldManager
+      // .getTexturesByNormalAndPixelSize(spherePointParams.normal, spherePointParams.pixelSize, radius);
+
+    //let planetPoint = lodCenter.clone().sub(planetPosition).normalize();
+    //let lambda = Math.atan2(planetPoint.y, planetPoint.x);
+    //let r = Math.hypot(planetPoint.x, planetPoint.y);
+    //let phi = Math.atan2(planetPoint.z, r);
+
+    //let textureList = this.worldManager.getTileIndexesByNormal(planetPoint, radius, distanceToCamera - radius)
+
+    if(textures.length > 50)
+      console.warn("So many textures", textures.length);
+    
+    textures.forEach(this.renderTexturesWithLOD(planet, withCamera));
+  }
+
+
+  kross(v1, v2){
+    return v1[0]*v2[1] - v2[0]*v1[1];
+  }
+
+  getWorldPosition(ssCoords, position, radius, camera){
+    let prjInverse = new Matrix4;
+    prjInverse.multiplyMatrices( camera.matrixWorld, prjInverse.getInverse(camera.projectionMatrix));
+    let dir = new Vector3(ssCoords[0], ssCoords[1], 0.5).applyMatrix4(prjInverse);
+    let ray = new Ray(new Vector3(0,0,0), dir.normalize());
+    // console.log(dir);
+    return ray.intersectSphere(new Sphere(position, radius));
+  }
+
+  intersectPlanet(screenSpaceCoords, planet, radius, camera){
+    let worldPosition = this.getWorldPosition(screenSpaceCoords, planet, radius, camera );
+    let normal;
+    let pixelSize;
+
+    let fovPerPixel = camera.fov/ camera.zoom / this.renderer.domElement.width;
+    fovPerPixel = fovPerPixel/180 * Math.PI;
+    // console.log(camera.fov, camera.zoom);
+
+    if(worldPosition) {
+      normal = new Vector3().subVectors(worldPosition, planet).normalize()
+      let distance = worldPosition.length();
+      pixelSize = distance * Math.tan(fovPerPixel/2)*2;
+    }
+
+    return {
+      worldPosition,
+      normal,
+      pixelSize
+    }
+  }
+
+  findClosestTileInScreenSpace(planetPosition, viewProjectionMatrix){
+    let center = planetPosition.clone().normalize();
+    center.applyMatrix4(viewProjectionMatrix);
+    let screenSegments = [
+      [[-1,1], [-1,-1]],
+      [[-1,1], [1,1]],
+      [[1,1], [1,-1]],
+      [[-1,-1],[1,-1]]
+    ]
+    let intersects = [];
+    for(let i = 0; i< screenSegments.length; ++i){
+      let segment = screenSegments[i];
+      let [p1,p2] = segment;
+      let d = [p2[0] - p1[0], p2[1] - p1[1]];
+      let delta = [0 - p1[0], 0 - p1[1]];
+      let K = this.kross(d, [center.x, center.y]);
+      let t = this.kross(delta, d) / K;
+      if((t < 0) || !isFinite(t) || t > 1.0) {
+        continue;
+      }
+      intersects.push({t,p:[center.x *t, center.y*t]})
+    }
+    let intersect;
+    if(intersects.length == 0){
+      return {p:[center.x, center.y]};
+    } else{
+      if(intersects.length> 1){
+        intersects.sort((i1,i2)=>i1.t - i2.t);
+      }
+      return intersects[0];
+    }
   }
 
   initTextureCaches(to){

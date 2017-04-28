@@ -39,7 +39,7 @@ export class WorldManager{
 
     this.textures = [];
     this.serverGenerationTasks = {};
-    this.createLodIndex();
+    //this.createLodIndex();
     this.serverCheckInterval = setInterval(()=>this.checkServerTasks(), 2000);
   }
 
@@ -235,6 +235,7 @@ export class WorldManager{
     return [theta, phi];
   }
 
+  /*
   createLodIndex(){
     this.lodIndex = []
     const maxLOD = 8;
@@ -258,6 +259,7 @@ export class WorldManager{
       }
     }
   }
+  */
 
   initialize(radius, division=1, lod = 0){
     let zc = 0;
@@ -304,8 +306,24 @@ export class WorldManager{
       }
     }
   }
-  
+
   stToNormal(s,t, face){
+
+    let ss = s * 2 - 1;
+    let tt = t * 2 - 1;
+
+    return [
+      [-1, -tt, ss], // back
+
+      [ss, -1, -tt], // left
+      [1, -tt,-ss], // front
+      [ss,  1, tt], // right
+      [ss, -tt, 1], // top
+      [-ss, -tt, -1] // bottom
+    ][face];
+  }
+  
+  stToNormal_(s,t, face){
     let faceIx = this.faceIx[face];
     let ss = s * 2 - 1;
     let tt = t * 2 - 1;
@@ -544,9 +562,7 @@ export class WorldManager{
   }
 
   
-
-  getTileIndexesByNormal(normal, radius, distanceToSurface){
-    let lod = this.getHighestLod(null, radius, distanceToSurface);
+  getTileIndexesByNormalAndLOD(normal, lod){
     let face = this.determineFace(normal);
     let [s,t] = this.determineST(normal, face);
     s = (s+1) / 2;
@@ -576,10 +592,13 @@ export class WorldManager{
       let adjucentLowerLod = this.getAdjusentTiles({face, lod:lod-1, tile, I, J, s:J*size, t:I*size})
       tiles.push(...adjucentLowerLod)
     }
-
     return tiles
 
+  }
 
+  getTileIndexesByNormal(normal, radius, distanceToSurface){
+    let lod = this.getHighestLod(null, radius, distanceToSurface);
+    return getTileIndexesByNormalAndLOD(normal, lod);
   }
 
   getTileIndexes(center, viewSize, radius, distanceToSurface){
@@ -608,6 +627,104 @@ export class WorldManager{
     }
     return textures; 
 
+
+  }
+
+  getTexturePixelSize(radius, lod){
+    let L = Math.PI*2*radius;
+    let division = Math.pow(2, lod) *512;
+    return L / 4 / division;
+  }
+
+  selectLod(pixelSize, radius){
+    let lod = 0;
+    while(1){
+      let texPixelSize = this.getTexturePixelSize(radius, lod);
+      console.log(texPixelSize, pixelSize)
+      if(texPixelSize < pixelSize) return lod;
+      ++lod;
+    }
+  }
+
+
+  getTextureOfNormal(normal, lod){
+    let face = this.determineFace(normal);
+    let [s,t] = this.determineST(normal, face);
+    s = (s+1) / 2;
+    t = (t+1) / 2;
+    let size = 1/ Math.pow(2, lod);
+    let J = Math.floor(s / size);
+    let I = Math.floor(t / size);
+    let tile = J *Math.pow(2,lod) + I;
+    let MAX = Math.pow(2,lod)-1;
+    let MAXT = MAX * Math.pow(2,lod) + MAX;
+
+    if(tile > MAXT) debugger;
+    return {face, lod, tile, I, J, s:J*size,t:I*size}
+  }
+
+  addTexture(to, tp, pvMatrix, radius, position, unitPixelSize){
+    let {face, tile, lod} = tp;
+    let length = radius * 2.0 * Math.PI;
+    let division = Math.pow(2, lod);
+    let J = Math.floor(tile/division);
+    let I = tile % division;
+    let S = J /division;
+    let T = I /division;
+    let centerShift = 0.5 /division
+
+    let centerNormal = this.stToNormal(S+centerShift, T+centerShift;, face);
+    let cornerNormal = this.stToNormal(S, T, face);
+    let maxSize =  length / 4 / division;
+    let pixelSize = maxSize / TextureSize;
+    let tileCenterPosition = [centerNormal[0]*radius, centerNormal[1]*radius, centerNormal[2]*radius];
+    let tileCornerPosition = [cornerNormal[0]*radius, cornerNormal[1]*radius, cornerNormal[2]*radius];
+
+    let sp = new Vector3(...tileCenterPosition).add(position);
+    let cp = new Vector3(...tileCornerPosition).add(position);
+    let pixelSizeAtCenter = unitPixelSize * sp.length();
+    sp.applyProjection(pvMatrix);
+    cp.applyProjection(pvMatrix);
+    let distance = sp.distanceTo(cp);
+    let isWithinScreen = Math.abs(sp.x) < (1 + distance) && Math.abs(sp.y) < (1+distance);
+    if(pixelSize > pixelSizeAtCenter) {
+      let div = Math.pow(2, lod+1);
+      J *= 2;
+      I *= 2;
+      let _tp = {...tp};
+      _tp.lod = lod+1;
+      let tile1 = J*div + I;
+      let tile2 = (J+1)*div + I;
+      let tile3 = J*div + I+1;
+      let tile4 = (J+1)*div + I+1;
+
+      this.addTexture(to, {tile: tile1,  ..._tp}, pvMatrix, radius, position, unitPixelSize);
+      this.addTexture(to, {tile: tile2,  ..._tp}, pvMatrix, radius, position, unitPixelSize);
+      this.addTexture(to, {tile: tile3,  ..._tp}, pvMatrix, radius, position, unitPixelSize);
+      this.addTexture(to, {tile: tile4,  ..._tp}, pvMatrix, radius, position, unitPixelSize);
+
+    }else{
+      if(isWithinScreen) to.push(tp)
+    }
+
+  }
+
+  findTexturesWithin(pvMatrix, radius, position, pixel){
+    let collection = [];
+    let faceProps = {tile:0, lod:0, s:0, t:0};
+    for(let face =0; face < 6; ++face){
+      this.addTexture(collection, {face, ...faceProps}, pvMatrix, radius,position, pixel);
+
+    }
+    
+    return collection;
+  }
+
+  getTexturesByNormalAndPixelSize(normal, pixelSize, radius){
+    let lod = this.selectLod(pixelSize, radius);
+    return this.getTileIndexesByNormalAndLOD(normal, lod);
+    //let tile = this.getTextureOfNormal(normal, lod);
+    //return [tile];
 
   }
 
