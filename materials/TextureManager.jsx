@@ -673,7 +673,7 @@ export class WorldManager{
     let T = I /division;
     let centerShift = 0.5 /division
 
-    let centerNormal = this.stToNormal(S+centerShift, T+centerShift;, face);
+    let centerNormal = this.stToNormal(S+centerShift, T+centerShift, face);
     let cornerNormal = this.stToNormal(S, T, face);
     let maxSize =  length / 4 / division;
     let pixelSize = maxSize / TextureSize;
@@ -704,7 +704,10 @@ export class WorldManager{
       this.addTexture(to, {tile: tile4,  ..._tp}, pvMatrix, radius, position, unitPixelSize);
 
     }else{
-      if(isWithinScreen) to.push(tp)
+      let t = {...tp};
+      t.s = S;
+      t.t = T;
+      if(isWithinScreen) to.push(t)
     }
 
   }
