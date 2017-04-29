@@ -168,28 +168,19 @@ export class PlanetRenderer{
     let pixelSize =  Math.tan(fovPerPixel/2)*2;
     let viewProjectionMatrix = new Matrix4().multiplyMatrices(withCamera.projectionMatrix, viewInverse);
 
-    let textures = this.worldManager.findTexturesWithin(viewProjectionMatrix.clone(), radius, planetPosition, pixelSize);
-
-    // let closestPoint = this.findClosestTileInScreenSpace(planetPosition, viewProjectionMatrix);
-    // let spherePointParams = this.intersectPlanet(closestPoint.p, planetPosition, radius, withCamera);
-
-    // console.log(spherePointParams);
-    // if(!spherePointParams.worldPosition) return;
-    
-    // let textureList = this.worldManager
-      // .getTexturesByNormalAndPixelSize(spherePointParams.normal, spherePointParams.pixelSize, radius);
-
-    //let planetPoint = lodCenter.clone().sub(planetPosition).normalize();
-    //let lambda = Math.atan2(planetPoint.y, planetPoint.x);
-    //let r = Math.hypot(planetPoint.x, planetPoint.y);
-    //let phi = Math.atan2(planetPoint.z, r);
-
-    //let textureList = this.worldManager.getTileIndexesByNormal(planetPoint, radius, distanceToCamera - radius)
+    let texTimes = Date.now();
+    let cameraDirection = new Vector3(0,0,1).transformDirection(withCamera.matrixWorld);
+    let textures = this.worldManager.findTexturesWithin(viewProjectionMatrix.clone(), cameraDirection, radius, planetPosition, pixelSize);
+    let TM = Date.now() - texTimes;
 
     if(textures.length > 50)
       console.warn("So many textures", textures.length);
     
+    let renderTimeStart = Date.now();
     textures.forEach(this.renderTexturesWithLOD(planet, withCamera));
+    let RT = Date.now() - renderTimeStart;
+    // console.log("time to select", TM, "render time", RT, 'amount', textures.length);
+
   }
 
 
