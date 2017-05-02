@@ -667,7 +667,7 @@ export class WorldManager{
     return v[0]*u[0] + v[1]*u[1] + v[2]*u[2];
   }
 
-  addTexture(to, tp, pvMatrix, cameraDirection, radius, position, unitPixelSize){
+  addTexture(to, tp, pvMatrix, cameraDirection, planetRotation, radius, position, unitPixelSize){
     let {face, tile, lod} = tp;
     let length = radius * 2.0 * Math.PI;
     let division = Math.pow(2, lod);
@@ -686,21 +686,19 @@ export class WorldManager{
     let tileCenterPosition = [centerNormal[0]*radius, centerNormal[1]*radius, centerNormal[2]*radius];
     let tileCornerPosition = [cornerNormal[0]*radius, cornerNormal[1]*radius, cornerNormal[2]*radius];
 
-    centerNormal = new Vector3(...centerNormal); // .transformDirection(pvMatrix);
-    let sp = new Vector3(...tileCenterPosition).add(position);
-    let cp = new Vector3(...tileCornerPosition).add(position);
+    centerNormal = new Vector3(...centerNormal).applyQuaternion(planetRotation);
+    let sp = new Vector3(...tileCenterPosition).applyQuaternion(planetRotation).add(position);
+    let cp = new Vector3(...tileCornerPosition).applyQuaternion(planetRotation).add(position);
     let pixelSizeAtCenter = unitPixelSize * sp.length();
     sp.applyProjection(pvMatrix);
     cp.applyProjection(pvMatrix);
-    let distance = sp.distanceTo(cp);
+    let distance = sp.distanceTo(cp)*2;// Math.SQRT2;
     
     let cameraNormalDot = centerNormal.dot(cameraDirection);
-    if(cameraNormalDot < -0.7 ) {
-      return;
-    }
+    if(cameraNormalDot < -0.7 ) { return; }
     if(cameraNormalDot < -0.3 && tileAngle < 0.3*Math.PI)return;
     if(cameraNormalDot < -0.0 && tileAngle < 0.2*Math.PI)return;
-    let isWithinScreen = Math.abs(sp.x) < (1 + distance) && Math.abs(sp.y) < (1+distance);
+    let isWithinScreen = (Math.abs(sp.x) < (1 + distance) )&& (Math.abs(sp.y) < (1+distance));
     if((pixelSize) > (2*pixelSizeAtCenter)) {
       let div = Math.pow(2, lod+1);
       J *= 2;
@@ -712,10 +710,10 @@ export class WorldManager{
       let tile3 = J*div + I+1;
       let tile4 = (J+1)*div + I+1;
 
-      this.addTexture(to, {..._tp,tile: tile1}, pvMatrix, cameraDirection, radius, position, unitPixelSize);
-      this.addTexture(to, {..._tp,tile: tile2}, pvMatrix, cameraDirection, radius, position, unitPixelSize);
-      this.addTexture(to, {..._tp,tile: tile3}, pvMatrix, cameraDirection, radius, position, unitPixelSize);
-      this.addTexture(to, {..._tp,tile: tile4}, pvMatrix, cameraDirection, radius, position, unitPixelSize);
+      this.addTexture(to, {..._tp,tile: tile1}, pvMatrix, cameraDirection, planetRotation, radius, position, unitPixelSize);
+      this.addTexture(to, {..._tp,tile: tile2}, pvMatrix, cameraDirection, planetRotation, radius, position, unitPixelSize);
+      this.addTexture(to, {..._tp,tile: tile3}, pvMatrix, cameraDirection, planetRotation, radius, position, unitPixelSize);
+      this.addTexture(to, {..._tp,tile: tile4}, pvMatrix, cameraDirection, planetRotation, radius, position, unitPixelSize);
 
     }else{
       let t = {...tp};
@@ -726,11 +724,11 @@ export class WorldManager{
 
   }
 
-  findTexturesWithin(pvMatrix, camDirection, radius, position, pixel){
+  findTexturesWithin(pvMatrix, camDirection, planetRotation, radius, position, pixel){
     let collection = [];
     let faceProps = {tile:0, lod:0, s:0, t:0};
     for(let face =0; face < 6; ++face){
-      this.addTexture(collection, {face, ...faceProps}, pvMatrix, camDirection, radius,position, pixel);
+      this.addTexture(collection, {face, ...faceProps}, pvMatrix, camDirection, planetRotation, radius, position, pixel);
 
     }
     

@@ -3,6 +3,8 @@ uniform vec3 center;
 uniform vec3 planetCenter;
 uniform vec3 north;
 uniform vec3 east;
+// uniform vec3 textureLookupNormal;
+uniform vec4 planetRotation;
 uniform float size;
 uniform float radius;
 
@@ -69,19 +71,19 @@ void main(){
   vec3 v0 = gridPosition - planetCenter;
   float angle = lengthToPosition / radius;
   vec3 finalPosition;
+  vec3 lookupNormal;
   if(angle > 1e-4){
     vec3 axis = normalize(cross(v, v0));
-    finalPosition = rotate(v, fromAxisAngle(axis, angle));
+    vec4 quat = fromAxisAngle(axis, angle);
+    finalPosition = rotate(v, quat);
   }else{
     finalPosition = v;
   }
-
   sphereNormal = normalize(finalPosition);
-  if(northAngle> 1e-4){
-    sphereNormal = rotate(sphereNormal, fromAxisAngle(northAxis, northAngle));
-  }
 
-
+  // if(northAngle> 1e-4){
+  sphereNormal = rotate(sphereNormal, planetRotation);
+  //}
   mat4 pv1 = projectionM * viewInverseM;
 
   gl_Position =  pv1 * vec4(finalPosition+ planetCenter, 1.0);

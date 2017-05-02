@@ -56,7 +56,6 @@ export class PlanetRenderer{
   render(){
     this.clearing();
     let c = this.camera.clone();
-    // c.position.copy(this.globalPosition.position);
     c.quaternion.copy(this.globalPosition.quaternion);
     c.position.set(0,0,0);
     c.near = 1e-3;
@@ -112,7 +111,9 @@ export class PlanetRenderer{
     let distanceToCamera =cameraDir.length();
     cameraDir.normalize();
 
+
     let lodCenter = planetPosition.clone().add(cameraDir.negate().multiplyScalar(radius));
+
 
 
     let size = Math.acos(radius / distanceToCamera) * 2 * radius;
@@ -141,6 +142,13 @@ export class PlanetRenderer{
     this.lodMesh.scale.set(...[size, size, size]);
 
     lodCenter.sub(cameraPosition);
+    
+
+    let planetRotation = planet.initialQuaternion.clone();
+    let rotationAngle = planet.time;
+    let quat = new Quaternion().setFromAxisAngle(northVector, rotationAngle/10000);
+    planetRotation = planetRotation.multiply(quat);
+
 
     this.lodMesh.position.copy(lodCenter);
     this.lodMesh.updateMatrix();
@@ -156,6 +164,7 @@ export class PlanetRenderer{
       east: eastVector,
       radius,
       size,
+      planetRotation,
       someColor: new Vector3(1,0,0),
       viewInverseM:  viewInverse.clone(),
       viewM:  withCamera.matrixWorld.clone(),
@@ -170,7 +179,11 @@ export class PlanetRenderer{
 
     let texTimes = Date.now();
     let cameraDirection = new Vector3(0,0,1).transformDirection(withCamera.matrixWorld);
-    let textures = this.worldManager.findTexturesWithin(viewProjectionMatrix.clone(), cameraDirection, radius, planetPosition, pixelSize);
+    let textures = this.worldManager
+      .findTexturesWithin(viewProjectionMatrix.clone(), cameraDirection, 
+                          planetRotation.clone().inverse(), 
+                          radius, 
+                          planetPosition, pixelSize);
     let TM = Date.now() - texTimes;
 
     if(textures.length > 50)
@@ -179,7 +192,7 @@ export class PlanetRenderer{
     let renderTimeStart = Date.now();
     textures.forEach(this.renderTexturesWithLOD(planet, withCamera));
     let RT = Date.now() - renderTimeStart;
-    // console.log("time to select", TM, "render time", RT, 'amount', textures.length);
+    console.log("times", TM, RT);
 
   }
 
@@ -193,7 +206,6 @@ export class PlanetRenderer{
     prjInverse.multiplyMatrices( camera.matrixWorld, prjInverse.getInverse(camera.projectionMatrix));
     let dir = new Vector3(ssCoords[0], ssCoords[1], 0.5).applyMatrix4(prjInverse);
     let ray = new Ray(new Vector3(0,0,0), dir.normalize());
-    // console.log(dir);
     return ray.intersectSphere(new Sphere(position, radius));
   }
 
@@ -204,7 +216,6 @@ export class PlanetRenderer{
 
     let fovPerPixel = camera.fov/ camera.zoom / this.renderer.domElement.width;
     fovPerPixel = fovPerPixel/180 * Math.PI;
-    // console.log(camera.fov, camera.zoom);
 
     if(worldPosition) {
       normal = new Vector3().subVectors(worldPosition, planet).normalize()

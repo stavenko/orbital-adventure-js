@@ -2,6 +2,7 @@ uniform sampler2D colorMap;
 uniform sampler2D specularMap;
 uniform sampler2D normalMap;
 uniform sampler2D heightMap;
+uniform vec4 planetRotation;
 
 uniform float lod;
 uniform float division;
@@ -26,6 +27,32 @@ vec3 oppoDirection = normalize(vec3(0.0, -1.0, 1.0));
 
 uniform vec3 someColor;
 varying vec3 sphereNormal;
+
+vec4 conjugate(vec4 q){
+  return vec4(q.xyz * -1.0, q.w);
+}
+
+vec4 multiplyQuats(vec4 q1, vec4 q2){
+  return vec4(
+      q1.w*q2.x + q1.x*q2.w + q1.y * q2.z - q1.z*q2.y,
+      q1.w*q2.y - q1.x*q2.z + q1.y * q2.w + q1.z*q2.x,
+      q1.w*q2.z + q1.x*q2.y - q1.y * q2.x + q1.z*q2.w,
+      q1.w*q2.w - q1.x*q2.x - q1.y * q2.y - q1.z*q2.z
+      );
+}
+
+vec4 inverseQuat(vec4 quat){
+  float n = length(quat);
+  return conjugate(quat)/n;
+}
+
+vec3 rotate(vec3 v, vec4 q){
+  vec4 qpos = vec4(v, 0.0);
+  vec4 t = multiplyQuats(q, qpos);
+  vec4 qr = multiplyQuats(t, conjugate(q));
+  return qr.xyz;
+} 
+
 int determineFace(vec3 n){
   float ax = abs(n.x);
   float ay = abs(n.y);
@@ -114,10 +141,30 @@ vec3 normalFromHeightMap(sampler2D heightMap, vec2 uv){
   
 }
 
+  //[255, 0,0],
+  //[255, 255,0],
+//
+  //[0, 255,0],
+  //[0, 255,255], // 3
+
+  //[0, 0,255],
+  //[255, 0, 255],
+
+vec4 FaceColor(int f){
+  if(f == 0) return vec4(1.0, 0.0, 0.0, 1.0);
+  if(f == 1) return vec4(1.0, 1.0, 0.0, 1.0);
+  if(f == 2) return vec4(0.0, 1.0, 0.0, 1.0);
+  if(f == 3) return vec4(0.0, 1.0, 1.0, 1.0);
+  if(f == 4) return vec4(0.0, 0.0, 1.0, 1.0);
+  if(f == 5) return vec4(1.0, 0.0, 1.0, 1.0);
+}
 
 void main(){
   int face = int(fface);
   int nFace = determineFace(sphereNormal);
+
+  //gl_FragColor = FaceColor(nFace); 
+  //return;
 
   if(nFace == face){
     if(shownFaces == 0){
@@ -139,6 +186,7 @@ void main(){
     //int ff = determineFace(sphn);
     //vec2 uvuv = 0.5 * (getSt(sphn, ff) + 1.0);
     vec3 textureNormal = texture2D(normalMap, uv.yx).xyz*2.0 - 1.0;
+    textureNormal = rotate(textureNormal, inverseQuat(planetRotation));
 
     float light = clamp(dot(textureNormal, lightDirection), 0.0, 1.0);
     float oppoLight = clamp(dot(textureNormal, oppoDirection), 0.0, 1.0)*0.5;
