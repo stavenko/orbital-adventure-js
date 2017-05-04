@@ -260,12 +260,13 @@ export class CanvasBase extends React.Component{
     prerender(){ }
 
     renderCanvas(){
+      this.renderer.clear(true,true,true);
       let components = this.renderScene();
       this.updateLights();
       this.updateMeshes(this.scene, components);
       this.scene.add(new AxisHelper(1));
       let flags = this.prerender();
-      //this.renderer.clear(...flags);
+      this.renderer.clear(...flags);
       this.renderer.render(this.scene, this.camera);
 
     }
@@ -471,7 +472,11 @@ export class CanvasBase extends React.Component{
       let height = this.refs.node.height;
       this.nodeRect = this.refs.node.getBoundingClientRect();
 
-      this.renderer = new WebGLRenderer({canvas: this.refs.node, antialias:true});
+      this.renderer = new WebGLRenderer({
+        canvas: this.refs.node, 
+        preserveDrawingBuffer: true,
+        antialias:true
+      });
 
       this.camera =  //  new PerspectiveCamera(45, width/height, 0.01,20);
       new OrthographicCamera(-width/2 , width/2, height/2, -height/2, 0.1, 50);

@@ -43,6 +43,10 @@ export class WorldManager{
     this.serverCheckInterval = setInterval(()=>this.checkServerTasks(), 2000);
   }
 
+  getPlanetAtmosphereTextures(planet){
+    return {};
+  }
+
   checkServerTasks(){
     let uuids = Object.keys(this.serverGenerationTasks);
     this.post(this.getWorldsHostUrl('/get-task-list-state'), uuids, (state)=>{

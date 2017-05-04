@@ -1,4 +1,7 @@
 import * as THREE from 'three/src/constants.js';
+import {BufferGeometry} from 'three/src/core/BufferGeometry';
+import {BufferAttribute} from 'three/src/core/BufferAttribute';
+import {DataTexture} from 'three/src/textures/DataTexture.js'
 import {Quaternion} from 'three/src/math/Quaternion';
 import {Matrix4} from 'three/src/math/Matrix4';
 import {Vector4} from 'three/src/math/Vector4';
@@ -8,6 +11,7 @@ import {Color} from 'three/src/math/Color';
 import {Sphere} from 'three/src/math/Sphere';
 import {Ray} from 'three/src/math/Ray';
 import {Mesh} from 'three/src/objects/Mesh';
+import {RawShaderMaterial} from 'three/src/materials/RawShaderMaterial';
 import {LODMaterial} from '../materials/PlanetaryMaterial.jsx';
 import {getLodGeometry} from '../math/Geometry.js';
 import {MeshBasicMaterial} from 'three/src/materials/MeshBasicMaterial';
@@ -27,7 +31,10 @@ export class PlanetRenderer{
     this.worldManager = worldManager;
     this.textureTypes = ['height', 'specular', 'color', 'normal'];
     this.visibleFaces = [ true, true, true, true, true, true ];
+    this.renderer.setClearColor(0x000000);
+    this.renderer.setClearAlpha(1);
     this._textureType = false;
+    this._screenSpaceMesh = this.initScreenSpaceMesh();
     this.planetSpheres = planets.planets.map((planet,ix)=>{
       let {spatial} = planet;
       let geometry = new SphereBufferGeometry(spatial.radius*0.999, 100,100);
@@ -42,6 +49,40 @@ export class PlanetRenderer{
 
   clearing(){
 
+  }
+
+  initScreenSpaceMesh(){
+    let geom = new BufferGeometry();
+    let vtx = new Float32Array([
+      -1, -1,
+      1, -1,
+      1, 1,
+      -1, 1
+    ]);
+    let ind = new Uint16Array([0,1,2,0,2,3]);
+    geom.addAttribute("sspoint", new BufferAttribute(vtx, 2, false));
+    //let spareTexture = new DataTexture(new Uint8Array(16), 2, 2, THREE.RGBAFormat, THREE.UnsignedByteType);
+
+    geom.setIndex(new BufferAttribute(ind, 1));
+    this.atmoshpereMaterial = new RawShaderMaterial({
+      uniforms: { 
+        viewInverse: {value: new Matrix4},
+        projectionMatrix: {value: new Matrix4},
+        projectionInverse: {value: new Matrix4},
+        planetPosition: {value: new Vector3},
+        resolution: {value: new Vector2},
+        ttime: {value: 100, type:'f'},
+      },
+      vertexShader: require('../shaders/ScreenSpaceVertexShader.glsl'),
+      fragmentShader: require('../shaders/atmosphereShader.glsl'),
+      transparent: true
+
+    });
+    this.atmoshpereMaterial.needsUpdate = true;
+    let mesh = new Mesh(geom, this.atmoshpereMaterial);
+    mesh.frustumCulled = false;
+
+    return   mesh;
   }
 
   setFaceRendering(){
@@ -67,12 +108,51 @@ export class PlanetRenderer{
   }
 
   renderPlanets(camera){
-    this.planets.planets.forEach((planet, ix)=>{
+    let cp = this.globalPosition.position.toArray();
+    let sorted = this.planets.planets.sort((b,a)=>{
+      
+      let ap = a.spatial.position;
+      let bp = b.spatial.position;
+      let ad = [ ap[0] - cp[0], ap[1] - cp[1], ap[2] - cp[2] ];
+      let bd = [ bp[0] - cp[0], bp[1] - cp[1], bp[2] - cp[2] ];
+      
+      let d1 = ad[0]*ad[0] + ad[1]*ad[1] + ad[2]*ad[2]
+      let d2 = bd[0]*bd[0] + bd[1]*bd[1] + bd[2]*bd[2]
+      return  d1 - d2;
+    })
+    sorted.forEach((planet, ix)=>{
       let mesh = this.planetSpheres[ix];
-      this.renderLOD(planet, camera);
+      let planetProperties = {}
+      this.renderLOD(planet, camera, planetProperties);
+      this.renderAtmospehere(planet, camera, planetProperties);
+      this.renderer.clear(false, true, true);
     })
   }
 
+  renderAtmospehere(planet, camera, planetProperties){
+    let cameraPosition = this.globalPosition.position.clone();
+    camera.updateProjectionMatrix();
+    let projectionInverse = new Matrix4().getInverse(camera.projectionMatrix);
+    let viewInverse = new Matrix4().getInverse(camera.matrixWorld);
+    let props = this.worldManager.getPlanetAtmosphereTextures(planet)
+    let width = this.renderer.domElement.width;
+    let height = this.renderer.domElement.height;
+    let planetPosition = planetProperties.cameraRelatedPosition; 
+    let propUniforms = {};
+    for(let k in props){
+      propUniforms[k] = {value:props[k]}
+    }
+
+    let param = Date.now();
+    this.atmoshpereMaterial.uniforms.resolution =  {value: new Vector2(width, height)};
+    this.atmoshpereMaterial.uniforms.ttime= {value: param};
+    this.atmoshpereMaterial.uniforms.planetPosition= {value: planetPosition.clone()};
+    this.atmoshpereMaterial.uniforms.viewInverse= {value: viewInverse};
+    this.atmoshpereMaterial.uniforms.projectionInverse= {value: projectionInverse};
+    this.atmoshpereMaterial.needsUpdate = true;
+
+    this.renderer.render(this._screenSpaceMesh, camera);
+  }
 
   setupClipping(planet, withCamera){
     let {spatial} = planet;
@@ -101,7 +181,7 @@ export class PlanetRenderer{
 
 
 
-  renderLOD(planet, withCamera){
+  renderLOD(planet, withCamera, planetProperties){
 
     let {radius, position, north} = planet.spatial;
     let cameraPosition = this.globalPosition.position.clone();
@@ -114,6 +194,8 @@ export class PlanetRenderer{
 
     let lodCenter = planetPosition.clone().add(cameraDir.negate().multiplyScalar(radius));
 
+    planetProperties.nearestPoint = lodCenter.clone();
+    planetProperties.cameraRelatedPosition = planetPosition.clone();
 
 
     let size = Math.acos(radius / distanceToCamera) * 2 * radius;
@@ -290,7 +372,6 @@ export class PlanetRenderer{
       this.material.uniforms.logDepthBufC={
         value:  2.0 / ( Math.log( camera.far + 1.0 ) / Math.LN2 ) 
       };
-      this.material.uniforms.division={value:division};
       this.material.uniforms.division={value:division};
       this.material.uniforms.lod={value:lod};
       this.material.uniforms.samplerStart={value:new Vector2(s,t)};
