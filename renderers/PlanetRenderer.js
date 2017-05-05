@@ -71,7 +71,9 @@ export class PlanetRenderer{
         projectionInverse: {value: new Matrix4},
         planetPosition: {value: new Vector3},
         resolution: {value: new Vector2},
-        ttime: {value: 100, type:'f'},
+        ttimeVar: {value: Math.PI/2, type:'f'},
+        radius: {value: 0, type:'f'},
+        atmosphereHeight: {value: 100, type:'f'},
       },
       vertexShader: require('../shaders/ScreenSpaceVertexShader.glsl'),
       fragmentShader: require('../shaders/atmosphereShader.glsl'),
@@ -133,23 +135,32 @@ export class PlanetRenderer{
     let cameraPosition = this.globalPosition.position.clone();
     camera.updateProjectionMatrix();
     let projectionInverse = new Matrix4().getInverse(camera.projectionMatrix);
-    let viewInverse = new Matrix4().getInverse(camera.matrixWorld);
-    let props = this.worldManager.getPlanetAtmosphereTextures(planet)
+    let viewMatrix = new Matrix4().getInverse(camera.matrixWorld);
+    let atmosphereTextures = this.worldManager.getPlanetAtmosphereTextures(planet)
     let width = this.renderer.domElement.width;
     let height = this.renderer.domElement.height;
     let planetPosition = planetProperties.cameraRelatedPosition; 
     let propUniforms = {};
-    for(let k in props){
-      propUniforms[k] = {value:props[k]}
-    }
 
-    let param = Date.now();
+    let param = Date.now()%10000;
+    let spatial = planet.spatial;
+
+    console.log(
+      planetPosition
+    );
+
     this.atmoshpereMaterial.uniforms.resolution =  {value: new Vector2(width, height)};
-    this.atmoshpereMaterial.uniforms.ttime= {value: param};
+    this.atmoshpereMaterial.uniforms.ttimeVar= {value: param/1000};
     this.atmoshpereMaterial.uniforms.planetPosition= {value: planetPosition.clone()};
-    this.atmoshpereMaterial.uniforms.viewInverse= {value: viewInverse};
+    this.atmoshpereMaterial.uniforms.radius= {value: planet.spatial.radius};
+    this.atmoshpereMaterial.uniforms.atmosphereHeight= {value: planet.phisical.atmosphereHeight};
+    this.atmoshpereMaterial.uniforms.viewMatrix= {value: viewMatrix};
+    this.atmoshpereMaterial.uniforms.viewInverseMatrix= {value: camera.matrixWorld.clone()};
     this.atmoshpereMaterial.uniforms.projectionInverse= {value: projectionInverse};
-    this.atmoshpereMaterial.needsUpdate = true;
+    for(let k in atmosphereTextures){
+      this.atmoshpereMaterial.uniforms[k] = {value:atmosphereTextures[k]}
+    }
+    //this.atmoshpereMaterial.needsUpdate = true;
 
     this.renderer.render(this._screenSpaceMesh, camera);
   }
@@ -178,9 +189,6 @@ export class PlanetRenderer{
     })
   }
 
-
-
-
   renderLOD(planet, withCamera, planetProperties){
 
     let {radius, position, north} = planet.spatial;
@@ -195,7 +203,7 @@ export class PlanetRenderer{
     let lodCenter = planetPosition.clone().add(cameraDir.negate().multiplyScalar(radius));
 
     planetProperties.nearestPoint = lodCenter.clone();
-    planetProperties.cameraRelatedPosition = planetPosition.clone();
+    planetProperties.cameraRelatedPosition = planetPosition.clone().sub(cameraPosition);
 
 
     let size = Math.acos(radius / distanceToCamera) * 2 * radius;
@@ -274,7 +282,7 @@ export class PlanetRenderer{
     let renderTimeStart = Date.now();
     textures.forEach(this.renderTexturesWithLOD(planet, withCamera));
     let RT = Date.now() - renderTimeStart;
-    console.log("times", TM, RT);
+    //console.log("times", TM, RT);
 
   }
 

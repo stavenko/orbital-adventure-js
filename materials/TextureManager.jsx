@@ -2,6 +2,7 @@ import * as THREE from 'three/src/constants.js';
 import {Vector3} from 'three/src/math/Vector3';
 import ZipWorker from 'worker!../Utils/zip/zipWorker.js';
 import {DataTexture} from 'three/src/textures/DataTexture.js'
+import {generateAtmosphere} from './atmospehereGenerators/generator.js';
 
 const TextureSize = 512;
 
@@ -41,11 +42,22 @@ export class WorldManager{
     this.serverGenerationTasks = {};
     //this.createLodIndex();
     this.serverCheckInterval = setInterval(()=>this.checkServerTasks(), 2000);
+    this.atmosphereTextures = {};
   }
 
   getPlanetAtmosphereTextures(planet){
-    return {};
-  }
+    if(!this.atmosphereTextures[planet.uuid]) {
+      this.atmosphereTextures[planet.uuid] = generateAtmosphere({
+        resMu:128,
+        resNu:8,
+        resMus:32,
+        resR:32,
+        TransmittanceSamples: 500
+      }, planet);
+
+    }
+    return this.atmosphereTextures[planet.uuid];
+  } 
 
   checkServerTasks(){
     let uuids = Object.keys(this.serverGenerationTasks);

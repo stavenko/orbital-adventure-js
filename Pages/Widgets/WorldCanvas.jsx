@@ -28,7 +28,12 @@ const worldProps = {
     {
       "phisical":{
         "density": 1,
-        "mass": 100
+        "mass": 100,
+        'atmosphereHeight': 60e3,
+        'HM': 1.2,
+        'HR': 8.0,
+        'betaMSca': [4e-3, 4e-3, 4e-3],
+        'betaR' : [5.8e-3, 1.35e-2, 3.31e-2]
       },
       "spatial":{
         "position": [0,0,13e9],
@@ -40,7 +45,12 @@ const worldProps = {
     {
       "phisical":{
         "density": 1,
-        "mass": 100
+        "mass": 100,
+        'atmosphereHeight': 30e3,
+        'HM':1.2,
+        'HR':8.0,
+        'betaMSca': [4e-3, 4e-3, 4e-3],
+        'betaR': [5.8e-3, 1.35e-2, 3.31e-2]
       },
       "spatial":{
         "position": [6.3781e6*3,0,13e9],
