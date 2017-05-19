@@ -48,11 +48,19 @@ export class WorldManager{
   getPlanetAtmosphereTextures(planet){
     if(!this.atmosphereTextures[planet.uuid]) {
       this.atmosphereTextures[planet.uuid] = generateAtmosphere({
-        resMu:128,
+        //resMu:128,
+        resMu:64,
         resNu:8,
-        resMus:32,
-        resR:32,
-        TransmittanceSamples: 500
+        //resMus:32,
+        resMus:16,
+        //resR:32,
+        resR:16,
+        TransmittanceSamples: 500,
+        InscatterSphericalSamples: 16,
+        InscatterIntegralSamples: 50,
+        IrradianceIntegralSamples: 32,
+        AverageGroundReflectance: 0.1,
+        AtmosphereIterativeSamples: 3
       }, planet);
 
     }

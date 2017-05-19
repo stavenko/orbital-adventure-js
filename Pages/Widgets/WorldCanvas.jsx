@@ -25,11 +25,13 @@ const worldProps = {
     radius: 1.4e9
   },
   planets: [
+    /*
     {
       "phisical":{
         "density": 1,
         "mass": 100,
-        'atmosphereHeight': 60e3,
+        'atmosphereHeight': 60,
+        'radius': 6378.1,
         'HM': 1.2,
         'HR': 8.0,
         'betaMSca': [4e-3, 4e-3, 4e-3],
@@ -42,11 +44,13 @@ const worldProps = {
         "rotationSpeed": Math.PI/8
       }
     },
+    */
     {
       "phisical":{
         "density": 1,
         "mass": 100,
-        'atmosphereHeight': 30e3,
+        'atmosphereHeight': 60,
+        'radius': 6378.1,
         'HM':1.2,
         'HR':8.0,
         'betaMSca': [4e-3, 4e-3, 4e-3],
@@ -56,7 +60,7 @@ const worldProps = {
         "position": [6.3781e6*3,0,13e9],
         "north":[0,0.707,0.707],
         "rotationSpeed": Math.PI/7,
-        "radius": 6.3781e6*0.5
+        "radius": 6.3781e6
       }
     } 
   ]
@@ -213,7 +217,11 @@ export class WorldCanvas extends CanvasBase{
       lookAt: new Vector3, 
       quaternion: new Quaternion
     }
-    this.setPosition(planets.planets[1]);
+    if(planets.length > 1)
+      this.setPosition(planets.planets[1]);
+    else{
+      this.setPosition(planets.planets[0]);
+    }
     this.planetRenderer = new PlanetRenderer(this.camera,this.renderer, planets, this.globalCameraOpts, this.worldManager);
     this.startLoop(this.cameraChange(planets));
     this.renderingFunction = ()=>{

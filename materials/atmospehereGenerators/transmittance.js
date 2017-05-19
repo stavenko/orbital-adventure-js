@@ -1,8 +1,11 @@
+import {mulS, limit} from './utils.js';
 
-export function transmittanceRMu(s,t, planetProperties, linear = false){
-  let radius = planetProperties.spatial.radius;
+export function transmittanceRMu(t,s, planetProperties, linear = false){
+  let radius = planetProperties.phisical.radius;
   let atmosphereHeight = planetProperties.phisical.atmosphereHeight;
 
+  if(radius  === undefined)
+    debugger;
   let r, mu;
   if(!linear){
     r  = radius + (s*s) * (atmosphereHeight);
@@ -16,28 +19,11 @@ export function transmittanceRMu(s,t, planetProperties, linear = false){
 
 }
 
-function limit(r, mu, planetProperties) {
-  let {atmosphereHeight} = planetProperties.phisical;
-  let {radius} = planetProperties.spatial;
-  let RL = radius + atmosphereHeight + 1e3;
-  let Rg = radius;
-
-  let dout = -r * mu + Math.sqrt(r * r * (mu * mu - 1.0) + RL * RL);
-
-  let delta2 = r * r * (mu * mu - 1.0) + Rg * Rg;
-  if (delta2 >= 0.0) {
-    let din = -r * mu - Math.sqrt(delta2);
-    if (din >= 0.0) {
-      dout = Math.min(dout, din);
-    }
-  }
-  return dout;
-}
 
 export function opticalDepth(H,r, mu, planetProperties){
 
   let {TransmittanceSamples} = planetProperties;
-  let {radius} = planetProperties.spatial;
+  let {radius} = planetProperties.phisical;
   let dx = limit(r, mu, planetProperties) / TransmittanceSamples
   let xi = 0.0;
   let yi = Math.exp(-(r-radius) / H);
@@ -54,15 +40,15 @@ export function opticalDepth(H,r, mu, planetProperties){
   return mu < -Math.sqrt(1.0 - rr*rr)? 1e9: result
 }
 
-function mulS(v, s){
-  return [v[0]*s, v[1]*s, v[2] * s];
-}
 
-export function getTransmittenceColor(s,t, planetProperties, useFourPacking=false){
+export function getTransmittenceColor({s,t}, planetProperties, useFourPacking=false){
   let {phisical} = planetProperties;
   let {betaR, betaMSca, HR, HM} = phisical;
   let [r, mu] = transmittanceRMu(s,t, planetProperties);
   let betaMEx = mulS(betaMSca, 1/0.9);
+  let od1 = opticalDepth(HR, r, mu, planetProperties)
+  let od = opticalDepth(HM, r, mu, planetProperties)
+
 
   let betaRDepth = mulS(betaR, opticalDepth(HR, r, mu, planetProperties));
   let betaMExDepth = mulS(betaMEx, opticalDepth(HM, r, mu, planetProperties));
@@ -72,7 +58,7 @@ export function getTransmittenceColor(s,t, planetProperties, useFourPacking=fals
     Math.exp(-(betaRDepth[1] + betaMExDepth[1])),
     Math.exp(-(betaRDepth[2] + betaMExDepth[2])),0
   ];
-  debugger;
+
   if(!useFourPacking)
     return depth;
 

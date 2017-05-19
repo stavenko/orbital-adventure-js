@@ -140,14 +140,15 @@ export class PlanetRenderer{
     let width = this.renderer.domElement.width;
     let height = this.renderer.domElement.height;
     let planetPosition = planetProperties.cameraRelatedPosition; 
+
+    let r = planetPosition.length();
+    let ur = Math.sqrt((r - planet.spatial.radius)/1000.0/planet.phisical.atmosphereHeight)
+
     let propUniforms = {};
 
     let param = Date.now()%10000;
     let spatial = planet.spatial;
 
-    console.log(
-      planetPosition
-    );
 
     this.atmoshpereMaterial.uniforms.resolution =  {value: new Vector2(width, height)};
     this.atmoshpereMaterial.uniforms.ttimeVar= {value: param/1000};
@@ -160,6 +161,7 @@ export class PlanetRenderer{
     for(let k in atmosphereTextures){
       this.atmoshpereMaterial.uniforms[k] = {value:atmosphereTextures[k]}
     }
+
     //this.atmoshpereMaterial.needsUpdate = true;
 
     this.renderer.render(this._screenSpaceMesh, camera);
