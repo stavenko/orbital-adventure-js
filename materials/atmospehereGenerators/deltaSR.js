@@ -1,6 +1,7 @@
 import {vNan, limit, Transmittance, 
   texture4DGetter,
   tableLookup,
+  phaseFunctionRay,
   vadd,
   mulS, vmul, vmul1} from './utils.js';
 
@@ -25,6 +26,25 @@ export const Stats = {
 
 function vec3(x,y,z){
   return new Float32Array([x,y,z]);
+}
+
+export function getDeltaSRCopier(planetProps, deltaSRTexture){
+  let {radius, atmosphereHeight} = planetProps.phisical;
+  let {resMu, resNu, resMus, resR} = planetProps;
+  let deltaSRGetter = tableLookup(texture4DGetter(deltaSRTexture, [resMus, resNu, resMu, resR],4), planetProps);
+
+  return (precalculations)=>{
+    let {r,mu, muS, nu} = precalculations;
+    let pixel = deltaSRGetter([r, mu, muS, nu]);
+    let phase = phaseFunctionRay(nu);
+    pixel = [
+      pixel[0] / phase,
+      pixel[1] / phase,
+      pixel[2] / phase,
+    ]
+    return [...pixel, 0];
+  }
+
 }
 
 export function getDeltaSRIterativeColor(planetProps, transmittanceTexture, deltaJTexture){

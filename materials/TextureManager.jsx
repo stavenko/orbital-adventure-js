@@ -19,6 +19,11 @@ export class WorldManager{
       top: [],
       bottom: []
     }
+    this.atmosphereTextureNames = [
+      'deltaIrradianceTexture',
+      'transmittanceTexture',
+      'scatteringTexture'
+    ]
 
     this.faceIx={
       back:0, left:1, front:2, right:3,
@@ -45,28 +50,6 @@ export class WorldManager{
     this.atmosphereTextures = {};
   }
 
-  getPlanetAtmosphereTextures(planet){
-    if(!this.atmosphereTextures[planet.uuid]) {
-      this.atmosphereTextures[planet.uuid] = generateAtmosphere({
-        //resMu:128,
-        resMu:64,
-        resNu:8,
-        //resMus:32,
-        resMus:16,
-        //resR:32,
-        resR:16,
-        TransmittanceSamples: 500,
-        InscatterSphericalSamples: 16,
-        InscatterIntegralSamples: 50,
-        IrradianceIntegralSamples: 32,
-        AverageGroundReflectance: 0.1,
-        AtmosphereIterativeSamples: 3
-      }, planet);
-
-    }
-    return this.atmosphereTextures[planet.uuid];
-  } 
-
   checkServerTasks(){
     let uuids = Object.keys(this.serverGenerationTasks);
     this.post(this.getWorldsHostUrl('/get-task-list-state'), uuids, (state)=>{
@@ -75,7 +58,8 @@ export class WorldManager{
         if(state[k] == 'completed' || state[k] == 'notfound'){
           let value = this.serverGenerationTasks[k];
           if(value){
-            this.downloadTexture(value.url, value.type);
+            debugger;
+            this.downloadTexture(value.url, value.type, value.params);
             delete this.serverGenerationTasks[k]
           }
         }
@@ -102,13 +86,25 @@ export class WorldManager{
     return ab;
   }
 
-  processUnpackedTexture(type, array){
+  dimensions2d(total){
+    let sqrt = Math.floor(Math.sqrt(total));
+    let q = 2;
+    let i = 1;
+    while(++i){
+      if(q >= sqrt) break;
+      q = Math.pow(2,i);
+    }
+    let w = Math.pow(2, i-1);
+    return [w, total/w];
+  }
+  processUnpackedTexture(type, array, params){
     if(type === 'height'){
       return{
         data: this.createRGBTextureFromFloat(array),
         format: THREE.RGBAFormat,
         type: THREE.FloatType,
-        textureSize: TextureSize/2.0
+        width: TextureSize/2.0,
+        height: TextureSize/2.0
       }
     }
     if(type === 'normal'){
@@ -116,17 +112,44 @@ export class WorldManager{
         data: new Uint8Array(array),
         format: THREE.RGBFormat,
         type: THREE.UnsignedByteType,
-        textureSize: TextureSize
+        width: TextureSize,
+        height: TextureSize
+      }
+    }
+    if(this.atmosphereTextureNames.indexOf(type) !== -1){
+      let fa = new Float32Array(array);
+      let {resMu, resNu, resR, resMus} = params;
+      let sz = fa.length/4;
+      let [w,h] = this.dimensions2d(sz);
+      if(type == 'transmittanceTexture'){
+        w = resMu*2;
+        h = resR*2
+      } 
+      if(type == 'deltaIrradianceTexture'){
+        w = resMus*2;
+        h = resR/2;
+        debugger;
+
+      } 
+      console.log(type, w, h);
+      return {
+        data: fa,
+        format:THREE.RGBAFormat,
+        type:THREE.FloatType,
+        width: w,
+        height: h
       }
     }
   }
 
   unpackComplete(event){
     let {key, textureType, texture} = event.data;
-    let processedTexture = this.processUnpackedTexture(textureType, texture);
+    let processedTexture = this.processUnpackedTexture(textureType, texture, event.data);
+    debugger
+    // console.log(THREE.NearestFilter, THREE.LinearFilter);
     this.texturesIndex[key].image={
-      width: processedTexture.textureSize,
-      height: processedTexture.textureSize,
+      width: processedTexture.width,
+      height: processedTexture.height,
       data: processedTexture.data //__floatArr //new Uint8Array(texture)
     }
     this.texturesIndex[key].format = processedTexture.format; //THREE.RGBFormat;
@@ -173,25 +196,46 @@ export class WorldManager{
     this.post(url, props, fn);
   }
 
-  downloadTexture(url, textureType) {
+  downloadTexture(url, textureType, params) {
     this.download(url, array=>{
-      this.queueUnpack(array, url, textureType);
+      console.log(params);
+      this.queueUnpack(array, url, textureType, params);
     })
   }
 
-  getTexture(forWorld, type, params){
+  tiledTexturesURL(forWorld, type, params){
     let {face, lod, tile} = params;
-    console.log("get texture", face, lod, tile);
-    if(lod == 1 && tile > 3)
-      debugger;
-    let url = this.getWorldsHostUrl(`/texture/${forWorld}/${type}/${lod}/${face}/${tile}.raw`);
+    return `/texture/${forWorld}/${type}/${lod}/${face}/${tile}.raw`;
+  }
+
+  atmosphereTexturesURL(forWorld, type, params){
+    let {textureType} = params;
+    let {resR, resMu, resMus, resNu} = params;
+    return `/texture/${forWorld}/atmosphere/${resR}x${resMu}x${resMus}x${resNu}/${textureType}.raw`;
+
+  }
+
+  typeToURL(forWorld, type, params){
+    switch(type){
+      case 'height':
+      case 'normal':
+        return this.tiledTexturesURL(forWorld, type, params);
+      default:
+        return this.atmosphereTexturesURL(forWorld, type, params);
+    }
+  }
+
+  getTexture(forWorld, type, params){
+    let url = this.getWorldsHostUrl(this.typeToURL(forWorld, type, params));
     if(this.texturesIndex[url])
       return this.texturesIndex[url];
     let texture = new DataTexture(new Uint8Array(16), 2, 2, THREE.RGBAFormat, THREE.UnsignedByteType);
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
     this.texturesIndex[url] = texture;
     this.checkIfTextureExists(url, err=>{
       if(err) return this.requestTextureGeneration(forWorld, type, params, url)
-      this.downloadTexture(url, type);
+      this.downloadTexture(url, type, params);
     })
     return texture;
   }
@@ -210,7 +254,6 @@ export class WorldManager{
 
 
   requestTextureGeneration(forWorld, type, params, url){
-    console.log('request', url);
     let data = {
       planetUUID: forWorld,
       textureType: type,
@@ -218,14 +261,12 @@ export class WorldManager{
     }
     let genUrl = this.getWorldsHostUrl('/generate-texture/');
     this.post(genUrl, data, (uuid)=>{
-      this.serverGenerationTasks[uuid] = {url,type};
+      this.serverGenerationTasks[uuid] = {url,type,params};
     })
   }
 
 
   download(url, fn){
-    console.log('download', url);
-
     let xhr = new XMLHttpRequest();
     xhr.responseType = 'arraybuffer';
     xhr.onload= ()=>{
@@ -235,8 +276,8 @@ export class WorldManager{
     xhr.send();
   }
 
-  queueUnpack(array, key, textureType){
-    this.unpackQueue.push([{type:'inflate', array, key, textureType}, [array]])
+  queueUnpack(array, key, textureType, params){
+    this.unpackQueue.push([{type:'inflate', array, key, textureType, ...params}, [array]])
     this.tryLaunchNextUnpack();
   }
 
@@ -258,32 +299,6 @@ export class WorldManager{
 
     return [theta, phi];
   }
-
-  /*
-  createLodIndex(){
-    this.lodIndex = []
-    const maxLOD = 8;
-    const faces = 6;
-    for(let lod = 0; lod < maxLOD; ++lod){
-      let division = Math.pow(2,lod);
-      let inc = 1.0 / division;
-      this.lodIndex.push([]);
-      for(let face =0; face < faces; ++face){
-        for(let i = 0; i < division; ++i){
-          for(let j = 0; j < division; ++j){
-            let s = i * inc;
-            let t = j * inc;
-            let tile = j * division + i;
-            let geoBounds = [[0,0], [0,1], [1,0], [1,1]]
-              .map(x=>x.map((n,i)=>n*inc+[s,t][i]))
-              .map(st=>this.stToGeo(...st, this.faceNames[face]));
-            this.lodIndex[lod].push({geoBounds, s, t, tile, face});
-          }
-        }
-      }
-    }
-  }
-  */
 
   initialize(radius, division=1, lod = 0){
     let zc = 0;

@@ -124,6 +124,7 @@ export function tableLookup(getter, planetProps){
   let Rg = radius;
   let Rt = radius + atmosphereHeight;
   return ([r, mu, muS, nu])=>{
+
     let H = sqrt(Rt* Rt - Rg*Rg);
     let rho = 0;
     if(r >= Rg) rho = sqrt(r*r - Rg*Rg);

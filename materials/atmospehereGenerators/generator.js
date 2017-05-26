@@ -6,7 +6,7 @@ import {precalcs} from './utils.js';
 import {getTransmittenceColor} from './transmittance.js';
 import {getDeltaEColor, getDeltaEIterativeColor} from './deltaESampler.js';
 import {getDeltaJPixel} from './deltaJ.js';
-import {getDeltaSMieColor, getDeltaSRayColor, getDeltaSRIterativeColor,  Stats} from './deltaSR.js';
+import {getDeltaSMieColor, getDeltaSRayColor, getDeltaSRCopier, getDeltaSRIterativeColor,  Stats} from './deltaSR.js';
 import {DataTexture} from 'three/src/textures/DataTexture.js'
 
 export function prepareTexture2With(width, height, components, fn, Type = Float32Array){
@@ -205,12 +205,13 @@ function generateIterativeAtmosphere(planetProps,
   let deltaJTexture = new Float32Array(width*height*depth*count*4); // 4d
   let deltaETexture = new Float32Array(initialDeltaETexture);
   let deltaSRTexture = new Float32Array(initialDeltaSRTexture); // 4d
-  let irradianceTexture = new Float32Array(initialDeltaETexture);
-  let inscatterTextures = new Float32Array(width*atmosphereHeight*depth*count*4); // 4d
+  let irradianceTexture = new Float32Array(initialDeltaETexture.length);
+  let inscatterTexture = new Float32Array(width*atmosphereHeight*depth*count*4); // 4d
 
   let deltaJGetter = getDeltaJPixel(planetProps, transmittanceTexture, deltaETexture, deltaSRTexture, deltaSMTexture);
   let deltaEGetter = getDeltaEIterativeColor(planetProps, deltaSRTexture, deltaSMTexture);
   let deltaSRGetter = getDeltaSRIterativeColor(planetProps, transmittanceTexture, deltaJTexture);
+  let deltaSRCopier = getDeltaSRCopier(planetProps, deltaSRTexture);
 
   for(let layer =0; layer< planetProps.AtmosphereIterativeSamples; ++layer){
     calculateDeltaJ(layer);
@@ -241,8 +242,20 @@ function generateIterativeAtmosphere(planetProps,
       return deltaSRGetter(precalculations, iteration);
     })
   }
-  function incrementIrradiance(){}
-  function incrementInscatter(){}
+  function incrementIrradiance(){
+    console.log('----------------increment Irradiance------------');
+    for(let i = 0; i < irradianceTexture.length; ++i){
+      irradianceTexture[i] += deltaETexture[i];
+    }
+  }
+  function incrementInscatter(){
+    console.log('----------------increment Inscatter------------');
+    let texture = prepareTexture4With(resMus, resNu, resMu, resR, 4, pre, deltaSRCopier);
+    for(let i = 0; i< inscatterTexture.length; ++i){
+      inscatterTexture[i] += texture[i];
+    }
+
+  }
 
 
 }
