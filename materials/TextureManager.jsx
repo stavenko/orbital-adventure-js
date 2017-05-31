@@ -45,7 +45,6 @@ export class WorldManager{
 
     this.textures = [];
     this.serverGenerationTasks = {};
-    //this.createLodIndex();
     this.serverCheckInterval = setInterval(()=>this.checkServerTasks(), 2000);
     this.atmosphereTextures = {};
   }
@@ -58,7 +57,6 @@ export class WorldManager{
         if(state[k] == 'completed' || state[k] == 'notfound'){
           let value = this.serverGenerationTasks[k];
           if(value){
-            debugger;
             this.downloadTexture(value.url, value.type, value.params);
             delete this.serverGenerationTasks[k]
           }
@@ -97,6 +95,7 @@ export class WorldManager{
     let w = Math.pow(2, i-1);
     return [w, total/w];
   }
+
   processUnpackedTexture(type, array, params){
     if(type === 'height'){
       return{
@@ -128,10 +127,9 @@ export class WorldManager{
       if(type == 'deltaIrradianceTexture'){
         w = resMus*2;
         h = resR/2;
-        debugger;
 
       } 
-      console.log(type, w, h);
+      console.log(type, w, h, fa);
       return {
         data: fa,
         format:THREE.RGBAFormat,

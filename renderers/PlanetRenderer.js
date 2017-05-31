@@ -148,6 +148,8 @@ export class PlanetRenderer{
     this.renderer.setClearAlpha(1);
     this._textureType = false;
     this._screenSpaceMesh = this.initScreenSpaceMesh();
+    this.__ww = 0;
+    this.__zz = 0;
     this.planetSpheres = planets.planets.map((planet,ix)=>{
       let {spatial} = planet;
       let geometry = new SphereBufferGeometry(spatial.radius*0.999, 100,100);
@@ -435,6 +437,7 @@ export class PlanetRenderer{
       muSMin,
       solarIrradiance,
       rayleighScattering,
+      miePhaseFunctionG: 0.8,
       mieExtinction,
       mieScattering,
       absorptionExtinction,
@@ -500,8 +503,11 @@ export class PlanetRenderer{
     this.atmoshpereMaterial.uniforms.viewInverseMatrix= {value: camera.matrixWorld.clone()};
     this.atmoshpereMaterial.uniforms.projectionInverse= {value: projectionInverse};
     let [w,h] = this.worldManager.dimensions2d(resMu*resNu*resR*resMus);
-    this.atmoshpereMaterial.uniforms.resolutionof4d ={
+    this.atmoshpereMaterial.uniforms.resolutionOf4d ={
       value: new Vector2(w,h)
+    }
+    this.atmoshpereMaterial.uniforms._additional = {
+      value: new Vector2((this.__zz%resNu)/resNu, (this.__ww%resMu)/resMu)
     }
     this.atmoshpereMaterial.uniforms.atmosphereTableResolution = {value:
       new Vector4(resMus, resNu, resMu, resR)
@@ -669,6 +675,12 @@ export class PlanetRenderer{
       normal,
       pixelSize
     }
+  }
+  doSomethingWithInput(keyCode){
+    if(keyCode == 106) ++this.__zz
+    if(keyCode == 111) --this.__zz
+    if(keyCode == 107) ++this.__ww;
+    if(keyCode == 109) --this.__ww
   }
 
   findClosestTileInScreenSpace(planetPosition, viewProjectionMatrix){

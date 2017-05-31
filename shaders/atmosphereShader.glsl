@@ -9,6 +9,7 @@ uniform float atmosphereHeight;
 
 uniform sampler2D transmittanceTexture;
 uniform sampler2D deltaIrradianceTexture;
+uniform sampler2D scatteringTexture;
 //uniform sampler2D deltaETexture;
 //uniform sampler2D irradianceTexture;
 //uniform sampler2D deltaJTexture;
@@ -17,6 +18,7 @@ uniform sampler2D deltaIrradianceTexture;
 //uniform sampler2D inscatterTexture;
 uniform vec4 atmosphereTableResolution;
 uniform vec2 resolutionOf4d;
+uniform vec2 _additional;
 //uniform vec4 deltaSRTexture4dResolution;
 //uniform vec2 deltaSRTextureResolution;
 
@@ -98,11 +100,9 @@ void main() {
   vec2 uvRMu = getTransmittanceUV(r/1000.0, mu);
 
   //vec4 transmittanceTexel = texture2D(deltaIrradianceTexture, uv);
-  vec4 transmittanceTexel = texture2D(transmittanceTexture, uv);
-  //vec4 transmittanceTexel = texture4D(
-      //inscatterTexture,
-      //vec4(uv, cos(ttimeVar*10.0), cos(ttimeVar))
-      //);
+  //vec4 transmittanceTexel = texture2D(transmittanceTexture, uv);
+  vec4 uvwt = vec4(uv.x, uv.y, _additional.x, _additional.y);
+  vec4 transmittanceTexel = texture4D( scatteringTexture, uvwt);
 
   vec3 col = cameraRay;
   vec3 attenuation;
@@ -110,7 +110,7 @@ void main() {
     //+ groundColor(x, t, s, r, mu, attenuation)
     //+ sunColor(x, t, s, r, mu);
   vec3 pixelColor = vec3(0.0);
-  pixelColor = abs(transmittanceTexel.rgb);
+  pixelColor = abs(transmittanceTexel.arg);
 
   gl_FragColor = vec4(pixelColor, 1.0);
 }

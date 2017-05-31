@@ -154,13 +154,17 @@ export class WorldCanvas extends CanvasBase{
     let a = Math.PI / 180;
     let speed = 1e5 * spdMul;
 
-    // console.log(evt.keyCode);
+    console.log(evt.keyCode);
     if(evt.keyCode >= 48 && evt.keyCode <= 57) {
       let btn = evt.keyCode - 49;
       this._showFaces[btn] = !this._showFaces[btn];
       this.planetRenderer.setVisibleFaces(this._showFaces);
 
       evt.preventDefault();
+    }
+
+    if([106,107, 109,111].indexOf(evt.keyCode) != -1){
+      this.planetRenderer.doSomethingWithInput(evt.keyCode);
     }
 
     if(evt.keyCode == 84){
