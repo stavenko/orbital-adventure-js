@@ -3,8 +3,8 @@ precision highp float;
 uniform vec2 resolution;
 uniform vec3 planetPosition; // planetPosition relative to camera;
 uniform vec3 sunDirection;
-uniform vec3 skySpectralRadianceToLuminance;
-uniform vec3 sunSpectralRadianceToLuminance;
+uniform vec3 SkySpectralRadianceToLuminance;
+uniform vec3 SunSpectralRadianceToLuminance;
 
 uniform vec2 sun_size;
 uniform vec3 sun_radiance;
@@ -72,14 +72,14 @@ IrradianceSpectrum GetSunAndSkyIrradiance(AtmosphereParameters atmosphere,
 Luminance3 GetSkyLuminance(AtmosphereParameters a,
     Position camera, Direction view_ray, Length shadow_length,
     Direction sun_direction, out DimensionlessSpectrum transmittance) {
-  return GetSkyRadiance(camera, view_ray, shadow_length, sun_direction,
-      transmittance) * SKY_SPECTRAL_RADIANCE_TO_LUMINANCE;
+  return GetSkyRadiance(a, camera, view_ray, shadow_length, sun_direction,
+      transmittance) * SkySpectralRadianceToLuminance;
 }
 Luminance3 GetSkyLuminanceToPoint(AtmosphereParameters a,
     Position camera, Position point, Length shadow_length,
     Direction sun_direction, out DimensionlessSpectrum transmittance) {
-  return GetSkyRadianceToPoint(camera, point, shadow_length, sun_direction,
-      transmittance) * SKY_SPECTRAL_RADIANCE_TO_LUMINANCE;
+  return GetSkyRadianceToPoint(a, camera, point, shadow_length, sun_direction,
+      transmittance) * SkySpectralRadianceToLuminance;
 }
 
 Illuminance3 GetSunAndSkyIlluminance( AtmosphereParameters a,
@@ -87,9 +87,9 @@ Illuminance3 GetSunAndSkyIlluminance( AtmosphereParameters a,
    out IrradianceSpectrum sky_irradiance) {
   IrradianceSpectrum sun_irradiance =
       GetSunAndSkyIrradiance(a, p, normal, sun_direction, sky_irradiance);
-  sky_irradiance *= SKY_SPECTRAL_RADIANCE_TO_LUMINANCE;
-  return sun_irradiance * SUN_SPECTRAL_RADIANCE_TO_LUMINANCE;
-})
+  sky_irradiance *= SkySpectralRadianceToLuminance;
+  return sun_irradiance * SunSpectralRadianceToLuminance;
+}
 
 
 void constructProfile(float from[10], out DensityProfile prof){
@@ -289,7 +289,7 @@ the sphere, which depends on the length of this segment which is in shadow:
         max(0.0, min(shadow_out, distance_to_intersection) - shadow_in) *
         lightshaft_fadein_hack;
     vec3 transmittance;
-    vec3 in_scatter = GetSkyRadianceToPoint(camera - earth_center,
+    vec3 in_scatter = GetSkyRadianceToPoint(atmosphere, camera - earth_center,
         point - earth_center, shadow_length, sun_direction, transmittance);
     sphere_radiance = sphere_radiance * transmittance + in_scatter;
   }

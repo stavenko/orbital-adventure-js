@@ -536,8 +536,11 @@ export class PlanetRenderer{
     this.atmosphereMaterial.uniforms.sun_size = {value:
       new Vector2(Math.tan(atmosphere.sunAngularRadius), Math.cos(atmosphere.sunAngularRadius))
     }
+    this.atmosphereMaterial.uniforms.SkySpectralRadianceToLuminance = {
+      value: new Vector3(...atmosphere.SkySpectralRadianceToLuminance)
+    }
     this.atmosphereMaterial.uniforms.SunSpectralRadianceToLuminance = {
-      value: new Vector3(...atmosphere.sun)
+      value: new Vector3(...atmosphere.SunSpectralRadianceToLuminance)
     }
     this.atmosphereMaterial.uniforms.sun_radiance = {value:
       new Vector3(
