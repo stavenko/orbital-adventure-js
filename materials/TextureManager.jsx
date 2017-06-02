@@ -85,6 +85,7 @@ export class WorldManager{
   }
 
   dimensions2d(total){
+    if(isNaN(total)) throw new Error(`nan value: ${total}`)
     let sqrt = Math.floor(Math.sqrt(total));
     let q = 2;
     let i = 1;

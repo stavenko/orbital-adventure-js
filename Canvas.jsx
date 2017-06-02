@@ -477,6 +477,7 @@ export class CanvasBase extends React.Component{
         preserveDrawingBuffer: true,
         antialias:true
       });
+      this.renderer.context.getExtension('OES_standard_derivatives');
 
       this.camera =  //  new PerspectiveCamera(45, width/height, 0.01,20);
       new OrthographicCamera(-width/2 , width/2, height/2, -height/2, 0.1, 50);

@@ -178,9 +178,13 @@ export class PlanetRenderer{
     geom.addAttribute("sspoint", new BufferAttribute(vtx, 2, false));
     //let spareTexture = new DataTexture(new Uint8Array(16), 2, 2, THREE.RGBAFormat, THREE.UnsignedByteType);
 
+    let functions = require('../shaders/atmosphereFunctions.glsl');
+    let atmosphere = require('../shaders/atmosphereShader.glsl');
+    let total = functions + atmosphere;
+
     geom.setIndex(new BufferAttribute(ind, 1));
-    this.atmoshpereMaterial = new RawShaderMaterial({
-      uniforms: { 
+    this.atmosphereMaterial = new RawShaderMaterial({
+      uniforms: {
         viewInverse: {value: new Matrix4},
         projectionMatrix: {value: new Matrix4},
         projectionInverse: {value: new Matrix4},
@@ -191,12 +195,13 @@ export class PlanetRenderer{
         atmosphereHeight: {value: 100, type:'f'},
       },
       vertexShader: require('../shaders/ScreenSpaceVertexShader.glsl'),
-      fragmentShader: require('../shaders/atmosphereShader.glsl'),
+      fragmentShader: total,
       transparent: true
 
     });
-    this.atmoshpereMaterial.needsUpdate = true;
-    let mesh = new Mesh(geom, this.atmoshpereMaterial);
+    this.atmosphereMaterial.extensions.derivatives = true;
+    this.atmosphereMaterial.needsUpdate = true;
+    let mesh = new Mesh(geom, this.atmosphereMaterial);
     mesh.frustumCulled = false;
 
     return   mesh;
@@ -227,12 +232,12 @@ export class PlanetRenderer{
   renderPlanets(camera){
     let cp = this.globalPosition.position.toArray();
     let sorted = this.planets.planets.sort((b,a)=>{
-      
+
       let ap = a.spatial.position;
       let bp = b.spatial.position;
       let ad = [ ap[0] - cp[0], ap[1] - cp[1], ap[2] - cp[2] ];
       let bd = [ bp[0] - cp[0], bp[1] - cp[1], bp[2] - cp[2] ];
-      
+
       let d1 = ad[0]*ad[0] + ad[1]*ad[1] + ad[2]*ad[2]
       let d2 = bd[0]*bd[0] + bd[1]*bd[1] + bd[2]*bd[2]
       return  d1 - d2;
@@ -273,9 +278,9 @@ export class PlanetRenderer{
 
   prepareSpecter(planetProps, star) {
     let {
-      mieAngstromAlpha, 
-      mieAngstromBeta, 
-      mieScaleHeight, 
+      mieAngstromAlpha,
+      mieAngstromBeta,
+      mieScaleHeight,
       has_ozone,
       rayleigh,
       mieSingleScatteringAlbedo,
@@ -288,7 +293,7 @@ export class PlanetRenderer{
     let mieScattering = [];
     let mieExtinction = [];
     let absorptionExtinction = [];
-    let groundAlbedo = []; 
+    let groundAlbedo = [];
     for(let l = minLambda; l <= maxLambda; l+=10){
       let spectreIx =  (l - minLambda) / 10
       let lambda = l * 1e-3;
@@ -305,8 +310,8 @@ export class PlanetRenderer{
     }
     let length = wavelengths.length;
     let spectresInitial = {
-      wavelengths, solarIrradiance, rayleighScattering, 
-      mieScattering, mieExtinction, absorptionExtinction, 
+      wavelengths, solarIrradiance, rayleighScattering,
+      mieScattering, mieExtinction, absorptionExtinction,
       groundAlbedo
     };
     let retSpectres = {};
@@ -322,9 +327,9 @@ export class PlanetRenderer{
     for(let i =0; i<wavelengths.length; ++i){
       if(wavelength < wavelengths[i+1]){
       let u = (wavelength - wavelengths[i]) / (wavelengths[i + 1] - wavelengths[i]);
-      let result = 
+      let result =
           waveLengthFunction[i] * (1.0 - u) + waveLengthFunction[i + 1] * u;
-      if(isNaN(result)) 
+      if(isNaN(result))
         throw 'interpolation result is nan';
       return result;
 
@@ -388,8 +393,12 @@ export class PlanetRenderer{
 
   }
 
-  renderAtmospehere(planet, camera, planetProperties, star){
-    const resMu=128, resNu=8, resMus=32, resR=32;
+
+
+  prepareAtmosphere(planet, star){
+    console.warn("Small texture values for debug is setup");
+    //const resMu=128, resNu=8, resMus=32, resR=32;
+    const resMu=4, resNu=4, resMus=4, resR=4;
     const spectre = this.prepareSpecter(planet, star);
     const {mieScaleHeight, rayleighScaleHeight} = planet.phisical;
     const {wavelengths} = spectre;
@@ -432,7 +441,7 @@ export class PlanetRenderer{
     let sunK = this.spectralRadianceToLuminanceFactors(wavelengths, spectre.solarIrradiance, 0);
     const muSMin = Math.cos(120 / 180 * Math.PI);
 
-    const TextureProperties = {
+    const atmosphere = {
       resMu, resNu, resMus, resR,
       muSMin,
       solarIrradiance,
@@ -445,17 +454,17 @@ export class PlanetRenderer{
       SunSpectralRadianceToLuminance: sunK,
       absorptionDensity: this.serializeDensityProfile(ozoneDensity),
       rayleighDensity: this.serializeDensityProfile([rayleighDensityLayer]),
+      groundAlbedo,
       mieDensity: this.serializeDensityProfile([mieDensityLayer]),
       starAngularRadius: star.angularRadius,
       bottomRadius: planet.phisical.radius/kilometer,
       topRadius: (planet.phisical.radius + planet.phisical.atmosphereHeight)/kilometer,
-      // TransmittanceSamples: 500,
-      // InscatterSphericalSamples: 16,
-      // InscatterIntegralSamples: 50,
-      // IrradianceIntegralSamples: 32,
-      // AverageGroundReflectance: 0.1,
-      // AtmosphereIterativeSamples: 3
     }
+    return atmosphere;
+  }
+
+
+  renderAtmospehere(planet, camera, planetProperties, star){
 
     let cameraPosition = this.globalPosition.position.clone();
     camera.updateProjectionMatrix();
@@ -464,60 +473,107 @@ export class PlanetRenderer{
     //let atmosphereTextures = this.worldManager.getPlanetAtmosphereTextures(planet)
     let width = this.renderer.domElement.width;
     let height = this.renderer.domElement.height;
-    let planetPosition = planetProperties.cameraRelatedPosition; 
+    let planetPosition = planetProperties.cameraRelatedPosition;
 
     let r = planetPosition.length();
     let ur = Math.sqrt((r - planet.spatial.radius)/1000.0/planet.phisical.atmosphereHeight)
 
     let propUniforms = {};
-
     let param = Date.now()%10000;
-    let spatial = planet.spatial;
 
     let atmosphereTextures = [
-      //'irradianceTexture',
-      //'inscatterTexture',
-      //'deltaSRTexture',
-      //'deltaSMTexture',
-      //'deltaJTexture',
-      //'deltaETexture',
+      'irradianceTexture',
       'scatteringTexture',
       'deltaIrradianceTexture',
       'transmittanceTexture'
     ];
+
     let texturesMap = {}
 
+    const atmosphere = this.prepareAtmosphere(planet, star);
     atmosphereTextures.forEach(textureType=>{
       texturesMap[textureType] = this.worldManager.getTexture(planet.uuid, textureType, {
         textureType,
-        ...TextureProperties
+        ...atmosphere
       })
     })
 
-    this.atmoshpereMaterial.uniforms.resolution =  {value: new Vector2(width, height)};
-    this.atmoshpereMaterial.uniforms.ttimeVar= {value: param/1000};
-    this.atmoshpereMaterial.uniforms.planetPosition= {value: planetPosition.clone()};
-    this.atmoshpereMaterial.uniforms.radius= {value: planet.spatial.radius};
-    this.atmoshpereMaterial.uniforms.atmosphereHeight= {value: planet.phisical.atmosphereHeight};
-    this.atmoshpereMaterial.uniforms.viewMatrix= {value: viewMatrix};
-    this.atmoshpereMaterial.uniforms.viewInverseMatrix= {value: camera.matrixWorld.clone()};
-    this.atmoshpereMaterial.uniforms.projectionInverse= {value: projectionInverse};
+
+    this.atmosphereMaterial.uniforms.solarIrradiance = {value: new Vector3(...atmosphere.solarIrradiance)};
+    this.atmosphereMaterial.uniforms.sunAngularRadius = {value: atmosphere.sunAngularRadius};
+    this.atmosphereMaterial.uniforms.bottomRadius= {value:atmosphere.bottomRadius};
+    this.atmosphereMaterial.uniforms.topRadius = {value:atmosphere.topRadius};
+    this.atmosphereMaterial.uniforms.rayleighDensity = {value: packProfile(atmosphere.rayleighDensity)};
+    this.atmosphereMaterial.uniforms.rayleighScattering = {value:new Vector3(...atmosphere.rayleighScattering)};
+    this.atmosphereMaterial.uniforms.mieDensity ={value: packProfile(atmosphere.mieDensity)};
+    this.atmosphereMaterial.uniforms.mieScattering = {value: new Vector3(...atmosphere.mieScattering)};
+    this.atmosphereMaterial.uniforms.mieExtinction = {value: new Vector3(...atmosphere.mieExtinction)};
+    this.atmosphereMaterial.uniforms.miePhaseFunctionG = {value:atmosphere.miePhaseFunctionG};
+    this.atmosphereMaterial.uniforms.absorptionDensity={value: packProfile(atmosphere.absorptionDensity)};
+    this.atmosphereMaterial.uniforms.absorptionExtinction = {value:atmosphere.absorptionExtinction};
+    this.atmosphereMaterial.uniforms.groundAlbedo = {value: new Vector3(... atmosphere.groundAlbedo) };
+    this.atmosphereMaterial.uniforms.muSMin = {value:atmosphere.muSMin};
+
+    this.atmosphereMaterial.uniforms.resolution =  {value: new Vector2(width, height)};
+    this.atmosphereMaterial.uniforms.ttimeVar= {value: param/1000};
+    this.atmosphereMaterial.uniforms.planetPosition= {value: planetPosition.clone()};
+    this.atmosphereMaterial.uniforms.radius= {value: planet.spatial.radius};
+
+    this.atmosphereMaterial.uniforms.viewMatrix= {value: viewMatrix};
+    this.atmosphereMaterial.uniforms.viewInverseMatrix= {value: camera.matrixWorld.clone()};
+    this.atmosphereMaterial.uniforms.projectionInverse= {value: projectionInverse};
+    const {resMu, resNu, resMus, resR} = atmosphere;
     let [w,h] = this.worldManager.dimensions2d(resMu*resNu*resR*resMus);
-    this.atmoshpereMaterial.uniforms.resolutionOf4d ={
+    this.atmosphereMaterial.uniforms.resolutionOf4d ={
       value: new Vector2(w,h)
     }
-    this.atmoshpereMaterial.uniforms._additional = {
+    this.atmosphereMaterial.uniforms._additional = {
       value: new Vector2((this.__zz%resNu)/resNu, (this.__ww%resMu)/resMu)
     }
-    this.atmoshpereMaterial.uniforms.atmosphereTableResolution = {value:
+    this.atmosphereMaterial.uniforms.atmosphereTableResolution = {value:
       new Vector4(resMus, resNu, resMu, resR)
     }
-    for(let k in texturesMap){
-      this.atmoshpereMaterial.uniforms[k] = {value: texturesMap[k]}
-      //console.log(k);
+    this.atmosphereMaterial.uniforms.sun_size = {value:
+      new Vector2(Math.tan(atmosphere.sunAngularRadius), Math.cos(atmosphere.sunAngularRadius))
+    }
+    this.atmosphereMaterial.uniforms.SunSpectralRadianceToLuminance = {
+      value: new Vector3(...atmosphere.sun)
+    }
+    this.atmosphereMaterial.uniforms.sun_radiance = {value:
+      new Vector3(
+        atmosphere.solarIrradiance[0]/ atmosphere.sunSolidAngle,
+        atmosphere.solarIrradiance[1]/ atmosphere.sunSolidAngle,
+        atmosphere.solarIrradiance[2]/ atmosphere.sunSolidAngle)
     }
 
-    //this.atmoshpereMaterial.needsUpdate = true;
+    this.atmosphereMaterial.uniforms.white_point = {value:
+      new Vector3( 1, 1, 1)
+    }
+
+    this.atmosphereMaterial.uniforms.exposure = {value: 10 }
+    for(let k in texturesMap){
+      this.atmosphereMaterial.uniforms[k] = {value: texturesMap[k]}
+    }
+
+    function packProfile(prof){
+      let layer1 = prof[0];
+      let layer2 = prof[1];
+      let arr = new Float32Array(10);
+      arr[0] = layer1.width;
+      arr[1] = layer1.exp_term;
+      arr[2] = layer1.exp_scale;
+      arr[3] = layer1.linear_term;
+      arr[4] = layer1.constant_term;
+
+      arr[5] = layer2.width;
+      arr[6] = layer2.exp_term;
+      arr[7] = layer2.exp_scale;
+      arr[8] = layer2.linear_term;
+      arr[9] = layer2.constant_term;
+      return arr;
+    }
+
+
 
     this.renderer.render(this._screenSpaceMesh, camera);
   }
@@ -552,7 +608,7 @@ export class PlanetRenderer{
     let cameraPosition = this.globalPosition.position.clone();
 
     let planetPosition = new Vector3(...position);
-    let cameraDir = planetPosition.clone().sub(cameraPosition); 
+    let cameraDir = planetPosition.clone().sub(cameraPosition);
     let distanceToCamera =cameraDir.length();
     cameraDir.normalize();
 
@@ -585,11 +641,11 @@ export class PlanetRenderer{
       t   =	( tc/|ma| + 1 ) / 2
      */
 
-    // *** stupid setup *** 
+    // *** stupid setup ***
     this.lodMesh.scale.set(...[size, size, size]);
 
     lodCenter.sub(cameraPosition);
-    
+
 
     let planetRotation = planet.initialQuaternion.clone();
     let rotationAngle = planet.time;
@@ -627,15 +683,15 @@ export class PlanetRenderer{
     let texTimes = Date.now();
     let cameraDirection = new Vector3(0,0,1).transformDirection(withCamera.matrixWorld);
     let textures = this.worldManager
-      .findTexturesWithin(viewProjectionMatrix.clone(), cameraDirection, 
-                          planetRotation.clone().inverse(), 
-                          radius, 
+      .findTexturesWithin(viewProjectionMatrix.clone(), cameraDirection,
+                          planetRotation.clone().inverse(),
+                          radius,
                           planetPosition, pixelSize);
     let TM = Date.now() - texTimes;
 
     if(textures.length > 50)
       console.warn("So many textures", textures.length);
-    
+
     let renderTimeStart = Date.now();
     textures.forEach(this.renderTexturesWithLOD(planet, withCamera));
     let RT = Date.now() - renderTimeStart;
@@ -735,13 +791,13 @@ export class PlanetRenderer{
           planet.texturesCache[textureType][face][lod] = new Map;
         if(!planet.texturesCache[textureType][face][lod].has(tile))
           this.prepareTexture(planet, {...params, tile, textureType});
-        
+
         let texture = planet.texturesCache[textureType][face][lod].get(tile);
         if(!texture) return;
         this.material.uniforms[textureType+'Map'] = {value:texture};
       })
       this.material.uniforms.logDepthBufC={
-        value:  2.0 / ( Math.log( camera.far + 1.0 ) / Math.LN2 ) 
+        value:  2.0 / ( Math.log( camera.far + 1.0 ) / Math.LN2 )
       };
       this.material.uniforms.division={value:division};
       this.material.uniforms.lod={value:lod};
@@ -755,9 +811,9 @@ export class PlanetRenderer{
 
   prepareTexture(planet, params){
     let {textureType, lod, face, tile} = params;
-    if(textureType === 'specular' ||  textureType === 'color' 
+    if(textureType === 'specular' ||  textureType === 'color'
        // || textureType === 'normal'
-      ) 
+      )
       return;
     let t = this.worldManager.getTexture(planet.uuid, params.textureType, params);
     planet.texturesCache[textureType][face][lod].set(tile, t);
