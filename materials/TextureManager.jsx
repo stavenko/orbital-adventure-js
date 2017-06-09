@@ -2,7 +2,6 @@ import * as THREE from 'three/src/constants.js';
 import {Vector3} from 'three/src/math/Vector3';
 import ZipWorker from 'worker!../Utils/zip/zipWorker.js';
 import {DataTexture} from 'three/src/textures/DataTexture.js'
-import {generateAtmosphere} from './atmospehereGenerators/generator.js';
 
 const TextureSize = 512;
 
@@ -84,18 +83,6 @@ export class WorldManager{
     return ab;
   }
 
-  dimensions2d(total){
-    if(isNaN(total)) throw new Error(`nan value: ${total}`)
-    let sqrt = Math.floor(Math.sqrt(total));
-    let q = 2;
-    let i = 1;
-    while(++i){
-      if(q >= sqrt) break;
-      q = Math.pow(2,i);
-    }
-    let w = Math.pow(2, i-1);
-    return [w, total/w];
-  }
 
   processUnpackedTexture(type, array, params){
     if(type === 'height'){
@@ -144,8 +131,6 @@ export class WorldManager{
   unpackComplete(event){
     let {key, textureType, texture} = event.data;
     let processedTexture = this.processUnpackedTexture(textureType, texture, event.data);
-    debugger
-    // console.log(THREE.NearestFilter, THREE.LinearFilter);
     this.texturesIndex[key].image={
       width: processedTexture.width,
       height: processedTexture.height,

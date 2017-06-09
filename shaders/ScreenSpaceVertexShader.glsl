@@ -3,7 +3,6 @@ attribute vec2 sspoint;
 uniform float logDepthBufC;
 #define EPSILON 1e-6
 
-uniform vec3 planetPosition;
 uniform vec3 nearestPoint;
 uniform mat4 projectionInverse;
 uniform mat4 projectionMatrix;

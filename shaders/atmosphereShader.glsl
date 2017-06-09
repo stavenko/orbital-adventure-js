@@ -3,44 +3,17 @@ precision highp float;
 uniform vec2 resolution;
 uniform vec3 planetPosition; // planetPosition relative to camera;
 uniform vec3 sunDirection;
-uniform vec3 SkySpectralRadianceToLuminance;
-uniform vec3 SunSpectralRadianceToLuminance;
 
 uniform vec2 sun_size;
 uniform vec3 sun_radiance;
 uniform vec3 white_point;
-
-
 uniform float exposure;
 
 uniform float ttimeVar;
 
-uniform vec3 solarIrradiance;
-uniform float sunAngularRadius;
-uniform float bottomRadius;
-uniform float topRadius;
-uniform vec3 rayleighScattering;
-uniform vec3 mieScattering;
-uniform vec3 mieExtinction;
-uniform float miePhaseFunctionG;
-uniform vec3 absorptionExtinction;
-uniform vec3 groundAlbedo;
-uniform float muSMin;
 
-uniform float rayleighDensity[10];
-uniform float mieDensity[10];
-uniform float absorptionDensity[10];
-
-
-//uniform sampler2D transmittanceTexture;
-//uniform sampler2D deltaIrradianceTexture;
-//uniform sampler2D scatteringTexture;
-
-uniform vec4 atmosphereTableResolution;
 uniform vec2 resolutionOf4d;
 uniform vec2 _additional;
-
-
 
 varying vec3 cameraRay;
 
@@ -48,6 +21,24 @@ uniform sampler2D transmittanceTexture;
 uniform sampler2D scatteringTexture;
 uniform sampler2D singleMieScatteringTexture;
 uniform sampler2D irradianceTexture;
+
+uniform sampler2D scatteringDensityTexture2;
+uniform sampler2D scatteringTexture2;
+uniform sampler2D deltaIrradianceTexture1;
+uniform sampler2D deltaIrradianceTexture2;
+uniform sampler2D deltaIrradianceTexture3;
+uniform sampler2D deltaIrradianceTexture4;
+uniform sampler2D irradianceTexture1;
+uniform sampler2D irradianceTexture2;
+uniform sampler2D irradianceTexture3;
+uniform sampler2D deltaMultipleScatteringTexture2;
+
+
+#include <AtmosphereUniforms>
+#include <AtmosphereConstructor>
+#include <AtmosphereFunctions>
+#include <textureDimensionsSetup>
+
 
 RadianceSpectrum GetSkyRadiance(AtmosphereParameters atmosphere,
     Position camera, Direction view_ray, Length shadow_length,
@@ -73,13 +64,13 @@ Luminance3 GetSkyLuminance(AtmosphereParameters a,
     Position camera, Direction view_ray, Length shadow_length,
     Direction sun_direction, out DimensionlessSpectrum transmittance) {
   return GetSkyRadiance(a, camera, view_ray, shadow_length, sun_direction,
-      transmittance) * SkySpectralRadianceToLuminance;
+      transmittance) * a.SkySpectralRadianceToLuminance;
 }
 Luminance3 GetSkyLuminanceToPoint(AtmosphereParameters a,
     Position camera, Position point, Length shadow_length,
     Direction sun_direction, out DimensionlessSpectrum transmittance) {
   return GetSkyRadianceToPoint(a, camera, point, shadow_length, sun_direction,
-      transmittance) * SkySpectralRadianceToLuminance;
+      transmittance) * a.SkySpectralRadianceToLuminance;
 }
 
 Illuminance3 GetSunAndSkyIlluminance( AtmosphereParameters a,
@@ -87,25 +78,11 @@ Illuminance3 GetSunAndSkyIlluminance( AtmosphereParameters a,
    out IrradianceSpectrum sky_irradiance) {
   IrradianceSpectrum sun_irradiance =
       GetSunAndSkyIrradiance(a, p, normal, sun_direction, sky_irradiance);
-  sky_irradiance *= SkySpectralRadianceToLuminance;
-  return sun_irradiance * SunSpectralRadianceToLuminance;
+  sky_irradiance *= a.SkySpectralRadianceToLuminance;
+  return sun_irradiance * a.SunSpectralRadianceToLuminance;
 }
 
 
-void constructProfile(float from[10], out DensityProfile prof){
-  prof.layers[0].width = from[0];
-  prof.layers[0].exp_term = from[1];
-  prof.layers[0].exp_scale = from[2];
-  prof.layers[0].linear_term = from[3];
-  prof.layers[0].constant_term = from[4];
-
-  prof.layers[1].width = from[0];
-  prof.layers[1].exp_term = from[1];
-  prof.layers[1].exp_scale = from[2];
-  prof.layers[1].linear_term = from[3];
-  prof.layers[1].constant_term = from[4];
-
-}
 
 vec2 toIJ(float ix, vec2 resolution){
   float j = floor(ix / resolution.x);
@@ -135,13 +112,6 @@ vec4 texture4D(sampler2D sampler, vec4 uvwo){
   return texture2D(sampler, uv);
 }
 
-vec4 texture(sampler2D t, vec2 uv){
-  return texture2D(t, uv);
-}
-
-vec4 texture(sampler2D t, vec4 uvwt){
-  return texture4D(t, uvwt);
-}
 
 const vec3 kSphereCenter = vec3(0.0, 0.0, 1.0);
 const float kSphereRadius = 1.0;
@@ -221,7 +191,7 @@ void GetSphereShadowInOut(vec3 view_direction, vec3 sun_direction,
 vec4 computeColor(AtmosphereParameters atmosphere){
   // redifinitions;
   vec3 view_ray = cameraRay;
-  vec3 sun_direction = sunDirection;
+  vec3 sun_direction = vec3(0., 1.0, 0.0); //sunDirection;
   vec3 earth_center = planetPosition;
 
   vec3 view_direction = normalize(view_ray);
@@ -246,6 +216,7 @@ approximation as in <code>GetSunVisibility</code>:
   // Compute the distance between the view ray line and the sphere center,
   // and the distance between the camera and the intersection of the view
   // ray with the sphere (or NaN if there is no intersection).
+
   vec3 p = camera - kSphereCenter;
   float p_dot_v = dot(p, view_direction);
   float p_dot_p = dot(p, p);
@@ -293,6 +264,7 @@ the sphere, which depends on the length of this segment which is in shadow:
         point - earth_center, shadow_length, sun_direction, transmittance);
     sphere_radiance = sphere_radiance * transmittance + in_scatter;
   }
+  sphere_radiance = vec3(0.0);
 
 /*
 <p>In the following we repeat the same steps as above, but for the planet sphere
@@ -304,12 +276,14 @@ on the ground by the sun and sky visibility factors):
   // Compute the distance between the view ray line and the Earth center,
   // and the distance between the camera and the intersection of the view
   // ray with the ground (or NaN if there is no intersection).
-  p = camera - earth_center;
+  p = -earth_center;
   p_dot_v = dot(p, view_direction);
   p_dot_p = dot(p, p);
+  float radius = atmosphere.bottom_radius;
   float ray_earth_center_squared_distance = p_dot_p - p_dot_v * p_dot_v;
   distance_to_intersection = -p_dot_v - sqrt(
-      earth_center.z * earth_center.z - ray_earth_center_squared_distance);
+      radius * radius - ray_earth_center_squared_distance);
+
 
   // Compute the radiance reflected by the ground, if the ray intersects it.
   float ground_alpha = 0.0;
@@ -317,6 +291,7 @@ on the ground by the sun and sky visibility factors):
   if (distance_to_intersection > 0.0) {
     vec3 point = camera + view_direction * distance_to_intersection;
     vec3 normal = normalize(point - earth_center);
+    
 
     // Compute the radiance reflected by the ground.
     vec3 sky_irradiance;
@@ -329,12 +304,14 @@ on the ground by the sun and sky visibility factors):
     float shadow_length =
         max(0.0, min(shadow_out, distance_to_intersection) - shadow_in) *
         lightshaft_fadein_hack;
+
     vec3 transmittance;
     vec3 in_scatter = GetSkyRadianceToPoint(atmosphere, camera - earth_center,
         point - earth_center, shadow_length, sun_direction, transmittance);
     ground_radiance = ground_radiance * transmittance + in_scatter;
     ground_alpha = 1.0;
   }
+  //ground_radiance *= 0.0;
 
 /*
 <p>Finally, we compute the radiance and transmittance of the sky, and composite
@@ -345,6 +322,7 @@ the scene:
   // Compute the radiance of the sky.
   float shadow_length = max(0.0, shadow_out - shadow_in) *
       lightshaft_fadein_hack;
+  // shadow_length = 0.0;
   vec3 transmittance;
   vec3 radiance = GetSkyRadiance(atmosphere,
       camera - earth_center, view_direction, shadow_length, sun_direction,
@@ -355,60 +333,39 @@ the scene:
     radiance = radiance + transmittance * sun_radiance;
   }
   radiance = mix(radiance, ground_radiance, ground_alpha);
-  radiance = mix(radiance, sphere_radiance, sphere_alpha);
+  // radiance = mix(radiance, sphere_radiance, sphere_alpha);
+  vec3 white_point_ = white_point;
+  float exposure_ = exposure;
   vec3 color =
-     pow(vec3(1.0) - exp(-radiance / white_point * exposure), vec3(1.0 / 2.2));
+     pow(vec3(1.0) - exp(-radiance / white_point_ * exposure_), vec3(1.0 / 2.2));
 
   return vec4(color, 1.0);
 }
 
-vec2 getTransmittanceResolution(){
-  float resMu = atmosphereTableResolution[2];
-  float resR = atmosphereTableResolution[3];
-  return vec2(resMu*2.0, resR*2.0);
-}
-vec2 getIrradianceResolution(){
-  float resMus = atmosphereTableResolution[0], 
-        resR = atmosphereTableResolution[3];
-  return vec2(resMus*2.0, resR/2.0);
-}
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution;
   DensityProfile ray, mie, absorp;
 
   AtmosphereParameters atmosphere;
+  atmosphereObjectConstructor(atmosphere);
 
-  constructProfile(rayleighDensity, atmosphere.rayleigh_density);
-  constructProfile(mieDensity, atmosphere.mie_density);
-  constructProfile(absorptionDensity, atmosphere.absorption_density);
-  atmosphere.solar_irradiance= solarIrradiance;
-  atmosphere.sun_angular_radius= sunAngularRadius;
-  atmosphere.bottom_radius= bottomRadius;
-  atmosphere.top_radius= topRadius;
-  // atmosphere.rayleigh_density= ray
-  atmosphere.rayleigh_scattering= rayleighScattering;
-  //atmosphere.mie_density= mie;
-  atmosphere.mie_scattering= mieScattering;
-  atmosphere.mie_extinction= mieExtinction;
-  atmosphere.mie_phase_function_g= miePhaseFunctionG;
-  //atmosphere.absorption_density= absorp;
-  atmosphere.absorption_extinction= absorptionExtinction;
-  atmosphere.ground_albedo= groundAlbedo;
-  atmosphere.mu_s_min= muSMin;
+  setupTextureDimensions(atmosphereTableResolution);
 
-  SCATTERING_TEXTURE_R_SIZE = int(atmosphereTableResolution[3]);
-  SCATTERING_TEXTURE_NU_SIZE = int(atmosphereTableResolution[1]);
-  SCATTERING_TEXTURE_MU_SIZE = int(atmosphereTableResolution[2]);
-  SCATTERING_TEXTURE_MU_S_SIZE = int(atmosphereTableResolution[0]);
-  vec2 tRes  = getTransmittanceResolution();
-  vec2 iRes  = getIrradianceResolution();
-  TRANSMITTANCE_TEXTURE_HEIGHT = int(tRes.x); 
-  TRANSMITTANCE_TEXTURE_WIDTH = int(tRes.y);
-  IRRADIANCE_TEXTURE_WIDTH = int(iRes.x); 
-  IRRADIANCE_TEXTURE_HEIGHT = int(iRes.y);
-  IRRADIANCE_TEXTURE_SIZE = iRes;
 
   vec4 color = computeColor(atmosphere);
-  gl_FragColor = vec4(uv, 0.0, 1.0);
+   //uv.y /= 32.;
+   //uv.x /= 8.0;
+  //vec4 tr = texture(scatteringTexture2, vec4(5.0/8.0, uv, 10.0/31.));
+  // vec4 tr = texture2D(scatteringDensityTexture2, uv);
+  // vec4 tr = texture2D(deltaMultipleScatteringTexture2, uv);
+  //vec4 tr = texture2D(scatteringDensityTexture2, uv);
+  //vec4 tr = texture2D(deltaIrradianceTexture2, uv);
+   vec4 tr = texture2D(irradianceTexture, uv);
+  // vec4 sc = texture(scatteringTexture1, vec4( 0.0/8.0, uv, 1.0/ 31.));
+   vec4 sc = texture2D(scatteringTexture2, uv);
+
+  //vec4 tr = texture2D(irradianceTexture2, uv);
+  //gl_FragColor = vec4(tr.rgb*1000.0, 0.99);
+  gl_FragColor = color;
 }
 

@@ -1,335 +1,4 @@
 
-/**
- * Copyright (c) 2017 Eric Bruneton
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the copyright holders nor the names of its
- *    contributors may be used to endorse or promote products derived from
- *    this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
- * THE POSSIBILITY OF SUCH DAMAGE.
- *
- * Precomputed Atmospheric Scattering
- * Copyright (c) 2008 INRIA
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the copyright holders nor the names of its
- *    contributors may be used to endorse or promote products derived from
- *    this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
- * THE POSSIBILITY OF SUCH DAMAGE.
- */
-
-/*<h2>atmosphere/functions.glsl</h2>
-
-<p>This GLSL file contains the core functions that implement our atmosphere
-model. It provides functions to compute the transmittance, the single scattering
-and the second and higher orders of scattering, the ground irradiance, as well
-as functions to store these in textures and to read them back. It uses physical
-types and constants which are provided in two versions: a
-<a href="definitions.glsl.html">GLSL version</a> and a
-<a href="reference/definitions.h.html">C++ version</a>. This allows this file to
-be compiled either with a GLSL compiler or with a C++ compiler (see the
-<a href="../index.html">Introduction</a>).
-
-<p>The functions provided in this file are organized as follows:
-<ul>
-<li><a href="#transmittance">Transmittance</a>
-<ul>
-<li><a href="#transmittance_computation">Computation</a></li>
-<li><a href="#transmittance_precomputation">Precomputation</a></li>
-<li><a href="#transmittance_lookup">Lookup</a></li>
-</ul>
-</li>
-<li><a href="#single_scattering">Single scattering</a>
-<ul>
-<li><a href="#single_scattering_computation">Computation</a></li>
-<li><a href="#single_scattering_precomputation">Precomputation</a></li>
-<li><a href="#single_scattering_lookup">Lookup</a></li>
-</ul>
-</li>
-<li><a href="#multiple_scattering">Multiple scattering</a>
-<ul>
-<li><a href="#multiple_scattering_computation">Computation</a></li>
-<li><a href="#multiple_scattering_precomputation">Precomputation</a></li>
-<li><a href="#multiple_scattering_lookup">Lookup</a></li>
-</ul>
-</li>
-<li><a href="#irradiance">Ground irradiance</a>
-<ul>
-<li><a href="#irradiance_computation">Computation</a></li>
-<li><a href="#irradiance_precomputation">Precomputation</a></li>
-<li><a href="#irradiance_lookup">Lookup</a></li>
-</ul>
-</li>
-<li><a href="#rendering">Rendering</a>
-<ul>
-<li><a href="#rendering_sky">Sky</a></li>
-<li><a href="#rendering_aerial_perspective">Aerial perspective</a></li>
-<li><a href="#rendering_ground">Ground</a></li>
-</ul>
-</li>
-</ul>
-
-<p>They use the following utility functions to avoid NaNs due to floating point
-values slightly outside their theoretical bounds:
-*/
-precision highp float;
-#define IN(x) const in x
-#define OUT(x) out x
-#define TEMPLATE(x)
-#define TEMPLATE_ARGUMENT(x)
-#define assert(x)
-
-#define Length float
-#define Wavelength float
-#define Angle float
-#define SolidAngle float
-#define Power float
-#define LuminousPower float
-
-/*
-<p>From this we "derive" the irradiance, radiance, spectral irradiance,
-spectral radiance, luminance, etc, as well pure numbers, area, volume, etc (the
-actual derivation is done in the <a href="reference/definitions.h.html">C++
-equivalent</a> of this file).
-*/
-
-#define Number float
-#define InverseLength float
-#define Area float
-#define Volume float
-#define NumberDensity float
-#define Irradiance float
-#define Radiance float
-#define SpectralPower float
-#define SpectralIrradiance float
-#define SpectralRadiance float
-#define SpectralRadianceDensity float
-#define ScatteringCoefficient float
-#define InverseSolidAngle float
-#define LuminousIntensity float
-#define Luminance float
-#define Illuminance float
-
-/*
-<p>We  also need vectors of physical quantities, mostly to represent functions
-depending on the wavelength. In this case the vector elements correspond to
-values of a function at some predefined wavelengths. Again, in GLSL we can't
-define custom vector types to enforce the homogeneity of expressions at compile
-time, so we define these vector types as <code>vec3</code>, with preprocessor
-macros. The full definitions are given in the
-<a href="reference/definitions.h.html">C++ equivalent</a> of this file).
-*/
-
-// A generic function from Wavelength to some other type.
-#define AbstractSpectrum vec3
-// A function from Wavelength to Number.
-#define DimensionlessSpectrum vec3
-// A function from Wavelength to SpectralPower.
-#define PowerSpectrum vec3
-// A function from Wavelength to SpectralIrradiance.
-#define IrradianceSpectrum vec3
-// A function from Wavelength to SpectralRadiance.
-#define RadianceSpectrum vec3
-// A function from Wavelength to SpectralRadianceDensity.
-#define RadianceDensitySpectrum vec3
-// A function from Wavelength to ScaterringCoefficient.
-#define ScatteringSpectrum vec3
-
-// A position in 3D (3 length values).
-#define Position vec3
-// A unit direction vector in 3D (3 unitless values).
-#define Direction vec3
-// A vector of 3 luminance values.
-#define Luminance3 vec3
-// A vector of 3 illuminance values.
-#define Illuminance3 vec3
-
-/*
-<p>Finally, we also need precomputed textures containing physical quantities in
-each texel. Since we can't define custom sampler types to enforce the
-homogeneity of expressions at compile time in GLSL, we define these texture
-types as <code>sampler2D</code> and <code>sampler3D</code>, with preprocessor
-macros. The full definitions are given in the
-<a href="reference/definitions.h.html">C++ equivalent</a> of this file).
-*/
-
-#define TransmittanceTexture sampler2D
-#define AbstractScatteringTexture sampler2D
-#define ReducedScatteringTexture sampler2D
-#define ScatteringTexture sampler2D
-#define ScatteringDensityTexture sampler2D
-#define IrradianceTexture sampler2D
-
-/*
-<h3>Physical units</h3>
-
-<p>We can then define the units for our six base physical quantities:
-meter (m), nanometer (nm), radian (rad), steradian (sr), watt (watt) and lumen
-(lm):
-*/
-
-const Length m = 1.0;
-const Wavelength nm = 1.0;
-const Angle rad = 1.0;
-const SolidAngle sr = 1.0;
-const Power watt = 1.0;
-const LuminousPower lm = 1.0;
-
-int IRRADIANCE_TEXTURE_WIDTH = 0;
-int IRRADIANCE_TEXTURE_HEIGHT = 0;
-int TRANSMITTANCE_TEXTURE_HEIGHT = 0;
-int TRANSMITTANCE_TEXTURE_WIDTH = 0;
-int SCATTERING_TEXTURE_R_SIZE = 0;
-int SCATTERING_TEXTURE_NU_SIZE = 0;
-int SCATTERING_TEXTURE_MU_SIZE = 0;
-int SCATTERING_TEXTURE_MU_S_SIZE = 0;
-/*
-<p>From which we can derive the units for some derived physical quantities,
-as well as some derived units (kilometer km, kilocandela kcd, degree deg):
-*/
-
-const float PI = 3.14159265358979323846;
-
-const Length km = 1000.0 * m;
-const Area m2 = m * m;
-const Volume m3 = m * m * m;
-const Angle pi = PI * rad;
-const Angle deg = pi / 180.0;
-const Irradiance watt_per_square_meter = watt / m2;
-const Radiance watt_per_square_meter_per_sr = watt / (m2 * sr);
-const SpectralIrradiance watt_per_square_meter_per_nm = watt / (m2 * nm);
-const SpectralRadiance watt_per_square_meter_per_sr_per_nm =
-    watt / (m2 * sr * nm);
-const SpectralRadianceDensity watt_per_cubic_meter_per_sr_per_nm =
-    watt / (m3 * sr * nm);
-const LuminousIntensity cd = lm / sr;
-const LuminousIntensity kcd = 1000.0 * cd;
-const Luminance cd_per_square_meter = cd / m2;
-const Luminance kcd_per_square_meter = kcd / m2;
-
-vec4 texture(sampler2D, vec2);
-vec4 texture(sampler2D, vec4);
-
-/*
-<h3>Atmosphere parameters</h3>
-
-<p>Using the above types, we can now define the parameters of our atmosphere
-model. We start with the definition of density profiles, which are needed for
-parameters that depend on the altitude:
-*/
-
-// An atmosphere layer of width 'width', and whose density is defined as
-//   'exp_term' * exp('exp_scale' * h) + 'linear_term' * h + 'constant_term',
-// clamped to [0,1], and where h is the altitude.
-struct DensityProfileLayer {
-  Length width;
-  Number exp_term;
-  InverseLength exp_scale;
-  InverseLength linear_term;
-  Number constant_term;
-};
-
-// An atmosphere density profile made of several layers on top of each other
-// (from bottom to top). The width of the last layer is ignored, i.e. it always
-// extend to the top atmosphere boundary. The profile values vary between 0
-// (null density) to 1 (maximum density).
-struct DensityProfile {
-  DensityProfileLayer layers[2];
-};
-
-/*
-The atmosphere parameters are then defined by the following struct:
-*/
-
-struct AtmosphereParameters {
-  // The solar irradiance at the top of the atmosphere.
-  IrradianceSpectrum solar_irradiance;
-  // The sun's angular radius.
-  Angle sun_angular_radius;
-  // The distance between the planet center and the bottom of the atmosphere.
-  Length bottom_radius;
-  // The distance between the planet center and the top of the atmosphere.
-  Length top_radius;
-  // The density profile of air molecules, i.e. a function from altitude to
-  // dimensionless values between 0 (null density) and 1 (maximum density).
-  DensityProfile rayleigh_density;
-  // The scattering coefficient of air molecules at the altitude where their
-  // density is maximum (usually the bottom of the atmosphere), as a function of
-  // wavelength. The scattering coefficient at altitude h is equal to
-  // 'rayleigh_scattering' times 'rayleigh_density' at this altitude.
-  ScatteringSpectrum rayleigh_scattering;
-  // The density profile of aerosols, i.e. a function from altitude to
-  // dimensionless values between 0 (null density) and 1 (maximum density).
-  DensityProfile mie_density;
-  // The scattering coefficient of aerosols at the altitude where their density
-  // is maximum (usually the bottom of the atmosphere), as a function of
-  // wavelength. The scattering coefficient at altitude h is equal to
-  // 'mie_scattering' times 'mie_density' at this altitude.
-  ScatteringSpectrum mie_scattering;
-  // The extinction coefficient of aerosols at the altitude where their density
-  // is maximum (usually the bottom of the atmosphere), as a function of
-  // wavelength. The extinction coefficient at altitude h is equal to
-  // 'mie_extinction' times 'mie_density' at this altitude.
-  ScatteringSpectrum mie_extinction;
-  // The asymetry parameter for the Cornette-Shanks phase function for the
-  // aerosols.
-  Number mie_phase_function_g;
-  // The density profile of air molecules that absorb light (e.g. ozone), i.e.
-  // a function from altitude to dimensionless values between 0 (null density)
-  // and 1 (maximum density).
-  DensityProfile absorption_density;
-  // The extinction coefficient of molecules that absorb light (e.g. ozone) at
-  // the altitude where their density is maximum, as a function of wavelength.
-  // The extinction coefficient at altitude h is equal to
-  // 'absorption_extinction' times 'absorption_density' at this altitude.
-  ScatteringSpectrum absorption_extinction;
-  // The average albedo of the ground.
-  DimensionlessSpectrum ground_albedo;
-  // The cosine of the maximum Sun zenith angle for which atmospheric scattering
-  // must be precomputed (for maximum precision, use the smallest Sun zenith
-  // angle yielding negligible sky light radiance values. For instance, for the
-  // Earth case, 102 degrees is a good choice - yielding mu_s_min = -0.2).
-  Number mu_s_min;
-};
-
 Number ClampCosine(Number mu) {
   return clamp(mu, Number(-1.0), Number(1.0));
 }
@@ -344,6 +13,85 @@ Length ClampRadius(IN(AtmosphereParameters) atmosphere, Length r) {
 
 Length SafeSqrt(Area a) {
   return sqrt(max(a, 0.0 * m2));
+}
+
+vec4 texture(sampler2D t, vec2 uv){
+  return texture2D(t, uv);
+}
+
+vec4 texture_interpolated(sampler2D t, vec4 uvwz){
+  vec4 SCATTERING_TEXTURE_SIZE = vec4(
+      SCATTERING_TEXTURE_NU_SIZE - 1,
+      SCATTERING_TEXTURE_MU_S_SIZE - 1,
+      SCATTERING_TEXTURE_MU_SIZE - 1,
+      SCATTERING_TEXTURE_R_SIZE - 1);
+  vec4 Dimensions = vec4(
+      float(SCATTERING_TEXTURE_NU_SIZE) ,
+      float(SCATTERING_TEXTURE_MU_S_SIZE) ,
+      float(SCATTERING_TEXTURE_MU_SIZE) ,
+      float(SCATTERING_TEXTURE_R_SIZE) );
+  vec4 tex_coords  = uvwz * SCATTERING_TEXTURE_SIZE;
+  vec4 X = floor(tex_coords);
+  
+  vec4 lerp = tex_coords - X;
+  vec2 res = vec2(
+      SCATTERING_TEXTURE_NU_SIZE * SCATTERING_TEXTURE_MU_S_SIZE,
+      SCATTERING_TEXTURE_R_SIZE * SCATTERING_TEXTURE_MU_SIZE
+  );
+  vec4 resultingTexel = vec4(0.0);
+  for(int i =0; i<1; ++i){
+
+    vec4 shift = LinearInterpolators[i];
+    vec4 X1 = vec4(0.0);
+    float lerper = 1.0;
+    vec2 uv = vec2(0.0);
+
+    for(int j =0; j<4; ++j){
+      float increaser = shift[j];
+      if(X[j] == SCATTERING_TEXTURE_SIZE[j]){
+        X1[j] = X[j] - increaser;
+        if(increaser < 0.1) lerper *= lerp[j];
+        else lerper *= 1.0 - lerp[j];
+      }else{
+        X1[j] = X[j] + increaser;
+        if(increaser < 0.1) lerper *= 1.0 - lerp[j];
+        else lerper *= lerp[j];
+      }
+      uv.x = (X1.x * Dimensions.y + X1.y) / res.x;
+      uv.y = (X1.z * Dimensions.w + X1.w) / res.y;
+      resultingTexel += lerper * texture(t, uv);
+    }
+  }
+  
+  return resultingTexel;
+
+
+  //Number tex_coord_x = uvwz.x * Number(SCATTERING_TEXTURE_NU_SIZE - 1);
+  //Number tex_x = floor(tex_coord_x);
+  //Number lerp = tex_coord_x - tex_x;
+  //vec3 uvw0 = vec3((tex_x + uvwz.y) / Number(SCATTERING_TEXTURE_NU_SIZE),
+      //uvwz.z, uvwz.w);
+  //vec3 uvw1 = vec3((tex_x + 1.0 + uvwz.y) / Number(SCATTERING_TEXTURE_NU_SIZE),
+      //uvwz.z, uvwz.w);
+  //return AbstractSpectrum(texture(scattering_texture, uvw0) * (1.0 - lerp) +
+      //texture(scattering_texture, uvw1) * lerp);
+  // return vec4(0.0);
+}
+
+vec4 textureLookup(sampler2D t, vec4 uvwz);
+
+vec4 texture(sampler2D t, vec4 uvwz){
+#ifdef USE_INTERPOLATED
+  return texture_interpolated(t, uvwz);
+#else
+  return textureLookup(t, uvwz);
+#endif
+}
+
+
+vec4 texture4D(sampler2D tex, vec2 fragCoords){
+  // placeholder
+  return texture2D(tex, fragCoords);
 }
 
 /*
@@ -528,15 +276,19 @@ DimensionlessSpectrum ComputeTransmittanceToTopAtmosphereBoundary(
   assert(r >= atmosphere.bottom_radius && r <= atmosphere.top_radius);
   assert(mu >= -1.0 && mu <= 1.0);
   return exp(-(
+        
       atmosphere.rayleigh_scattering *
           ComputeOpticalLengthToTopAtmosphereBoundary(
               atmosphere, atmosphere.rayleigh_density, r, mu) +
+
       atmosphere.mie_extinction *
           ComputeOpticalLengthToTopAtmosphereBoundary(
-              atmosphere, atmosphere.mie_density, r, mu) +
+              atmosphere, atmosphere.mie_density, r, mu)+
+
       atmosphere.absorption_extinction *
           ComputeOpticalLengthToTopAtmosphereBoundary(
-              atmosphere, atmosphere.absorption_density, r, mu)));
+              atmosphere, atmosphere.absorption_density, r, mu))
+      );
 }
 
 /*
@@ -1085,22 +837,51 @@ sun unit direction vectors), and the previous functions implicitely assume this
 (their assertions can break if this constraint is not respected).
 */
 
+vec4 textureLookup(sampler2D t, vec4 uvwzRaw){
+  vec4 uvwz = clamp(uvwzRaw, vec4(0.0), vec4(1.0));
+
+  float nu = floor(uvwz.x * float(SCATTERING_TEXTURE_NU_SIZE -1 ));
+  float mus = floor(uvwz.y * float(SCATTERING_TEXTURE_MU_S_SIZE));
+  float mu = floor(uvwz.z * float(SCATTERING_TEXTURE_MU_SIZE));
+  float r = floor(uvwz.w * float(SCATTERING_TEXTURE_R_SIZE ));
+
+  float X = nu * float(SCATTERING_TEXTURE_MU_S_SIZE) + mus;
+  float Y = r * float(SCATTERING_TEXTURE_MU_SIZE) + mu;
+  int XX = SCATTERING_TEXTURE_NU_SIZE * SCATTERING_TEXTURE_MU_S_SIZE;
+  int YY = SCATTERING_TEXTURE_R_SIZE * SCATTERING_TEXTURE_MU_SIZE;
+
+  vec2 nuv = vec2( X / float(XX), Y / float(YY));
+
+  return texture2D(t, nuv);
+}
+
+
 void GetRMuMuSNuFromScatteringTextureFragCoord(
-    IN(AtmosphereParameters) atmosphere, IN(vec3) glFragCoords,
+    IN(AtmosphereParameters) atmosphere, IN(vec2) glFragCoords,
     OUT(Length) r, OUT(Number) mu, OUT(Number) mu_s, OUT(Number) nu,
     OUT(bool) ray_r_mu_intersects_ground) {
   vec4 SCATTERING_TEXTURE_SIZE = vec4(
-      SCATTERING_TEXTURE_NU_SIZE - 1,
+      SCATTERING_TEXTURE_NU_SIZE ,
       SCATTERING_TEXTURE_MU_S_SIZE,
       SCATTERING_TEXTURE_MU_SIZE,
       SCATTERING_TEXTURE_R_SIZE);
+  vec4 dim = SCATTERING_TEXTURE_SIZE- vec4(1.0, 0.0, 0.0, 0.0);
+  
   Number frag_coord_nu =
       floor(glFragCoords.x / Number(SCATTERING_TEXTURE_MU_S_SIZE));
+
   Number frag_coord_mu_s =
       mod(glFragCoords.x, Number(SCATTERING_TEXTURE_MU_S_SIZE));
+
+  Number frag_coord_r = 
+      floor(glFragCoords.y / Number(SCATTERING_TEXTURE_MU_SIZE));
+
+  Number frag_coord_mu = 
+      mod(glFragCoords.y, Number(SCATTERING_TEXTURE_MU_SIZE));
+
   vec4 uvwz =
-      vec4(frag_coord_nu, frag_coord_mu_s, glFragCoords.y, glFragCoords.z) /
-          SCATTERING_TEXTURE_SIZE;
+      vec4(frag_coord_nu, frag_coord_mu_s, frag_coord_mu, frag_coord_r) /
+          dim;
   GetRMuMuSNuFromScatteringTextureUvwz(
       atmosphere, uvwz, r, mu, mu_s, nu, ray_r_mu_intersects_ground);
   // Clamp nu to its valid range of values, given mu and mu_s.
@@ -1114,7 +895,7 @@ the single scattering in a 3D texture:
 */
 
 void ComputeSingleScatteringTexture(IN(AtmosphereParameters) atmosphere,
-    IN(TransmittanceTexture) transmittance_texture, IN(vec3) glFragCoords,
+    IN(TransmittanceTexture) transmittance_texture, IN(vec2) glFragCoords,
     OUT(IrradianceSpectrum) rayleigh, OUT(IrradianceSpectrum) mie) {
   Length r;
   Number mu;
@@ -1147,17 +928,8 @@ AbstractSpectrum GetScattering(
     bool ray_r_mu_intersects_ground) {
   vec4 uvwz = GetScatteringTextureUvwzFromRMuMuSNu(
       atmosphere, r, mu, mu_s, nu, ray_r_mu_intersects_ground);
-  Number tex_coord_x = uvwz.x * Number(SCATTERING_TEXTURE_NU_SIZE - 1);
-  Number tex_x = floor(tex_coord_x);
-  Number lerp = tex_coord_x - tex_x;
-  vec3 uvw0 = vec3((tex_x + uvwz.y) / Number(SCATTERING_TEXTURE_NU_SIZE),
-      uvwz.z, uvwz.w);
-  vec3 uvw1 = vec3((tex_x + 1.0 + uvwz.y) / Number(SCATTERING_TEXTURE_NU_SIZE),
-      uvwz.z, uvwz.w);
   return AbstractSpectrum(texture(scattering_texture, uvwz));
 
-  //return AbstractSpectrum(texture(scattering_texture, uvw0) * (1.0 - lerp) +
-      //texture(scattering_texture, uvw1) * lerp);
 }
 
 /*
@@ -1184,8 +956,9 @@ RadianceSpectrum GetScattering(
     IrradianceSpectrum mie = GetScattering(
         atmosphere, single_mie_scattering_texture, r, mu, mu_s, nu,
         ray_r_mu_intersects_ground);
-    return rayleigh * RayleighPhaseFunction(nu) +
-        mie * MiePhaseFunction(atmosphere.mie_phase_function_g, nu);
+      return rayleigh *  RayleighPhaseFunction(nu) 
+      +
+      mie  * MiePhaseFunction(atmosphere.mie_phase_function_g, nu);
   } else {
     return GetScattering(
         atmosphere, multiple_scattering_texture, r, mu, mu_s, nu,
@@ -1363,6 +1136,7 @@ RadianceDensitySpectrum ComputeScatteringDensity(
   // and the sun direction omega_s, such that the cosine of the view-zenith
   // angle is mu, the cosine of the sun-zenith angle is mu_s, and the cosine of
   // the view-sun angle is nu. The goal is to simplify computations below.
+  // return vec3(abs(r-atmosphere.bottom_radius)/60.0, nu, 0.0);
   vec3 zenith_direction = vec3(0.0, 0.0, 1.0);
   vec3 omega = vec3(sqrt(1.0 - mu * mu), 0.0, mu);
   Number sun_dir_x = omega.x == 0.0 ? 0.0 : (nu - mu * mu_s) / omega.x;
@@ -1478,6 +1252,7 @@ RadianceSpectrum ComputeMultipleScattering(
   assert(mu_s >= -1.0 && mu_s <= 1.0);
   assert(nu >= -1.0 && nu <= 1.0);
 
+
   // Number of intervals for the numerical integration.
   const int SAMPLE_COUNT = 50;
   // The integration step, i.e. the length of each integration interval.
@@ -1537,7 +1312,7 @@ RadianceDensitySpectrum ComputeScatteringDensityTexture(
     IN(ReducedScatteringTexture) single_mie_scattering_texture,
     IN(ScatteringTexture) multiple_scattering_texture,
     IN(IrradianceTexture) irradiance_texture,
-    IN(vec3) glFragCoords, int scattering_order) {
+    IN(vec2) glFragCoords, int scattering_order) {
   Length r;
   Number mu;
   Number mu_s;
@@ -1555,7 +1330,7 @@ RadianceSpectrum ComputeMultipleScatteringTexture(
     IN(AtmosphereParameters) atmosphere,
     IN(TransmittanceTexture) transmittance_texture,
     IN(ScatteringDensityTexture) scattering_density_texture,
-    IN(vec3) glFragCoords, OUT(Number) nu) {
+    IN(vec2) glFragCoords, OUT(Number) nu) {
   Length r;
   Number mu;
   Number mu_s;
@@ -1662,9 +1437,11 @@ IrradianceSpectrum ComputeIndirectIrradiance(
   const Angle dphi = pi / Number(SAMPLE_COUNT);
   const Angle dtheta = pi / Number(SAMPLE_COUNT);
 
+
   IrradianceSpectrum result =
       IrradianceSpectrum(0.0 * watt_per_square_meter_per_nm);
   vec3 omega_s = vec3(sqrt(1.0 - mu_s * mu_s), 0.0, mu_s);
+
   for (int j = 0; j < SAMPLE_COUNT / 2; ++j) {
     Angle theta = (Number(j) + 0.5) * dtheta;
     bool ray_r_theta_intersects_ground =
@@ -1676,11 +1453,12 @@ IrradianceSpectrum ComputeIndirectIrradiance(
       SolidAngle domega = (dtheta / rad) * (dphi / rad) * sin(theta) * sr;
 
       Number nu = dot(omega, omega_s);
-      result += GetScattering(atmosphere, single_rayleigh_scattering_texture,
+      vec3 sc = GetScattering(atmosphere, single_rayleigh_scattering_texture,
           single_mie_scattering_texture, multiple_scattering_texture,
           r, omega.z, mu_s, nu, ray_r_theta_intersects_ground,
-          scattering_order) *
-              omega.z * domega;
+          scattering_order);
+      // if((r - atmosphere.bottom_radius) < (60./32.0)) sc*=0.0;
+      result += sc * omega.z * domega;
     }
   }
   return result;
@@ -1754,8 +1532,8 @@ IrradianceSpectrum ComputeIndirectIrradianceTexture(
     IN(vec2) glFragCoords, int scattering_order) {
   Length r;
   Number mu_s;
-  GetRMuSFromIrradianceTextureUv(
-      atmosphere, glFragCoords / IRRADIANCE_TEXTURE_SIZE, r, mu_s);
+  vec2 res = IRRADIANCE_TEXTURE_SIZE;
+  GetRMuSFromIrradianceTextureUv( atmosphere, glFragCoords / res, r, mu_s);
   return ComputeIndirectIrradiance(atmosphere,
       single_rayleigh_scattering_texture, single_mie_scattering_texture,
       multiple_scattering_texture, r, mu_s, scattering_order);
@@ -1845,6 +1623,11 @@ IrradianceSpectrum GetCombinedScattering(
       uvwz.z, uvwz.w);
   vec3 uvw1 = vec3((tex_x + 1.0 + uvwz.y) / Number(SCATTERING_TEXTURE_NU_SIZE),
       uvwz.z, uvwz.w);
+  //return textureLookup()
+  // ---------------- TRAP ---------------
+  //return vec3(1.0, 1.0, 1.0);
+  //======================================
+
 #ifdef COMBINED_SCATTERING_TEXTURES
   vec4 combined_scattering = texture(scattering_texture, uvwz);
       //texture(scattering_texture, uvw0) * (1.0 - lerp) +
