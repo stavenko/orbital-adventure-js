@@ -840,7 +840,7 @@ sun unit direction vectors), and the previous functions implicitely assume this
 vec4 textureLookup(sampler2D t, vec4 uvwzRaw){
   vec4 uvwz = clamp(uvwzRaw, vec4(0.0), vec4(1.0));
 
-  float nu = floor(uvwz.x * float(SCATTERING_TEXTURE_NU_SIZE -1 ));
+  float nu = floor(uvwz.x * float(SCATTERING_TEXTURE_NU_SIZE ));
   float mus = floor(uvwz.y * float(SCATTERING_TEXTURE_MU_S_SIZE));
   float mu = floor(uvwz.z * float(SCATTERING_TEXTURE_MU_SIZE));
   float r = floor(uvwz.w * float(SCATTERING_TEXTURE_R_SIZE ));
@@ -1770,6 +1770,7 @@ RadianceSpectrum GetSkyRadianceToPoint(
   Number mu = rmu / r;
   Number mu_s = dot(camera, sun_direction) / r;
   Number nu = dot(view_ray, sun_direction);
+
   Length d = length(point - camera);
   bool ray_r_mu_intersects_ground = RayIntersectsGround(atmosphere, r, mu);
 

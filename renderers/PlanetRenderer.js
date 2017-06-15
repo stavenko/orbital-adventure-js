@@ -16,6 +16,7 @@ import {getLodGeometry} from '../math/Geometry.js';
 import {MeshBasicMaterial} from 'three/src/materials/MeshBasicMaterial';
 import {SphereBufferGeometry} from 'three/src/geometries/SphereBufferGeometry';
 import {AtmosphereTexturesRenderer} from './atmosphereTexturesRenderer.js'
+import {SurfaceTextureGenerator} from './SurfaceTextureGeneration.js'
 
 
 export const colors = [[0.5,0.5,0], [0.0, 1.0, 0.0], [0.3, 0.7, 1]];
@@ -27,6 +28,7 @@ export class PlanetRenderer{
     this.prepareProgram();
     this.prepareArrays();
     this.atmosphereRenderer = new AtmosphereTexturesRenderer(renderer); 
+    this.surfaceRenderer = new SurfaceTextureGenerator(renderer); 
     this.planets = planets;
     this.globalPosition = globalPosition;
     this.worldManager = worldManager;
@@ -134,7 +136,18 @@ export class PlanetRenderer{
     let propUniforms = {};
     let material = this.atmosphereRenderer.getAtmosphereMaterial(planet, star, {camera, planetPosition});
 
+    let texture;
+    try{
+      texture = this.surfaceRenderer.getTexture(planet, 'height', {face:0, lod:0, tile:0});
+    }catch(e){ 
+      console.log('---', e);
+    }
+    
+    
     this._screenSpaceMesh.material = material;
+    if(texture){
+      material.uniforms.uu = {value:texture};
+    }
     this.renderer.render(this._screenSpaceMesh, camera);
   }
 
@@ -375,7 +388,7 @@ export class PlanetRenderer{
        // || textureType === 'normal'
       )
       return;
-    let t = this.worldManager.getTexture(planet.uuid, params.textureType, params);
+    let t = this.surfaceRenderer.getTexture(planet, params.textureType, params);
     planet.texturesCache[textureType][face][lod].set(tile, t);
   }
 

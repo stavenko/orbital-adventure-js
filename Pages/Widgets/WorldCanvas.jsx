@@ -16,6 +16,20 @@ import {WorldManager} from '../../materials/TextureManager.jsx';
 import planets from '../../planets.json';
 
 let ix = 0;
+function noiseSeed(){
+  let seed = [];
+  for(let i =0; i< 256; ++i){
+    seed[i] = Math.floor(Math.random()*256)
+  }
+  return seed;
+}
+
+function generateUUID(){
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+    return v.toString(16);
+  });
+}
 
 const worldProps = {
   star: {
@@ -55,6 +69,8 @@ const worldProps = {
     },
     */
     {
+      table: noiseSeed(),
+      uuid: generateUUID(),
       phisical:{
         density: 1,
         mass: 100,
@@ -112,7 +128,10 @@ export class WorldCanvas extends CanvasBase{
     this.camera.position.z = -10;
 
     this.cameraHandler = new Camera(this.camera, this.refs.node);
+
     this.worldManager = new WorldManager;
+    this.startWorld(worldProps);
+    /*
     this.worldManager.getWorldList(planets=>{
       let hasWorld = planets && planets.length > 0;
       if(!hasWorld)
@@ -128,7 +147,7 @@ export class WorldCanvas extends CanvasBase{
 
       // Asuume there's only one for now
       this.startWorld(planets[0]);
-    })
+      })*/
 
     document.addEventListener('keydown',this.keyDown.bind(this));
 

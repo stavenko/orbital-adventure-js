@@ -110,6 +110,11 @@ float texelLookup(vec4 texel, vec2 uv){
   if(t == 3) return texel.w;
 }
 
+float heightMapLookup(sampler2D map, vec2 uv, bool a){
+  vec4 texel = texture2D(heightMap, uv);
+  return texel.r;
+}
+
 float heightMapLookup(sampler2D map, vec2 uv){
   vec2 nuv = getHeightUV(uv);
   vec4 texel = texture2D(heightMap, nuv);
@@ -159,10 +164,13 @@ vec4 FaceColor(int f){
   if(f == 5) return vec4(1.0, 0.0, 1.0, 1.0);
 }
 
+
 void main(){
   int face = int(fface);
   int nFace = determineFace(sphereNormal);
-
+  vec3 add = vec3(0.0);
+  // if(face == 0) add = vec3(0.3, 0.0, 0.0);
+  // if(face == 2) add = vec3(0.3, 0.3, 0.0);
   //gl_FragColor = FaceColor(nFace); 
   //return;
 
@@ -181,7 +189,7 @@ void main(){
     
     vec2 uv = mod(st, vec2(1.0/division)) / vec2(1.0/division);
 
-    float height = heightMapLookup(heightMap, uv.yx);
+    float height = heightMapLookup(heightMap, uv, true);
     //vec3 sphn = -1.0 * sphereNormal;
     //int ff = determineFace(sphn);
     //vec2 uvuv = 0.5 * (getSt(sphn, ff) + 1.0);
@@ -194,9 +202,12 @@ void main(){
     float pixelDiffuseColor = 0.5*(height + 1.0);
     if(textureTypeAsColor!= 0)
       pixelDiffuseColor = light + oppoLight;
+
+    if(abs(st.x -0.5) < 0.0005 && abs(st.y -0.5) < 0.0005) 
+      add = vec3(1.);
     
 
-    gl_FragColor = vec4(vec3(pixelDiffuseColor) , 1.0);
+    gl_FragColor = vec4(vec3(pixelDiffuseColor) +add, 1.0);
   }else{
     gl_FragColor = vec4(0.0, 0.0 , 0.0, 0.0);
   }

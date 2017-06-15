@@ -44,7 +44,7 @@ export class WorldManager{
 
     this.textures = [];
     this.serverGenerationTasks = {};
-    this.serverCheckInterval = setInterval(()=>this.checkServerTasks(), 2000);
+    // this.serverCheckInterval = setInterval(()=>this.checkServerTasks(), 2000);
     this.atmosphereTextures = {};
   }
 

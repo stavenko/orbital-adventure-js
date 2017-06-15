@@ -17,6 +17,7 @@ uniform vec2 _additional;
 
 varying vec3 cameraRay;
 
+uniform sampler2D uu;
 uniform sampler2D transmittanceTexture;
 uniform sampler2D scatteringTexture;
 uniform sampler2D singleMieScatteringTexture;
@@ -305,13 +306,14 @@ on the ground by the sun and sky visibility factors):
         max(0.0, min(shadow_out, distance_to_intersection) - shadow_in) *
         lightshaft_fadein_hack;
 
+    // shadow_length = 0.0; 
     vec3 transmittance;
     vec3 in_scatter = GetSkyRadianceToPoint(atmosphere, camera - earth_center,
         point - earth_center, shadow_length, sun_direction, transmittance);
     ground_radiance = ground_radiance * transmittance + in_scatter;
     ground_alpha = 1.0;
   }
-  //ground_radiance *= 0.0;
+  // ground_radiance *= 0.0;
 
 /*
 <p>Finally, we compute the radiance and transmittance of the sky, and composite
@@ -355,17 +357,18 @@ void main() {
   vec4 color = computeColor(atmosphere);
    //uv.y /= 32.;
    //uv.x /= 8.0;
-  //vec4 tr = texture(scatteringTexture2, vec4(5.0/8.0, uv, 10.0/31.));
+  //vec4 tr = texture(scatteringTexture, vec4(0.0/8.0, uv, 0.0/31.));
+  vec4 tr = texture2D(uu, uv);
   // vec4 tr = texture2D(scatteringDensityTexture2, uv);
   // vec4 tr = texture2D(deltaMultipleScatteringTexture2, uv);
   //vec4 tr = texture2D(scatteringDensityTexture2, uv);
   //vec4 tr = texture2D(deltaIrradianceTexture2, uv);
-   vec4 tr = texture2D(irradianceTexture, uv);
+   // vec4 tr = texture2D(irradianceTexture, uv);
   // vec4 sc = texture(scatteringTexture1, vec4( 0.0/8.0, uv, 1.0/ 31.));
-   vec4 sc = texture2D(scatteringTexture2, uv);
+   // vec4 tr = texture2D(scatteringTexture, uv);
 
   //vec4 tr = texture2D(irradianceTexture2, uv);
-  //gl_FragColor = vec4(tr.rgb*1000.0, 0.99);
-  gl_FragColor = color;
+  // gl_FragColor = vec4(tr.rgb*1.0, 0.99);
+  gl_FragColor = vec4(color.rgb, 0.01);
 }
 
