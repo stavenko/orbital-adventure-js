@@ -22,9 +22,9 @@ vec4 texture(sampler2D t, vec2 uv){
 vec4 texture_interpolated(sampler2D t, vec4 uvwz){
   vec4 SCATTERING_TEXTURE_SIZE = vec4(
       SCATTERING_TEXTURE_NU_SIZE - 1,
-      SCATTERING_TEXTURE_MU_S_SIZE - 1,
-      SCATTERING_TEXTURE_MU_SIZE - 1,
-      SCATTERING_TEXTURE_R_SIZE - 1);
+      SCATTERING_TEXTURE_MU_S_SIZE,
+      SCATTERING_TEXTURE_MU_SIZE,
+      SCATTERING_TEXTURE_R_SIZE);
   vec4 Dimensions = vec4(
       float(SCATTERING_TEXTURE_NU_SIZE) ,
       float(SCATTERING_TEXTURE_MU_S_SIZE) ,
@@ -840,7 +840,7 @@ sun unit direction vectors), and the previous functions implicitely assume this
 vec4 textureLookup(sampler2D t, vec4 uvwzRaw){
   vec4 uvwz = clamp(uvwzRaw, vec4(0.0), vec4(1.0));
 
-  float nu = floor(uvwz.x * float(SCATTERING_TEXTURE_NU_SIZE ));
+  float nu = floor(uvwz.x * float(SCATTERING_TEXTURE_NU_SIZE - 1 ));
   float mus = floor(uvwz.y * float(SCATTERING_TEXTURE_MU_S_SIZE));
   float mu = floor(uvwz.z * float(SCATTERING_TEXTURE_MU_SIZE));
   float r = floor(uvwz.w * float(SCATTERING_TEXTURE_R_SIZE ));
@@ -865,7 +865,7 @@ void GetRMuMuSNuFromScatteringTextureFragCoord(
       SCATTERING_TEXTURE_MU_S_SIZE,
       SCATTERING_TEXTURE_MU_SIZE,
       SCATTERING_TEXTURE_R_SIZE);
-  vec4 dim = SCATTERING_TEXTURE_SIZE- vec4(1.0, 0.0, 0.0, 0.0);
+  vec4 dim = SCATTERING_TEXTURE_SIZE- vec4(1.0, 0.0, 0.0, 1.0);
   
   Number frag_coord_nu =
       floor(glFragCoords.x / Number(SCATTERING_TEXTURE_MU_S_SIZE));
