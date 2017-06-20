@@ -33,6 +33,7 @@ uniform sampler2D irradianceTexture1;
 uniform sampler2D irradianceTexture2;
 uniform sampler2D irradianceTexture3;
 uniform sampler2D deltaMultipleScatteringTexture2;
+uniform sampler2D deltaMultipleScatteringTexture1;
 
 
 #include <AtmosphereUniforms>
@@ -358,17 +359,20 @@ void main() {
    //uv.y /= 32.;
    //uv.x /= 8.0;
   //vec4 tr = texture(scatteringTexture, vec4(0.0/8.0, uv, 0.0/31.));
-  vec4 tr = texture2D(uu, uv);
-  // vec4 tr = texture2D(scatteringDensityTexture2, uv);
-  // vec4 tr = texture2D(deltaMultipleScatteringTexture2, uv);
+  // vec4 tr = texture2D(uu, uv);
+  //vec4 tr = texture2D(scatteringDensityTexture2, uv);
+  vec4 tr = texture(deltaMultipleScatteringTexture2, vec3(uv, 1.0/32.));
+
+  //vec4 tr = texture(deltaMultipleScatteringTexture2, uv); 
+  //      uv.y/8.0 + 5.0 / 8.0));
+   // vec4 tr = texture(singleMieScatteringTexture, vec3(uv, 1.0/32.));
   //vec4 tr = texture2D(scatteringDensityTexture2, uv);
   //vec4 tr = texture2D(deltaIrradianceTexture2, uv);
-   // vec4 tr = texture2D(irradianceTexture, uv);
+  // vec4 tr = texture2D(irradianceTexture, uv);
   // vec4 sc = texture(scatteringTexture1, vec4( 0.0/8.0, uv, 1.0/ 31.));
    // vec4 tr = texture2D(scatteringTexture, uv);
 
   //vec4 tr = texture2D(irradianceTexture2, uv);
-  // gl_FragColor = vec4(tr.rgb*1.0, 0.99);
-  gl_FragColor = vec4(color.rgb, 0.01);
+  gl_FragColor = vec4(tr.rgb*10.0, 1.0);
+  // gl_FragColor = vec4(color.rgb, 0.01);
 }
-

@@ -15,6 +15,11 @@ void main() {
   atmosphereObjectConstructor(atm);
   setupTextureDimensions(atmosphereTableResolution);
 
+  vec2 layerResolution = vec2(atmosphereTableResolution[0] *
+      atmosphereTableResolution[1], atmosphereTableResolution[2]);
+
+  vec3 uvw = map2d3d(gl_FragCoord.xy, layerResolution);
+
   vec2 res = vec2(
       SCATTERING_TEXTURE_NU_SIZE * SCATTERING_TEXTURE_MU_S_SIZE,
       SCATTERING_TEXTURE_R_SIZE * SCATTERING_TEXTURE_MU_SIZE
@@ -22,9 +27,9 @@ void main() {
   vec3 scattering_density = ComputeScatteringDensityTexture(
       atm, transmittanceTexture, deltaMultipleScatteringTexture1,
       singleMieScatteringTexture, deltaMultipleScatteringTexture1,
-      deltaIrradianceTexture1, gl_FragCoord.xy,
-      scattering_order);
+      deltaIrradianceTexture1, uvw, scattering_order);
   
+  //gl_FragColor = vec4(uvw/vec3(layerResolution, 32.0), 1.0);
   gl_FragColor = vec4(scattering_density, 1.0);
 
 }

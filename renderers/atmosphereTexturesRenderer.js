@@ -174,58 +174,70 @@ export class AtmosphereTexturesRenderer{
       scatteringDensityTexture2: new RawShaderMaterial({
         vertexShader: VertexShader,
         fragmentShader: require('../shaders/atm/ScatteringDensityShader2.glsl'),
+        transparent:false
       }),
 
       scatteringDensityTexture3: new RawShaderMaterial({
         vertexShader: VertexShader,
         fragmentShader: require('../shaders/atm/ScatteringDensityShader3.glsl'),
+        transparent:false
       }),
 
       scatteringDensityTexture4: new RawShaderMaterial({
         vertexShader: VertexShader,
         fragmentShader: require('../shaders/atm/ScatteringDensityShader4.glsl'),
+        transparent:false
       }),
       scatteringTexture1: new RawShaderMaterial({
         vertexShader: VertexShader,
         fragmentShader: require('../shaders/atm/ScatteringShader1.glsl'),
+        transparent:false
       }),
 
       scatteringTexture2: new RawShaderMaterial({
         vertexShader: VertexShader,
         fragmentShader: require('../shaders/atm/ScatteringShader2.glsl'),
+        transparent:false
       }),
       scatteringTexture3: new RawShaderMaterial({
         vertexShader: VertexShader,
         fragmentShader: require('../shaders/atm/ScatteringShader3.glsl'),
+        transparent:false
       }),
       scatteringTexture: new RawShaderMaterial({
         vertexShader: VertexShader,
         fragmentShader: require('../shaders/atm/ScatteringShader4.glsl'),
+        transparent:false
       }),
 
       singleMieScatteringTexture: new RawShaderMaterial({
         vertexShader: VertexShader,
         fragmentShader: require('../shaders/atm/SingleMieScatteringShader.glsl'),
+        transparent:false
       }),
 
       deltaMultipleScatteringTexture: new RawShaderMaterial({
         vertexShader: VertexShader,
         fragmentShader: require('../shaders/atm/DeltaMultipleScatteringShader4.glsl'),
+        transparent:false
       }),
 
       deltaMultipleScatteringTexture3: new RawShaderMaterial({
         vertexShader: VertexShader,
         fragmentShader: require('../shaders/atm/DeltaMultipleScatteringShader3.glsl'),
+        transparent:false
       }),
 
       deltaMultipleScatteringTexture2: new RawShaderMaterial({
         vertexShader: VertexShader,
         fragmentShader: require('../shaders/atm/DeltaMultipleScatteringShader2.glsl'),
+        transparent:false
       }),
 
       deltaMultipleScatteringTexture1: new RawShaderMaterial({
         vertexShader: VertexShader,
         fragmentShader: require('../shaders/atm/DeltaMultipleScatteringShader1.glsl'),
+        transparent:false
       })
     }
   }
@@ -533,8 +545,8 @@ export class AtmosphereTexturesRenderer{
   }
 
   dimensions2d({resMu, resNu, resR, resMus}){
-    let W = resMus * resNu;
-    let H = resR * resMu;
+    let W = (resMus * (resNu)) * 4.0;
+    let H = (resMu*8.0);
     return [W, H];
   }
 
@@ -631,6 +643,7 @@ export class AtmosphereTexturesRenderer{
     let textures = [
       'singleMieScatteringTexture',
       'deltaMultipleScatteringTexture1',
+      'deltaMultipleScatteringTexture2',
       'scatteringDensityTexture2',
       'transmittanceTexture', 
       'scatteringTexture',

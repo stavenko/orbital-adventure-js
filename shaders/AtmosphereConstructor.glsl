@@ -133,6 +133,7 @@ const Luminance cd_per_square_meter = cd / m2;
 const Luminance kcd_per_square_meter = kcd / m2;
 
 vec4 texture(sampler2D, vec2);
+vec4 texture(sampler2D, vec3);
 vec4 texture(sampler2D, vec4);
 
 /*
