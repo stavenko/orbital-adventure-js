@@ -23,8 +23,10 @@ uniform sampler2D scatteringTexture;
 uniform sampler2D singleMieScatteringTexture;
 uniform sampler2D irradianceTexture;
 
-uniform sampler2D scatteringDensityTexture2;
+uniform sampler2D scatteringDensityTexture3;
+uniform sampler2D scatteringTexture1;
 uniform sampler2D scatteringTexture2;
+uniform sampler2D scatteringTexture3;
 uniform sampler2D deltaIrradianceTexture1;
 uniform sampler2D deltaIrradianceTexture2;
 uniform sampler2D deltaIrradianceTexture3;
@@ -34,13 +36,26 @@ uniform sampler2D irradianceTexture2;
 uniform sampler2D irradianceTexture3;
 uniform sampler2D deltaMultipleScatteringTexture2;
 uniform sampler2D deltaMultipleScatteringTexture1;
-
+#define COMBINED_SCATTERING_TEXTURES
+// #define MESS
 
 #include <AtmosphereUniforms>
 #include <AtmosphereConstructor>
 #include <AtmosphereFunctions>
 #include <textureDimensionsSetup>
 
+vec4 texture3(sampler2D t, vec3 uvw){
+  float layer = floor(( uvw.z) * 32.0);
+  float cy = floor(layer / 4.0) / 8.0;
+  float cx = floor(mod(layer, 4.0)) / 4.0;
+
+  vec2 uv = uvw.xy / vec2(4.0, 8.0);
+
+  vec2 shift = vec2(cx, cy);
+  
+  uv += shift;
+  return texture2D(t, uv);
+}
 
 RadianceSpectrum GetSkyRadiance(AtmosphereParameters atmosphere,
     Position camera, Direction view_ray, Length shadow_length,
@@ -133,6 +148,11 @@ vec3 GetSkyRadianceToPoint(AtmosphereParameters, vec3 camera, vec3 point, float 
     vec3 sun_direction, out vec3 transmittance);
 vec3 GetSunAndSkyIrradiance( AtmosphereParameters,     vec3 p, vec3 normal, vec3 sun_direction, out vec3 sky_irradiance);
 
+vec3 GetSolarRadiance(AtmosphereParameters ATMOSPHERE) {
+  return ATMOSPHERE.solar_irradiance /
+      (PI * ATMOSPHERE.sun_angular_radius * ATMOSPHERE.sun_angular_radius);
+}
+
 float GetSunVisibility(vec3 point, vec3 sun_direction) {
   vec3 p = point - kSphereCenter;
   float p_dot_v = dot(p, sun_direction);
@@ -198,8 +218,8 @@ vec4 computeColor(AtmosphereParameters atmosphere){
 
   vec3 view_direction = normalize(view_ray);
   // Tangent of the angle subtended by this fragment.
-  float fragment_angular_size =
-      length(dFdx(view_ray) + dFdy(view_ray)) / length(view_ray);
+  // float fragment_angular_size =
+  //    length(dFdx(view_ray) + dFdy(view_ray)) / length(view_ray);
 
   float shadow_in;
   float shadow_out;
@@ -229,43 +249,6 @@ approximation as in <code>GetSunVisibility</code>:
   // Compute the radiance reflected by the sphere, if the ray intersects it.
   float sphere_alpha = 0.0;
   vec3 sphere_radiance = vec3(0.0);
-  if (distance_to_intersection > 0.0) {
-    // Compute the distance between the view ray and the sphere, and the
-    // corresponding (tangent of the) subtended angle. Finally, use this to
-    // compute the approximate analytic antialiasing factor sphere_alpha.
-    float ray_sphere_distance =
-        kSphereRadius - sqrt(ray_sphere_center_squared_distance);
-    float ray_sphere_angular_distance = -ray_sphere_distance / p_dot_v;
-    sphere_alpha =
-        min(ray_sphere_angular_distance / fragment_angular_size, 1.0);
-
-/*
-<p>We can then compute the intersection point and its normal, and use them to
-get the sun and sky irradiance received at this point. The reflected radiance
-follows, by multiplying the irradiance with the sphere BRDF:
-*/
-    vec3 point = camera + view_direction * distance_to_intersection;
-    vec3 normal = normalize(point - kSphereCenter);
-
-    // Compute the radiance reflected by the sphere.
-    vec3 sky_irradiance;
-    vec3 sun_irradiance = GetSunAndSkyIrradiance(atmosphere,
-        point - earth_center, normal, sun_direction, sky_irradiance);
-    sphere_radiance =
-        kSphereAlbedo * (1.0 / PI) * (sun_irradiance + sky_irradiance);
-
-/*
-<p>Finally, we take into account the aerial perspective between the camera and
-the sphere, which depends on the length of this segment which is in shadow:
-*/
-    float shadow_length =
-        max(0.0, min(shadow_out, distance_to_intersection) - shadow_in) *
-        lightshaft_fadein_hack;
-    vec3 transmittance;
-    vec3 in_scatter = GetSkyRadianceToPoint(atmosphere, camera - earth_center,
-        point - earth_center, shadow_length, sun_direction, transmittance);
-    sphere_radiance = sphere_radiance * transmittance + in_scatter;
-  }
   sphere_radiance = vec3(0.0);
 
 /*
@@ -283,14 +266,14 @@ on the ground by the sun and sky visibility factors):
   p_dot_p = dot(p, p);
   float radius = atmosphere.bottom_radius;
   float ray_earth_center_squared_distance = p_dot_p - p_dot_v * p_dot_v;
-  distance_to_intersection = -p_dot_v - sqrt(
-      radius * radius - ray_earth_center_squared_distance);
+  float sqrtArg = radius * radius - ray_earth_center_squared_distance;
+  distance_to_intersection = -p_dot_v - sqrt(sqrtArg);
 
 
   // Compute the radiance reflected by the ground, if the ray intersects it.
   float ground_alpha = 0.0;
   vec3 ground_radiance = vec3(0.0);
-  if (distance_to_intersection > 0.0) {
+  if (sqrtArg > 0.0 && distance_to_intersection > 0.0) {
     vec3 point = camera + view_direction * distance_to_intersection;
     vec3 normal = normalize(point - earth_center);
     
@@ -299,46 +282,50 @@ on the ground by the sun and sky visibility factors):
     vec3 sky_irradiance;
     vec3 sun_irradiance = GetSunAndSkyIrradiance(atmosphere, 
         point - earth_center, normal, sun_direction, sky_irradiance);
-    ground_radiance = kGroundAlbedo * (1.0 / PI) * (
+
+    vec3 kGroundAlbedo_ = vec3(0.8, 0.4, 0.3);
+
+    ground_radiance = kGroundAlbedo_ * (1.0 / PI) * (
         sun_irradiance * GetSunVisibility(point, sun_direction) +
         sky_irradiance * GetSkyVisibility(point));
-
     float shadow_length =
         max(0.0, min(shadow_out, distance_to_intersection) - shadow_in) *
         lightshaft_fadein_hack;
 
-    // shadow_length = 0.0; 
+    shadow_length = 0.0; 
     vec3 transmittance;
     vec3 in_scatter = GetSkyRadianceToPoint(atmosphere, camera - earth_center,
         point - earth_center, shadow_length, sun_direction, transmittance);
-    ground_radiance = ground_radiance * transmittance + in_scatter;
-    ground_alpha = 1.0;
-  }
-  // ground_radiance *= 0.0;
 
+    ground_radiance = ground_radiance * transmittance + in_scatter;
+    // ground_radiance = in_scatter;
+    ground_alpha = 1.0;
+    
+  }
 /*
 <p>Finally, we compute the radiance and transmittance of the sky, and composite
 together, from back to front, the radiance and opacities of all the ojects of
 the scene:
 */
-
   // Compute the radiance of the sky.
   float shadow_length = max(0.0, shadow_out - shadow_in) *
       lightshaft_fadein_hack;
-  // shadow_length = 0.0;
+  shadow_length = 0.0;
   vec3 transmittance;
   vec3 radiance = GetSkyRadiance(atmosphere,
       camera - earth_center, view_direction, shadow_length, sun_direction,
       transmittance);
 
   // If the view ray intersects the Sun, add the Sun radiance.
+
   if (dot(view_direction, sun_direction) > sun_size.y) {
-    radiance = radiance + transmittance * sun_radiance;
+     radiance = radiance + transmittance * GetSolarRadiance(atmosphere);
   }
   radiance = mix(radiance, ground_radiance, ground_alpha);
   // radiance = mix(radiance, sphere_radiance, sphere_alpha);
-  vec3 white_point_ = white_point;
-  float exposure_ = exposure;
+  // radiance = ground_radiance;
+  vec3 white_point_ = vec3(1.0, 1.0, 1.0);
+  float exposure_ = 10.0;
   vec3 color =
      pow(vec3(1.0) - exp(-radiance / white_point_ * exposure_), vec3(1.0 / 2.2));
 
@@ -358,21 +345,25 @@ void main() {
   vec4 color = computeColor(atmosphere);
    //uv.y /= 32.;
    //uv.x /= 8.0;
-  //vec4 tr = texture(scatteringTexture, vec4(0.0/8.0, uv, 0.0/31.));
+  //vec4 tr = texture(scatteringTexture, uv);
   // vec4 tr = texture2D(uu, uv);
-  //vec4 tr = texture2D(scatteringDensityTexture2, uv);
-  vec4 tr = texture(deltaMultipleScatteringTexture2, vec3(uv, 1.0/32.));
+  // vec4 tr = texture(scatteringTexture3, vec3(uv, 20.0/32.0));
+  // vec4 tr = texture3(deltaMultipleScatteringTexture2, vec3(uv, 1.0/32.));
 
-  //vec4 tr = texture(deltaMultipleScatteringTexture2, uv); 
+  // vec4 tr = texture(deltaMultipleScatteringTexture2, uv); 
   //      uv.y/8.0 + 5.0 / 8.0));
    // vec4 tr = texture(singleMieScatteringTexture, vec3(uv, 1.0/32.));
   //vec4 tr = texture2D(scatteringDensityTexture2, uv);
-  //vec4 tr = texture2D(deltaIrradianceTexture2, uv);
-  // vec4 tr = texture2D(irradianceTexture, uv);
+  // vec4 tr = texture2D(deltaIrradianceTexture2, uv);
+   // vec4 tr = texture2D(irradianceTexture, uv);
   // vec4 sc = texture(scatteringTexture1, vec4( 0.0/8.0, uv, 1.0/ 31.));
-   // vec4 tr = texture2D(scatteringTexture, uv);
+  // vec4 tr = texture2D(scatteringTexture, uv);
 
   //vec4 tr = texture2D(irradianceTexture2, uv);
-  gl_FragColor = vec4(tr.rgb*10.0, 1.0);
-  // gl_FragColor = vec4(color.rgb, 0.01);
+  //vec4 uuuu = GetScatteringTextureUvwzFromRMuMuSNu(atmosphere,
+    //  atmosphere.top_radius-60.0,  0.0, 0.0, 0.0, false);
+  // gl_FragColor = vec4(tr.rgb*1.0, 1.0); 
+
+  gl_FragColor = vec4(color.rgb, 1.50);
+
 }

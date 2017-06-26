@@ -101,7 +101,7 @@ const worldProps = {
       "spatial":{
         "position": [6.3781e6*3,0,13e9],
         "north":[0,0.707,0.707],
-        "rotationSpeed": Math.PI/7,
+        "rotationSpeed": 2*Math.PI/(24*60*60),
         "radius": 6.3781e6
       }
     } 
@@ -113,6 +113,20 @@ export class WorldCanvas extends CanvasBase{
   constructor(props){
     super(props)
     this._showFaces = [true, true, true, true, true, true]
+    
+  }
+
+  speedLookup(height){
+    if(height < 5) return 200;
+    if(height < 10) return 800;
+    if(height < 20) return 1600;
+    if(height < 60) return 7700;
+    if(height < 200) return 10000;
+    if(height < 1000) return 20000;
+    if(height < 10000) return 200000;
+     return 2000000;
+
+
   }
 
   componentDidMount(){
@@ -165,13 +179,14 @@ export class WorldCanvas extends CanvasBase{
       }
     })
 
-    let spdMul = Math.pow(minDistance / (planetRadius*3),2);
+    // let spdMul = Math.pow(minDistance / (planetRadius*3),2);
 
     let x = new Vector3(1,0,0);
     let y = new Vector3(0,1,0);
     let z = new Vector3(0,0,1);
     let a = Math.PI / 180;
-    let speed = 1e5 * spdMul;
+    let speed = this.speedLookup((minDistance-planetRadius)/1000);
+    console.log("minDistance: ", (minDistance-planetRadius)/1000, speed);
 
     console.log(evt.keyCode);
     if(evt.keyCode >= 48 && evt.keyCode <= 57) {
@@ -188,6 +203,7 @@ export class WorldCanvas extends CanvasBase{
 
     if(evt.keyCode == 84){
       this.planetRenderer.setFaceRendering()
+
     }
 
     if(evt.keyCode == 38){
@@ -279,8 +295,8 @@ export class WorldCanvas extends CanvasBase{
   }
 
   setPosition(planet){
-    let maxRadius = 39e6;//planet.spatial.radius + 1000e3;
-    let minRadius = 39e6;//planet.spatial.radius + 100e3 ;
+    let maxRadius = 15e6;//planet.spatial.radius + 1000e3;
+    let minRadius = 15e6;//planet.spatial.radius + 100e3 ;
 
     let pos = new Vector3(...planet.spatial.position);
     let v1 = new Vector3(1.0, 0, 0);

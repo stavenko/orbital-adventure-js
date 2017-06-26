@@ -12,17 +12,18 @@ void main() {
   atmosphereObjectConstructor(atm);
   setupTextureDimensions(atmosphereTableResolution);
   vec2 res = vec2(
-      SCATTERING_TEXTURE_NU_SIZE * SCATTERING_TEXTURE_MU_S_SIZE,
-      SCATTERING_TEXTURE_R_SIZE * SCATTERING_TEXTURE_MU_SIZE
+      4 * SCATTERING_TEXTURE_NU_SIZE * SCATTERING_TEXTURE_MU_S_SIZE,
+      8 *  SCATTERING_TEXTURE_MU_SIZE
   );
 
   vec2 uv = gl_FragCoord.xy / res;
   vec4 dmst = texture2D(deltaMultipleScatteringTexture3, uv);
   vec4 s = texture2D(scatteringTexture2, uv);
 
-  dmst = vec4( dmst.rgb / RayleighPhaseFunction(dmst.a), 1.0);
+  dmst = vec4( dmst.rgb / RayleighPhaseFunction(dmst.a), 0.0);
 
   gl_FragColor = s + dmst;
+  // gl_FragColor = vec4(uv.xy, 0.0, 0.0);
 }
 
 

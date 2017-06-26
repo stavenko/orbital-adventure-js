@@ -1,6 +1,7 @@
 precision highp float;
 uniform sampler2D transmittanceTexture;
 uniform sampler2D scatteringDensityTexture2;
+// #define MESS
 
 #include <AtmosphereUniforms>
 #include <AtmosphereConstructor>

@@ -1,6 +1,6 @@
 precision highp float;
 
-uniform sampler2D deltaMultipleScatteringTexture4;
+uniform sampler2D deltaMultipleScatteringTexture3;
 uniform sampler2D singleMieScatteringTexture;
 const int scattering_order = 4;
 
@@ -14,8 +14,8 @@ void main() {
   setupTextureDimensions(atmosphereTableResolution);
 
   vec3 delta_irradiance = ComputeIndirectIrradianceTexture(
-      atm, deltaMultipleScatteringTexture4,
-      singleMieScatteringTexture, deltaMultipleScatteringTexture4,
+      atm, deltaMultipleScatteringTexture3,
+      singleMieScatteringTexture, deltaMultipleScatteringTexture3,
       gl_FragCoord.xy, scattering_order - 1);
   gl_FragColor = vec4(delta_irradiance, 1.0);
 }

@@ -12,8 +12,8 @@ void main() {
   atmosphereObjectConstructor(atm);
   setupTextureDimensions(atmosphereTableResolution);
   vec2 res = vec2(
-      SCATTERING_TEXTURE_NU_SIZE * SCATTERING_TEXTURE_MU_S_SIZE,
-      SCATTERING_TEXTURE_R_SIZE * SCATTERING_TEXTURE_MU_SIZE
+      4 * SCATTERING_TEXTURE_NU_SIZE * SCATTERING_TEXTURE_MU_S_SIZE,
+      8 * SCATTERING_TEXTURE_MU_SIZE
   );
 
   vec2 uv = gl_FragCoord.xy / res;

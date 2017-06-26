@@ -15,18 +15,17 @@ Length SafeSqrt(Area a) {
   return sqrt(max(a, 0.0 * m2));
 }
 
-vec4 texture(sampler2D t, vec2 uv){
-  return texture2D(t, uv);
-}
 
 vec3 map2d3d(vec2 fragCoords, vec2 layerResolution){
   vec2 inCellCoords = mod(gl_FragCoord.xy, layerResolution);
   float cellX = floor(gl_FragCoord.x / layerResolution.x);
   float cellY = floor(gl_FragCoord.y / layerResolution.y);
   float layer = cellY * 4.0 + cellX;
-  return vec3(inCellCoords , layer + 0.5);
+  return vec3(inCellCoords , layer + 0.0);
 }
+#include <texturesLookup>
 
+/*
 vec4 texture_interpolated(sampler2D t, vec4 uvwz){
   vec4 SCATTERING_TEXTURE_SIZE = vec4(
       SCATTERING_TEXTURE_NU_SIZE - 1,
@@ -85,37 +84,8 @@ vec4 texture_interpolated(sampler2D t, vec4 uvwz){
       //texture(scattering_texture, uvw1) * lerp);
   // return vec4(0.0);
 }
+*/
 
-vec4 textureLookup(sampler2D t, vec4 uvwz);
-
-vec4 texture(sampler2D t, vec4 uvwz){
-#ifdef USE_INTERPOLATED
-  // return texture_interpolated(t, uvwz);
-#else
-  return textureLookup(t, uvwz);
-#endif
-}
-
-vec4 texture(sampler2D t, vec3 uvw){
-  float layer = uvw.z * 32.0;
-  float cy = floor(layer / 4.0) / 8.0;
-  float cx = mod(layer, 4.0) / 4.0;
-
-  vec2 uv = uvw.xy / vec2(4.0, 8.0);
-
-  vec2 shift = vec2(cx, cy);
-  
-  // shift = clamp(shift, vec2(0.0), vec2(3.0/4.0, 7./8.0));
-  uv += shift;
-
-  return texture2D(t, uv);
-}
-
-
-vec4 texture4D(sampler2D tex, vec2 fragCoords){
-  // placeholder
-  return texture2D(tex, fragCoords);
-}
 
 /*
 <h3 id="transmittance">Transmittance</h3>
@@ -996,16 +966,15 @@ AbstractSpectrum GetScattering(
     bool ray_r_mu_intersects_ground) {
   vec4 uvwz = GetScatteringTextureUvwzFromRMuMuSNu(
       atmosphere, r, mu, mu_s, nu, ray_r_mu_intersects_ground);
-  Number tex_coord_x = uvwz.x * Number(SCATTERING_TEXTURE_NU_SIZE - 1);
+  Number tex_coord_x = uvwz.x * Number(SCATTERING_TEXTURE_NU_SIZE - 1 );
   Number tex_x = floor(tex_coord_x);
   Number lerp = tex_coord_x - tex_x;
   vec3 uvw0 = vec3((tex_x + uvwz.y) / Number(SCATTERING_TEXTURE_NU_SIZE),
       uvwz.z, uvwz.w);
   vec3 uvw1 = vec3((tex_x + 1.0 + uvwz.y) / Number(SCATTERING_TEXTURE_NU_SIZE),
       uvwz.z, uvwz.w);
-    uvw0 = clamp(uvw0, vec3(0.0), vec3(0.9));
-   return texture(scattering_texture, uvw0).xyz;
-   return AbstractSpectrum(texture(scattering_texture, uvw0) * (1.0 - lerp) +
+ 
+  return AbstractSpectrum(texture(scattering_texture, uvw0) * (1.0 - lerp) +
       texture(scattering_texture, uvw1) * lerp);
 }
 
@@ -1722,7 +1691,7 @@ scattering on one side, and single Mie scattering on the other side) with the
 following function, based on
 <a href="#single_scattering_lookup"><code>GetScattering</code></a> (we duplicate
 some code here, instead of using two calls to <code>GetScattering</code>, to
-make sure that the texture coordinates computation is shared between the lookups
+Smake sure that the texture coordinates computation is shared between the lookups
 in <code>scattering_texture</code> and
 <code>single_mie_scattering_texture</code>):
 */
@@ -1737,33 +1706,46 @@ IrradianceSpectrum GetCombinedScattering(
   vec4 uvwz = GetScatteringTextureUvwzFromRMuMuSNu(
       atmosphere, r, mu, mu_s, nu, ray_r_mu_intersects_ground);
   Number tex_coord_x = uvwz.x * Number(SCATTERING_TEXTURE_NU_SIZE - 1);
+  Number tex_coord_w = uvwz.w * Number(SCATTERING_TEXTURE_R_SIZE - 1 );
+
   Number tex_x = floor(tex_coord_x);
+  float tex_w = floor(tex_coord_w);
   Number lerp = tex_coord_x - tex_x;
-  vec3 uvw0 = vec3((tex_x + uvwz.y) / Number(SCATTERING_TEXTURE_NU_SIZE),
-      uvwz.z, uvwz.w);
-  vec3 uvw1 = vec3((tex_x + 1.0 + uvwz.y) / Number(SCATTERING_TEXTURE_NU_SIZE),
-      uvwz.z, uvwz.w);
-  //return textureLookup()
-  // ---------------- TRAP ---------------
-  //return vec3(1.0, 1.0, 1.0);
-  //======================================
+  Number lerps = tex_coord_w - tex_w;
+  float x1 = (tex_x + uvwz.y) / Number(SCATTERING_TEXTURE_NU_SIZE);
+  float x2 = (tex_x + 1.0 + uvwz.y) / Number(SCATTERING_TEXTURE_NU_SIZE);
+
+
+  float z1 = tex_w / float(SCATTERING_TEXTURE_R_SIZE);
+  float z2 = (tex_w + 1.0) / float(SCATTERING_TEXTURE_R_SIZE);
+  vec3 uvw0 = vec3(x1, uvwz.z, z1);
+  float l0 = (1.0 - lerp) * (1.0 - lerps);
+  vec3 uvw1 = vec3(x2, uvwz.z, z1);
+  float l1 = (lerp) * (1.0 - lerps);
+  vec3 uvw2 = vec3(x1, uvwz.z, z2);
+  float l2 = (1.0 - lerp) * (lerps);
+  vec3 uvw3 = vec3(x2, uvwz.z, z2);
+  float l3 = ( lerp) * (lerps);
 
 #ifdef COMBINED_SCATTERING_TEXTURES
-  vec4 combined_scattering = texture(scattering_texture, uvwz);
-      //texture(scattering_texture, uvw0) * (1.0 - lerp) +
-      //texture(scattering_texture, uvw1) * lerp;
+  vec4 combined_scattering =
+      texture(scattering_texture, uvw0) * l0 +
+      texture(scattering_texture, uvw1) * l1 +
+      texture(scattering_texture, uvw2) * l2 +
+      texture(scattering_texture, uvw3) * l3;
   IrradianceSpectrum scattering = IrradianceSpectrum(combined_scattering);
   single_mie_scattering =
       GetExtrapolatedSingleMieScattering(atmosphere, combined_scattering);
 #else
+  
   IrradianceSpectrum scattering = IrradianceSpectrum(
-      texture(scattering_texture, uvwz));
-      //texture(scattering_texture, uvw0) * (1.0 - lerp) +
-      //texture(scattering_texture, uvw1) * lerp);
+  texture(scattering_texture, uvw0) * (1.0 - lerp) +
+      texture(scattering_texture, uvw1) * lerp);
+  // return uvwz.xxx;
+  // return texture(scattering_texture, uvw0).rgb;
   single_mie_scattering = IrradianceSpectrum(
-      texture(single_mie_scattering_texture, uvwz));
-      //texture(single_mie_scattering_texture, uvw0) * (1.0 - lerp) +
-      //texture(single_mie_scattering_texture, uvw1) * lerp);
+      texture(single_mie_scattering_texture, uvw0) * (1.0 - lerp) +
+      texture(single_mie_scattering_texture, uvw1) * lerp);
 #endif
   return scattering;
 }
@@ -1793,11 +1775,12 @@ RadianceSpectrum GetSkyRadiance(
   // the atmosphere).
   Length r = length(camera);
   Length rmu = dot(camera, view_ray);
-  Length distance_to_top_atmosphere_boundary = -rmu -
-      sqrt(rmu * rmu - r * r + atmosphere.top_radius * atmosphere.top_radius);
+  float sqrtArg = rmu * rmu - r * r + atmosphere.top_radius *
+    atmosphere.top_radius;
+  Length distance_to_top_atmosphere_boundary = -rmu - sqrt(sqrtArg);
   // If the viewer is in space and the view ray intersects the atmosphere, move
   // the viewer to the top atmosphere boundary (along the view ray):
-  if (distance_to_top_atmosphere_boundary > 0.0 * m) {
+  if (sqrtArg > 0.0 && distance_to_top_atmosphere_boundary > 0.0 * m) {
     camera = camera + view_ray * distance_to_top_atmosphere_boundary;
     r = atmosphere.top_radius;
     rmu += distance_to_top_atmosphere_boundary;
@@ -1862,6 +1845,13 @@ two lookup results must be subtracted, instead of divided). This is what we
 implement in the following function (the initial computations are used to
 correctly handle the case of viewers outside the atmosphere):
 */
+bool isnan( float val )
+{
+    return ( val < 0.0 || 0.0 < val || val == 0.0 ) ? false : true;
+      // important: some nVidias failed to cope with version below.
+      // Probably wrong optimization.
+      /*return ( val <= 0.0 || 0.0 <= val ) ? false : true;*/
+}
 
 RadianceSpectrum GetSkyRadianceToPoint(
     IN(AtmosphereParameters) atmosphere,
@@ -1876,11 +1866,12 @@ RadianceSpectrum GetSkyRadianceToPoint(
   Direction view_ray = normalize(point - camera);
   Length r = length(camera);
   Length rmu = dot(camera, view_ray);
-  Length distance_to_top_atmosphere_boundary = -rmu -
-      sqrt(rmu * rmu - r * r + atmosphere.top_radius * atmosphere.top_radius);
+  float sqrtArg = rmu * rmu - r * r + atmosphere.top_radius *
+    atmosphere.top_radius;
+  Length distance_to_top_atmosphere_boundary = -rmu - sqrt(sqrtArg);
   // If the viewer is in space and the view ray intersects the atmosphere, move
   // the viewer to the top atmosphere boundary (along the view ray):
-  if (distance_to_top_atmosphere_boundary > 0.0 * m) {
+  if (sqrtArg > 0.0 && distance_to_top_atmosphere_boundary > 0.0 * m) {
     camera = camera + view_ray * distance_to_top_atmosphere_boundary;
     r = atmosphere.top_radius;
     rmu += distance_to_top_atmosphere_boundary;
@@ -1902,12 +1893,16 @@ RadianceSpectrum GetSkyRadianceToPoint(
       atmosphere, scattering_texture, single_mie_scattering_texture,
       r, mu, mu_s, nu, ray_r_mu_intersects_ground,
       single_mie_scattering);
+  // return single_mie_scattering;
 
   // Compute the r, mu, mu_s and nu parameters for the second texture lookup.
   // If shadow_length is not 0 (case of light shafts), we want to ignore the
   // scattering along the last shadow_length meters of the view ray, which we
   // do by subtracting shadow_length from d (this way scattering_p is equal to
   // the S|x_s=x_0-lv term in Eq. (17) of our paper).
+
+  
+
   d = max(d - shadow_length, 0.0 * m);
   Length r_p = ClampRadius(atmosphere, sqrt(d * d + 2.0 * r * mu * d + r * r));
   Number mu_p = (r * mu + d) / r_p;
@@ -1938,7 +1933,9 @@ RadianceSpectrum GetSkyRadianceToPoint(
   single_mie_scattering = single_mie_scattering *
       smoothstep(Number(0.0), Number(0.01), mu_s);
 
-  return scattering * RayleighPhaseFunction(nu) + single_mie_scattering *
+  return scattering * RayleighPhaseFunction(nu) 
+    + 
+    single_mie_scattering *
       MiePhaseFunction(atmosphere.mie_phase_function_g, nu);
 }
 
@@ -1995,6 +1992,7 @@ IrradianceSpectrum GetSunAndSkyIrradiance(
   sky_irradiance = GetIrradiance(atmosphere, irradiance_texture, r, mu_s) *
       (1.0 + dot(normal, point) / r) * 0.5;
 
+  // return vec3(r - atmosphere.bottom_radius/60.0);
   // Direct irradiance.
   return atmosphere.solar_irradiance *
       GetTransmittanceToTopAtmosphereBoundary(

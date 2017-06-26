@@ -222,7 +222,7 @@ export class PlanetRenderer{
 
     let planetRotation = planet.initialQuaternion.clone();
     let rotationAngle = planet.time;
-    let quat = new Quaternion().setFromAxisAngle(northVector, rotationAngle/10000);
+    let quat = new Quaternion().setFromAxisAngle(northVector, rotationAngle/1000000);
     planetRotation = planetRotation.multiply(quat);
 
 

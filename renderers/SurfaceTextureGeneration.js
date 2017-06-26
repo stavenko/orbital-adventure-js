@@ -139,8 +139,12 @@ export class SurfaceTextureGenerator{
 
   generateTexture(forWorld, type, params){
     let target = this.getFramebuffer(type, params);
-    this.setupMaterialAndUniforms(forWorld, type, params);
-    this.renderer.render(this.screenSpaceMesh, this.notUsedCamera, target);
+    setTimeout(()=>{
+      this.setupMaterialAndUniforms(forWorld, type, params);
+      let _t = Date.now();
+      this.renderer.render(this.screenSpaceMesh, this.notUsedCamera, target);
+      console.log("Time for texture generation", Date.now() - _t);
+    }, 0)
     this.saveTexture(target, forWorld, type, params);
   }
 

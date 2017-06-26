@@ -24,6 +24,7 @@ ShaderChunk.AtmosphereConstructor = require('../shaders/AtmosphereConstructor.gl
 ShaderChunk.AtmosphereUniforms = require('../shaders/AtmosphereUniforms.glsl');
 ShaderChunk.AtmosphereFunctions = require('../shaders/atmosphereFunctions.glsl');
 ShaderChunk.textureDimensionsSetup = require('../shaders/textureDimensionsSetup.glsl');
+ShaderChunk.texturesLookup = require('../shaders/texturesLookup.glsl');
 
 const pow = Math.pow;
 
@@ -257,6 +258,9 @@ export class AtmosphereTexturesRenderer{
     this.screenSpaceMesh.material = material;
 
     console.log(">>>", name);
+    let gl = this.renderer.context;
+    gl.pixelStorei(gl.PACK_ALIGNMENT, 1);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     this.renderer.render(this.screenSpaceMesh, this._nonUsedCamera, target);
 
     
@@ -282,10 +286,13 @@ export class AtmosphereTexturesRenderer{
   getTextureProps(name, atmosphere){
     let type = THREE.FloatType, 
         format = THREE.RGBAFormat, 
-        minFilter = THREE.NearestFilter,
-        magFilter = THREE.NearestFilter,
+        minFilter = THREE.LinearFilter,
+        magFilter = THREE.LinearFilter,
         depthBuffer=false, 
-        stencilBuffer = false;
+        stencilBuffer = false,
+        generateMipmaps = false,
+        unpackAlignment = 1
+    ;
     let {resMu, resNu, resR, resMus} = atmosphere;
     let sz = resNu * resMu * resMus * resR;
     let [width,height] = this.dimensions2d(atmosphere);
@@ -295,6 +302,7 @@ export class AtmosphereTexturesRenderer{
           type, format,
           width, height,
           depthBuffer, stencilBuffer,
+          unpackAlignment, generateMipmaps,
           shader: name,
           minFilter, magFilter,
           dependencies:[
@@ -311,6 +319,7 @@ export class AtmosphereTexturesRenderer{
           type, format,
           width, height,
           depthBuffer, stencilBuffer,
+          unpackAlignment, generateMipmaps,
           shader: name,
           minFilter, magFilter,
           dependencies:[
@@ -327,6 +336,7 @@ export class AtmosphereTexturesRenderer{
           type, format,
           width, height,
           depthBuffer, stencilBuffer,
+          unpackAlignment, generateMipmaps,
           minFilter, magFilter,
           shader: name,
           dependencies:[
@@ -341,9 +351,10 @@ export class AtmosphereTexturesRenderer{
         return{
           type, format,
           width, height,
+          unpackAlignment, generateMipmaps,
           depthBuffer, stencilBuffer,
           shader: name,
-          minFilter, magFilter,
+          minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,
           dependencies:['deltaMultipleScatteringTexture1', 'singleMieScatteringTexture']
         }
       }
@@ -352,7 +363,8 @@ export class AtmosphereTexturesRenderer{
           type, format,
           width, height,
           depthBuffer, stencilBuffer,
-          minFilter, magFilter,
+          unpackAlignment, generateMipmaps,
+          minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,
           shader: name,
           dependencies:['deltaMultipleScatteringTexture2', 'scatteringTexture1']
         }
@@ -362,7 +374,8 @@ export class AtmosphereTexturesRenderer{
           type, format,
           width, height,
           depthBuffer, stencilBuffer,
-          minFilter, magFilter,
+          unpackAlignment, generateMipmaps,
+          minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,
           shader: name,
           dependencies:['deltaMultipleScatteringTexture3', 'scatteringTexture2']
         }
@@ -371,10 +384,8 @@ export class AtmosphereTexturesRenderer{
         return{
           type, format,
           width, height,
-          minFilter,
-          magFilter,
-          //minFilter:THREE.LinearFilter, 
-          //magFilter: THREE.LinearFilter,
+          unpackAlignment, generateMipmaps,
+          minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,
           depthBuffer, stencilBuffer,
           shader: name,
           dependencies:['deltaMultipleScatteringTexture', 'scatteringTexture3']
@@ -386,6 +397,7 @@ export class AtmosphereTexturesRenderer{
           type, format,
           width, height,
           depthBuffer, stencilBuffer,
+          unpackAlignment, generateMipmaps,
           minFilter, magFilter,
           shader: name,
           dependencies:['transmittanceTexture', 'scatteringDensityTexture2']
@@ -396,6 +408,7 @@ export class AtmosphereTexturesRenderer{
           type, format,
           width, height,
           depthBuffer, stencilBuffer,
+          unpackAlignment, generateMipmaps,
           minFilter, magFilter,
           shader: name,
           dependencies:['transmittanceTexture', 'scatteringDensityTexture3']
@@ -407,6 +420,7 @@ export class AtmosphereTexturesRenderer{
           type, format,
           width, height,
           depthBuffer, stencilBuffer,
+          unpackAlignment, generateMipmaps,
           shader: name,
           minFilter, magFilter,
           dependencies:['transmittanceTexture', 'scatteringDensityTexture4']
@@ -417,6 +431,7 @@ export class AtmosphereTexturesRenderer{
           type, format,
           width, height,
           depthBuffer, stencilBuffer,
+          unpackAlignment, generateMipmaps,
           shader: name,
           minFilter, magFilter,
           dependencies:['transmittanceTexture']
@@ -429,6 +444,7 @@ export class AtmosphereTexturesRenderer{
           width: res[0],
           height: res[1],
           minFilter, magFilter,
+          unpackAlignment, generateMipmaps,
           type, format, depthBuffer, stencilBuffer
         }
       }
@@ -448,6 +464,7 @@ export class AtmosphereTexturesRenderer{
           width: res[0],
           height: res[1],
           minFilter, magFilter,
+          unpackAlignment, generateMipmaps,
           type, format, depthBuffer, stencilBuffer,
           dependencies: ['deltaIrradianceTexture3', 'irradianceTexture2']
         }
@@ -458,6 +475,7 @@ export class AtmosphereTexturesRenderer{
           width: res[0],
           height: res[1],
           minFilter, magFilter,
+          unpackAlignment, generateMipmaps,
           type, format, depthBuffer, stencilBuffer,
           dependencies: ['deltaIrradianceTexture4', 'irradianceTexture3']
         }
@@ -467,6 +485,7 @@ export class AtmosphereTexturesRenderer{
         let res = getIrradianceResolution(atmosphere);
         return{
           width: res[0],
+          unpackAlignment, generateMipmaps,
           height: res[1],
           minFilter, magFilter,
           type, format, depthBuffer, stencilBuffer,
@@ -478,9 +497,12 @@ export class AtmosphereTexturesRenderer{
         return{
           width: res[0],
           height: res[1],
+          unpackAlignment, generateMipmaps,
           minFilter, magFilter,
           type, format, depthBuffer, stencilBuffer,
-          dependencies: ['singleMieScatteringTexture', 'deltaMultipleScatteringTexture2' ]
+          dependencies: [
+            'singleMieScatteringTexture', 
+            'deltaMultipleScatteringTexture1' ]
         }
       }
       case 'deltaIrradianceTexture3':{
@@ -489,8 +511,9 @@ export class AtmosphereTexturesRenderer{
           width: res[0],
           height: res[1],
           minFilter, magFilter,
+          unpackAlignment, generateMipmaps,
           type, format, depthBuffer, stencilBuffer,
-          dependencies: ['singleMieScatteringTexture', 'deltaMultipleScatteringTexture3' ]
+          dependencies: ['singleMieScatteringTexture', 'deltaMultipleScatteringTexture2' ]
         }
       }
       case 'deltaIrradianceTexture4':{
@@ -498,9 +521,10 @@ export class AtmosphereTexturesRenderer{
         return{
           width: res[0],
           height: res[1],
+          unpackAlignment, generateMipmaps,
           minFilter, magFilter,
           type, format, depthBuffer, stencilBuffer,
-          dependencies: ['singleMieScatteringTexture', 'deltaMultipleScatteringTexture' ]
+          dependencies: ['singleMieScatteringTexture', 'deltaMultipleScatteringTexture3' ]
         }
       }
 
@@ -510,6 +534,7 @@ export class AtmosphereTexturesRenderer{
           width, height,
           depthBuffer, stencilBuffer,
           shader: name,
+          unpackAlignment, generateMipmaps,
           minFilter, magFilter,
           dependencies:[
             'transmittanceTexture', 
@@ -524,6 +549,7 @@ export class AtmosphereTexturesRenderer{
           height: res[1], 
           type, format,
           minFilter, magFilter,
+          unpackAlignment, generateMipmaps,
           depthBuffer:false,
           stencilBuffer:false,
           shader: name
@@ -553,7 +579,7 @@ export class AtmosphereTexturesRenderer{
   setupAtmosphereUniforms(material, atmosphere){
 
     material.uniforms.solarIrradiance = {value: new Vector3(...atmosphere.solarIrradiance)};
-    material.uniforms.sunAngularRadius = {value: atmosphere.sunAngularRadius};
+    material.uniforms.sunAngularRadius = {value: atmosphere.starAngularRadius};
     material.uniforms.bottomRadius= {value:atmosphere.bottomRadius};
     material.uniforms.topRadius = {value:atmosphere.topRadius};
     material.uniforms.rayleighDensity = {value: packProfile(atmosphere.rayleighDensity)};
@@ -585,7 +611,7 @@ export class AtmosphereTexturesRenderer{
       new Vector4(resMus, resNu, resMu, resR)
     }
     material.uniforms.sun_size = {value:
-      new Vector2(Math.tan(atmosphere.sunAngularRadius), Math.cos(atmosphere.sunAngularRadius))
+      new Vector2(Math.tan(atmosphere.starAngularRadius), Math.cos(atmosphere.starAngularRadius))
     }
     material.uniforms.SkySpectralRadianceToLuminance = {
       value: new Vector3(...atmosphere.SkySpectralRadianceToLuminance)
@@ -644,15 +670,15 @@ export class AtmosphereTexturesRenderer{
       'singleMieScatteringTexture',
       'deltaMultipleScatteringTexture1',
       'deltaMultipleScatteringTexture2',
-      'scatteringDensityTexture2',
+      'scatteringDensityTexture3',
       'transmittanceTexture', 
       'scatteringTexture',
+      'scatteringTexture2',
+      'scatteringTexture3',
+      'scatteringTexture1',
       'irradianceTexture',
       'irradianceTexture2',
       'irradianceTexture3',
-      'deltaIrradianceTexture1',
-      'deltaIrradianceTexture2',
-      'deltaIrradianceTexture3',
       'deltaIrradianceTexture4',
     ];
 
