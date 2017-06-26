@@ -1,4 +1,5 @@
 import * as THREE from 'three/src/constants.js';
+import {WebGLRenderTarget} from "three/src/renderers/WebGLRenderTarget.js";
 import {BufferGeometry} from 'three/src/core/BufferGeometry';
 import {BufferAttribute} from 'three/src/core/BufferAttribute';
 import {DataTexture} from 'three/src/textures/DataTexture.js'
@@ -50,6 +51,8 @@ export class PlanetRenderer{
       return mesh;
     });
     this.lodMesh.material.transparent = true;
+    let {drawingBufferHeight, drawingBufferWidth} = this.renderer.context;
+    this.planetDiffuseColorTarget = new WebGLRenderTarget(drawingBufferWidth, drawingBufferHeight);
   }
 
   clearing(){
@@ -148,6 +151,7 @@ export class PlanetRenderer{
     if(texture){
       material.uniforms.uu = {value:texture};
     }
+    material.uniforms.planetSurfaceColor = {value: this.planetDiffuseColorTarget.texture};
     this.renderer.clear(false, true, true);
     this.renderer.render(this._screenSpaceMesh, camera);
   }
@@ -379,7 +383,7 @@ export class PlanetRenderer{
       this.material.uniforms.shownFaces={value:this.visibleFaces[face]};
       this.material.uniforms.textureTypeAsColor={value:this._textureType};
       this.material.uniforms.fface={value:face};
-      this.renderer.render(this.lodMesh, camera);
+      this.renderer.render(this.lodMesh, camera, this.planetDiffuseColorTarget);
     }
   }
 

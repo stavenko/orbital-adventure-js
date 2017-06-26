@@ -23,19 +23,20 @@ uniform sampler2D scatteringTexture;
 uniform sampler2D singleMieScatteringTexture;
 uniform sampler2D irradianceTexture;
 
-uniform sampler2D scatteringDensityTexture3;
-uniform sampler2D scatteringTexture1;
-uniform sampler2D scatteringTexture2;
-uniform sampler2D scatteringTexture3;
-uniform sampler2D deltaIrradianceTexture1;
-uniform sampler2D deltaIrradianceTexture2;
-uniform sampler2D deltaIrradianceTexture3;
-uniform sampler2D deltaIrradianceTexture4;
-uniform sampler2D irradianceTexture1;
-uniform sampler2D irradianceTexture2;
-uniform sampler2D irradianceTexture3;
-uniform sampler2D deltaMultipleScatteringTexture2;
-uniform sampler2D deltaMultipleScatteringTexture1;
+// uniform sampler2D scatteringDensityTexture3;
+// uniform sampler2D scatteringTexture1;
+// uniform sampler2D scatteringTexture2;
+// uniform sampler2D scatteringTexture3;
+// uniform sampler2D deltaIrradianceTexture1;
+// uniform sampler2D deltaIrradianceTexture2;
+// uniform sampler2D deltaIrradianceTexture3;
+// uniform sampler2D deltaIrradianceTexture4;
+// uniform sampler2D irradianceTexture1;
+// uniform sampler2D irradianceTexture2;
+// uniform sampler2D irradianceTexture3;
+// uniform sampler2D deltaMultipleScatteringTexture2;
+// uniform sampler2D deltaMultipleScatteringTexture1;
+uniform sampler2D planetSurfaceColor;
 #define COMBINED_SCATTERING_TEXTURES
 // #define MESS
 
@@ -215,6 +216,7 @@ vec4 computeColor(AtmosphereParameters atmosphere){
   vec3 view_ray = cameraRay;
   vec3 sun_direction = vec3(0., 1.0, 0.0); //sunDirection;
   vec3 earth_center = planetPosition;
+  vec2 uv = gl_FragCoord.xy / resolution;
 
   vec3 view_direction = normalize(view_ray);
   // Tangent of the angle subtended by this fragment.
@@ -283,7 +285,8 @@ on the ground by the sun and sky visibility factors):
     vec3 sun_irradiance = GetSunAndSkyIrradiance(atmosphere, 
         point - earth_center, normal, sun_direction, sky_irradiance);
 
-    vec3 kGroundAlbedo_ = vec3(0.8, 0.4, 0.3);
+
+    vec3 kGroundAlbedo_ = texture2D(planetSurfaceColor, uv).rgb;
 
     ground_radiance = kGroundAlbedo_ * (1.0 / PI) * (
         sun_irradiance * GetSunVisibility(point, sun_direction) +
