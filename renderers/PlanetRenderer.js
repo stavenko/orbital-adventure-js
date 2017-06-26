@@ -148,6 +148,7 @@ export class PlanetRenderer{
     if(texture){
       material.uniforms.uu = {value:texture};
     }
+    this.renderer.clear(false, true, true);
     this.renderer.render(this._screenSpaceMesh, camera);
   }
 

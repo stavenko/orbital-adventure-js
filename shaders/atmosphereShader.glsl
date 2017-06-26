@@ -298,7 +298,6 @@ on the ground by the sun and sky visibility factors):
         point - earth_center, shadow_length, sun_direction, transmittance);
 
     ground_radiance = ground_radiance * transmittance + in_scatter;
-    // ground_radiance = in_scatter;
     ground_alpha = 1.0;
     
   }
@@ -323,12 +322,10 @@ the scene:
   }
   radiance = mix(radiance, ground_radiance, ground_alpha);
   // radiance = mix(radiance, sphere_radiance, sphere_alpha);
-  // radiance = ground_radiance;
   vec3 white_point_ = vec3(1.0, 1.0, 1.0);
   float exposure_ = 10.0;
   vec3 color =
      pow(vec3(1.0) - exp(-radiance / white_point_ * exposure_), vec3(1.0 / 2.2));
-
   return vec4(color, 1.0);
 }
 
