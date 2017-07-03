@@ -22,23 +22,10 @@ uniform sampler2D transmittanceTexture;
 uniform sampler2D scatteringTexture;
 uniform sampler2D singleMieScatteringTexture;
 uniform sampler2D irradianceTexture;
-
-// uniform sampler2D scatteringDensityTexture3;
-// uniform sampler2D scatteringTexture1;
-// uniform sampler2D scatteringTexture2;
-// uniform sampler2D scatteringTexture3;
-// uniform sampler2D deltaIrradianceTexture1;
-// uniform sampler2D deltaIrradianceTexture2;
-// uniform sampler2D deltaIrradianceTexture3;
-// uniform sampler2D deltaIrradianceTexture4;
-// uniform sampler2D irradianceTexture1;
-// uniform sampler2D irradianceTexture2;
-// uniform sampler2D irradianceTexture3;
-// uniform sampler2D deltaMultipleScatteringTexture2;
-// uniform sampler2D deltaMultipleScatteringTexture1;
 uniform sampler2D planetSurfaceColor;
+uniform sampler2D tilesTexture;
 #define COMBINED_SCATTERING_TEXTURES
-// #define MESS
+// #define DEBUG
 
 #include <AtmosphereUniforms>
 #include <AtmosphereConstructor>
@@ -132,7 +119,7 @@ vec4 texture4D(sampler2D sampler, vec4 uvwo){
 
 
 const vec3 kSphereCenter = vec3(0.0, 0.0, 1.0);
-const float kSphereRadius = 1.0;
+const float kSphereRadius = 0.0;
 const vec3 kSphereAlbedo = vec3(0.8);
 const vec3 kGroundAlbedo = vec3(0.0, 0.0, 0.04);
 const vec3 camera = vec3(0.0);
@@ -159,12 +146,16 @@ float GetSunVisibility(vec3 point, vec3 sun_direction) {
   float p_dot_v = dot(p, sun_direction);
   float p_dot_p = dot(p, p);
   float ray_sphere_center_squared_distance = p_dot_p - p_dot_v * p_dot_v;
-  float distance_to_intersection = -p_dot_v - sqrt(
-      kSphereRadius * kSphereRadius - ray_sphere_center_squared_distance);
-  if (distance_to_intersection > 0.0) {
+  float sqrtArg = kSphereRadius * kSphereRadius -
+    ray_sphere_center_squared_distance;
+  float distance_to_intersection = -p_dot_v - sqrt(sqrtArg);
+  // There is no shpere on the scene.
+  // distance_to_intersection = -1.0;
+  if (sqrtArg > 0.0 && distance_to_intersection > 0.0) {
     // Compute the distance between the view ray and the sphere, and the
     // corresponding (tangent of the) subtended angle. Finally, use this to
     // compute an approximate sun visibility.
+    ray_sphere_center_squared_distance = max(0.0, ray_sphere_center_squared_distance);
     float ray_sphere_distance =
         kSphereRadius - sqrt(ray_sphere_center_squared_distance);
     float ray_sphere_angular_distance = -ray_sphere_distance / p_dot_v;
@@ -287,10 +278,14 @@ on the ground by the sun and sky visibility factors):
 
 
     vec3 kGroundAlbedo_ = texture2D(planetSurfaceColor, uv).rgb;
+    kGroundAlbedo_ = vec3(0.3, 0.5, 0.2);
 
     ground_radiance = kGroundAlbedo_ * (1.0 / PI) * (
         sun_irradiance * GetSunVisibility(point, sun_direction) +
         sky_irradiance * GetSkyVisibility(point));
+    float SV = GetSunVisibility(point, sun_direction);
+    float sV = GetSkyVisibility(point);
+
     float shadow_length =
         max(0.0, min(shadow_out, distance_to_intersection) - shadow_in) *
         lightshaft_fadein_hack;
@@ -301,6 +296,7 @@ on the ground by the sun and sky visibility factors):
         point - earth_center, shadow_length, sun_direction, transmittance);
 
     ground_radiance = ground_radiance * transmittance + in_scatter;
+    // ground_radiance = vec3(SV); // * transmittance;
     ground_alpha = 1.0;
     
   }
@@ -325,6 +321,7 @@ the scene:
   }
   radiance = mix(radiance, ground_radiance, ground_alpha);
   // radiance = mix(radiance, sphere_radiance, sphere_alpha);
+  // radiance = ground_radiance;
   vec3 white_point_ = vec3(1.0, 1.0, 1.0);
   float exposure_ = 10.0;
   vec3 color =
@@ -343,27 +340,11 @@ void main() {
 
 
   vec4 color = computeColor(atmosphere);
-   //uv.y /= 32.;
-   //uv.x /= 8.0;
-  //vec4 tr = texture(scatteringTexture, uv);
-  // vec4 tr = texture2D(uu, uv);
-  // vec4 tr = texture(scatteringTexture3, vec3(uv, 20.0/32.0));
-  // vec4 tr = texture3(deltaMultipleScatteringTexture2, vec3(uv, 1.0/32.));
 
-  // vec4 tr = texture(deltaMultipleScatteringTexture2, uv); 
-  //      uv.y/8.0 + 5.0 / 8.0));
-   // vec4 tr = texture(singleMieScatteringTexture, vec3(uv, 1.0/32.));
-  //vec4 tr = texture2D(scatteringDensityTexture2, uv);
-  // vec4 tr = texture2D(deltaIrradianceTexture2, uv);
-   // vec4 tr = texture2D(irradianceTexture, uv);
-  // vec4 sc = texture(scatteringTexture1, vec4( 0.0/8.0, uv, 1.0/ 31.));
-  // vec4 tr = texture2D(scatteringTexture, uv);
+#ifdef DEBUG
+  color = texture2D(tilesTexture, uv);
+#endif
 
-  //vec4 tr = texture2D(irradianceTexture2, uv);
-  //vec4 uuuu = GetScatteringTextureUvwzFromRMuMuSNu(atmosphere,
-    //  atmosphere.top_radius-60.0,  0.0, 0.0, 0.0, false);
-  // gl_FragColor = vec4(tr.rgb*1.0, 1.0); 
-
-  gl_FragColor = vec4(color.rgb, 1.50);
+  gl_FragColor = vec4(color.rgb, 1.0);
 
 }

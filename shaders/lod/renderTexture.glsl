@@ -24,6 +24,7 @@ vec3 oppoDirection = normalize(vec3(0.0, -1.0, 1.0));
 #define HEIGHT_TEXTURE_SIZE 256.0
 #define PI 3.141592653589793
 
+#include <lodUtils>
 
 uniform vec3 someColor;
 varying vec3 sphereNormal;
@@ -53,6 +54,7 @@ vec3 rotate(vec3 v, vec4 q){
   return qr.xyz;
 } 
 
+/*
 int determineFace(vec3 n){
   float ax = abs(n.x);
   float ay = abs(n.y);
@@ -84,7 +86,7 @@ vec2 getSt(vec3 n, int f){
   if(f == 3) return vec2(n.x/ abs(n.y), n.z/abs(n.y)); // +y
   if(f == 1) return vec2(n.x/ abs(n.y), -n.z/abs(n.y)); 
 }
-
+*/
 bool isWithinUV(vec2 st){
   vec2 samplerEnd = samplerStart + vec2(1.0/division, 1.0/division);
   bool x = st.x < samplerStart.x;
@@ -166,6 +168,9 @@ vec4 FaceColor(int f){
 
 
 void main(){
+
+  // gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);
+  // return;
   int face = int(fface);
   int nFace = determineFace(sphereNormal);
   vec3 add = vec3(0.0);
@@ -189,6 +194,7 @@ void main(){
     
     vec2 uv = mod(st, vec2(1.0/division)) / vec2(1.0/division);
 
+    
     float height = heightMapLookup(heightMap, uv, true);
     //vec3 sphn = -1.0 * sphereNormal;
     //int ff = determineFace(sphn);
@@ -204,7 +210,11 @@ void main(){
       pixelDiffuseColor = light + oppoLight;
 
     if(abs(st.x -0.5) < 0.0005 && abs(st.y -0.5) < 0.0005) 
-      add = vec3(1.);
+      add = vec3(1., 0.0, 0.0);
+    if(abs(uv.x -0.5 ) < 0.01&& abs(uv.y -0.5) < 0.01)
+      add += vec3(0.0, 0.0, 1.0);
+    if(uv.x < 0.01 || uv.x > 0.99) add += vec3(0.0, 1.0, 0.0);
+    if(uv.y < 0.01 || uv.y > 0.99) add += vec3(0.0, 1.0, 0.0);
     
 
     gl_FragColor = vec4(vec3(pixelDiffuseColor) +add, 1.0);

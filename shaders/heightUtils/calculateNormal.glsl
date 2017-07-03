@@ -20,6 +20,7 @@ void calculateTileProperties(int face, int lod, int tile, out TileProperties tp)
   tp.t = float(tp.I) / float(division);
 }
 vec3 stToNormal(vec2 st, int face){
+
   float s = st.x;
   float t = st.y;
 

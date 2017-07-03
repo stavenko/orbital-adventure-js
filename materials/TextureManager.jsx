@@ -1,5 +1,6 @@
 import * as THREE from 'three/src/constants.js';
 import {Vector3} from 'three/src/math/Vector3';
+import {Vector4} from 'three/src/math/Vector4';
 import ZipWorker from 'worker!../Utils/zip/zipWorker.js';
 import {DataTexture} from 'three/src/textures/DataTexture.js'
 
@@ -690,6 +691,18 @@ export class WorldManager{
     return v[0]*u[0] + v[1]*u[1] + v[2]*u[2];
   }
 
+  prefilterTexture(centerNormal, cameraDirection, tileAngle){
+    // return false;
+
+    let cameraNormalDot = centerNormal.dot(cameraDirection);
+    if(cameraNormalDot < -0.7 ) { return true; }
+    if(cameraNormalDot < -0.3 && tileAngle < 0.3*Math.PI)return true;
+    if(cameraNormalDot < -0.0 && tileAngle < 0.2*Math.PI)return true;
+    return false;
+    
+  }
+
+
   addTexture(to, tp, pvMatrix, cameraDirection, planetRotation, radius, position, unitPixelSize){
     let {face, tile, lod} = tp;
     let length = radius * 2.0 * Math.PI;
@@ -699,54 +712,133 @@ export class WorldManager{
     let I = tile % division;
     let S = J /division;
     let T = I /division;
-    let centerShift = 0.5 /division
+    let centerShift = 0.5 /division;
+    // if (face != 2 ) return;
 
-    let centerNormal = this.stToNormal(S+centerShift, T+centerShift, face);
+    let centerNormal = new Vector3(...this.stToNormal(S+centerShift, T+centerShift, face)).normalize();
     let cornerNormal = this.stToNormal(S, T, face);
+
+    const sums = [[0,0], [0,1], [1,0], [1,1], [0, 0.5], [1, 0.5], [0.5, 0], [0.5,1], [0.5, 0.5]];
+    let cornerNormal2 = this.stToNormal(S, T + 1.0 / division, face);
 
     let maxSize =  length / 4 / division;
     let pixelSize = maxSize / TextureSize;
-    let tileCenterPosition = [centerNormal[0]*radius, centerNormal[1]*radius, centerNormal[2]*radius];
+    let tileCenterPosition = centerNormal.clone().multiplyScalar(radius); 
+        // [centerNormal[0]*radius, centerNormal[1]*radius, centerNormal[2]*radius];
     let tileCornerPosition = [cornerNormal[0]*radius, cornerNormal[1]*radius, cornerNormal[2]*radius];
+    let tileCornerPosition2 = [cornerNormal2[0]*radius, cornerNormal2[1]*radius, cornerNormal2[2]*radius];
+    // if(face == 2)
+    //  console.log('--f', centerNormal, tileCenterPosition);
 
-    centerNormal = new Vector3(...centerNormal).applyQuaternion(planetRotation);
-    let sp = new Vector3(...tileCenterPosition).applyQuaternion(planetRotation).add(position);
-    let cp = new Vector3(...tileCornerPosition).applyQuaternion(planetRotation).add(position);
+    centerNormal.applyQuaternion(planetRotation);
+    let sp = tileCenterPosition.applyQuaternion(planetRotation).add(position);
+    //let cp = new Vector3(...tileCornerPosition).applyQuaternion(planetRotation).add(position);
+    //let cp2 = new Vector3(...tileCornerPosition2).applyQuaternion(planetRotation).add(position);
     let pixelSizeAtCenter = unitPixelSize * sp.length();
+
     sp.applyProjection(pvMatrix);
-    cp.applyProjection(pvMatrix);
-    let distance = sp.distanceTo(cp)*2;// Math.SQRT2;
-    
-    let cameraNormalDot = centerNormal.dot(cameraDirection);
-    if(cameraNormalDot < -0.7 ) { return; }
-    if(cameraNormalDot < -0.3 && tileAngle < 0.3*Math.PI)return;
-    if(cameraNormalDot < -0.0 && tileAngle < 0.2*Math.PI)return;
-    let isWithinScreen = (Math.abs(sp.x) < (1 + distance) )&& (Math.abs(sp.y) < (1+distance));
-    if((pixelSize) > (2*pixelSizeAtCenter)) {
-      let div = Math.pow(2, lod+1);
-      J *= 2;
-      I *= 2;
-      let _tp = {...tp};
-      _tp.lod = lod+1;
-      let tile1 = J*div + I;
-      let tile2 = (J+1)*div + I;
-      let tile3 = J*div + I+1;
-      let tile4 = (J+1)*div + I+1;
-
-      this.addTexture(to, {..._tp,tile: tile1}, pvMatrix, cameraDirection, planetRotation, radius, position, unitPixelSize);
-      this.addTexture(to, {..._tp,tile: tile2}, pvMatrix, cameraDirection, planetRotation, radius, position, unitPixelSize);
-      this.addTexture(to, {..._tp,tile: tile3}, pvMatrix, cameraDirection, planetRotation, radius, position, unitPixelSize);
-      this.addTexture(to, {..._tp,tile: tile4}, pvMatrix, cameraDirection, planetRotation, radius, position, unitPixelSize);
-
-    }else{
-      let t = {...tp};
-      t.s = S;
-      t.t = T;
-      if(isWithinScreen) to.push(t)
+    // cp.applyProjection(pvMatrix);
+    // cp2.applyProjection(pvMatrix);
+    let distance = 0.0;
+    let texturePointWithin = false;
+    for(let i = 0; i< sums.length; ++i){
+      let [ss, tt] = sums[i];
+      let normal = this.stToNormal(S + ss / division, T + tt/division, face);
+      let coord = new Vector3(...normal).normalize()
+        .multiplyScalar(radius)
+        .applyQuaternion(planetRotation)
+        .add(position)
+        .applyProjection(pvMatrix);
+      if(Math.abs(coord.x) < 2 && Math.abs(coord.y) < 2){
+        texturePointWithin = true;
+        // console.log(coord, lod, tile);
+        break;
+      }
     }
 
+    // let distance1 = sp.distanceTo(cp);// Math.SQRT2;
+    // let distance2 = sp.distanceTo(cp2);// Math.SQRT2;
+    // let distance = Math.max(distance1, distance2);
+    
+
+    let normalization = Math.max(0.1, Math.abs(centerNormal.dot(cameraDirection)));
+
+    if(this.prefilterTexture(centerNormal, cameraDirection, tileAngle)){
+      // console.log("prefilter");
+      return;
+    }
+
+
+    if(pixelSize * normalization  > 2 * pixelSizeAtCenter) {
+      this.addUnderlyingTiles(tp, to, pvMatrix, cameraDirection, planetRotation, radius, position, unitPixelSize)
+    }else{
+      if(texturePointWithin) {
+        let t = {...tp};
+        t.s = S;
+        t.t = T;
+        to.push(t)
+      }
+    }
   }
 
+  _componentCheck(x, dist){
+    if(Math.abs(x) < 1) return true;
+    let posReturns = (x > 1.0) && (x - dist) < 1;
+    let negReturns = (x < -1.0) && (x + dist) > -1;
+    return posReturns || negReturns;
+  }
+
+  isWithinScreen(centerPointProjected, projectedDistanceToTileCorner){
+    // console.log(centerPointProjected)
+
+    if((Math.abs(centerPointProjected.x) < 1) && (Math.abs(centerPointProjected.y) < 1)) {
+      return true;
+    }
+
+    let xCheck = this._componentCheck(centerPointProjected.x ,projectedDistanceToTileCorner)
+    let yCheck = this._componentCheck(centerPointProjected.y ,projectedDistanceToTileCorner)
+
+    let res = xCheck && yCheck;
+    return res;
+    /*
+
+    if(centerPointProjected.x > 0.0 && Math.abs(centerPointProjected.x - projectedDistanceToTileCorner) < 1){
+      return true;
+    } 
+    if(centerPointProjected.x < 0.0 && Math.abs(centerPointProjected.x + projectedDistanceToTileCorner) < 1){
+      return true;
+    } 
+    if(centerPointProjected.y > 0.0 && Math.abs(centerPointProjected.y - projectedDistanceToTileCorner) < 1){
+      return true;
+    } 
+    if(centerPointProjected.y < 0.0 && Math.abs(centerPointProjected.y + projectedDistanceToTileCorner) < 1){
+      return true;
+      }
+      */ 
+  }
+
+  addUnderlyingTiles(tp, to, pvMatrix, cameraDirection, planetRotation, radius, position, unitPixelSize){
+
+    let {face, tile, lod} = tp;
+    let division = Math.pow(2, lod);
+    let divNext = Math.pow(2, lod+1);
+    let J = Math.floor(tile/division);
+    let I = tile % division;
+    J *= 2;
+    I *= 2;
+    let _tp = {...tp};
+    _tp.lod = lod+1;
+    let tile1 = J*divNext + I;
+    let tile2 = (J+1)*divNext + I;
+    let tile3 = J*divNext + I+1;
+    let tile4 = (J+1)*divNext + I+1;
+
+    this.addTexture(to, {..._tp, tile: tile1}, pvMatrix, cameraDirection, planetRotation, radius, position, unitPixelSize);
+    this.addTexture(to, {..._tp, tile: tile2}, pvMatrix, cameraDirection, planetRotation, radius, position, unitPixelSize);
+    this.addTexture(to, {..._tp, tile: tile3}, pvMatrix, cameraDirection, planetRotation, radius, position, unitPixelSize);
+    this.addTexture(to, {..._tp, tile: tile4}, pvMatrix, cameraDirection, planetRotation, radius, position, unitPixelSize);
+
+  }
   findTexturesWithin(pvMatrix, camDirection, planetRotation, radius, position, pixel){
     let collection = [];
     let faceProps = {tile:0, lod:0, s:0, t:0};
@@ -754,6 +846,7 @@ export class WorldManager{
       this.addTexture(collection, {face, ...faceProps}, pvMatrix, camDirection, planetRotation, radius, position, pixel);
 
     }
+    console.log("selected", collection.length);
     
     return collection;
   }

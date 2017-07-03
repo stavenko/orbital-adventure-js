@@ -12,7 +12,7 @@ import {Color} from 'three/src/math/Color';
 import {Sphere} from 'three/src/math/Sphere';
 import {Ray} from 'three/src/math/Ray';
 import {Mesh} from 'three/src/objects/Mesh';
-import {LODMaterial} from '../materials/PlanetaryMaterial.jsx';
+import {LODMaterial, LodCalculatorMaterial} from '../materials/PlanetaryMaterial.jsx';
 import {getLodGeometry} from '../math/Geometry.js';
 import {MeshBasicMaterial} from 'three/src/materials/MeshBasicMaterial';
 import {SphereBufferGeometry} from 'three/src/geometries/SphereBufferGeometry';
@@ -21,6 +21,7 @@ import {SurfaceTextureGenerator} from './SurfaceTextureGeneration.js'
 
 
 export const colors = [[0.5,0.5,0], [0.0, 1.0, 0.0], [0.3, 0.7, 1]];
+const TileSourceMapSize = 64;
 export class PlanetRenderer{
   constructor(camera, renderer, planets, globalPosition, worldManager){
     this.globalPosition = globalPosition;
@@ -41,6 +42,7 @@ export class PlanetRenderer{
     this._screenSpaceMesh = this.initScreenSpaceMesh();
     this.__ww = 0;
     this.__zz = 0;
+    this.pixelsSource = new Uint8Array(TileSourceMapSize * TileSourceMapSize *4 );
     this.planetSpheres = planets.planets.map((planet,ix)=>{
       let {spatial} = planet;
       let geometry = new SphereBufferGeometry(spatial.radius*0.999, 100,100);
@@ -53,6 +55,12 @@ export class PlanetRenderer{
     this.lodMesh.material.transparent = true;
     let {drawingBufferHeight, drawingBufferWidth} = this.renderer.context;
     this.planetDiffuseColorTarget = new WebGLRenderTarget(drawingBufferWidth, drawingBufferHeight);
+    this.planetTilesTarget = new WebGLRenderTarget(TileSourceMapSize, TileSourceMapSize , {
+      minFilter: THREE.NearestFilter,
+      magFilter: THREE.NearestFilter,
+      depthBuffer: false,
+      stencilBuffer: false
+    })
   }
 
   clearing(){
@@ -123,15 +131,10 @@ export class PlanetRenderer{
 
 
 
-
-
   renderAtmospehere(planet, camera, planetProperties, star){
 
     let cameraPosition = this.globalPosition.position.clone();
     camera.updateProjectionMatrix();
-    //let projectionInverse = new Matrix4().getInverse(camera.projectionMatrix);
-    //let viewMatrix = new Matrix4().getInverse(camera.matrixWorld);
-    //let atmosphereTextures = this.worldManager.getPlanetAtmosphereTextures(planet)
     let width = this.renderer.domElement.width;
     let height = this.renderer.domElement.height;
     let planetPosition = planetProperties.cameraRelatedPosition;
@@ -139,18 +142,12 @@ export class PlanetRenderer{
     let propUniforms = {};
     let material = this.atmosphereRenderer.getAtmosphereMaterial(planet, star, {camera, planetPosition});
 
-    let texture;
-    try{
-      texture = this.surfaceRenderer.getTexture(planet, 'height', {face:0, lod:0, tile:0});
-    }catch(e){ 
-      console.log('---', e);
-    }
-    
     
     this._screenSpaceMesh.material = material;
-    if(texture){
-      material.uniforms.uu = {value:texture};
+    material.uniforms.tilesTexture = {
+      value: this.planetTilesTarget.texture
     }
+    
     material.uniforms.planetSurfaceColor = {value: this.planetDiffuseColorTarget.texture};
     this.renderer.clear(false, true, true);
     this.renderer.render(this._screenSpaceMesh, camera);
@@ -238,14 +235,22 @@ export class PlanetRenderer{
     withCamera.updateProjectionMatrix();
     withCamera.updateMatrixWorld();
     let viewInverse = new Matrix4().getInverse(withCamera.matrixWorld);
+
+    let fovPerPixel = withCamera.fov/ withCamera.zoom / this.renderer.domElement.height;
+    fovPerPixel = fovPerPixel/180 * Math.PI;
+    let pixelSize =  Math.tan(fovPerPixel/2)*2;
+    let cameraDirection = new Vector3(0,0,1).transformDirection(withCamera.matrixWorld);
+
     this.setupUniforms({
       center: lodCenter,
       planetCenter: planetPosition.sub(cameraPosition),
       north: northVector,
       east: eastVector,
+      pixelFov: fovPerPixel,
       radius,
       size,
       planetRotation,
+      cameraDirection,
       someColor: new Vector3(1,0,0),
       viewInverseM:  viewInverse.clone(),
       viewM:  withCamera.matrixWorld.clone(),
@@ -253,27 +258,75 @@ export class PlanetRenderer{
       projectionM:  withCamera.projectionMatrix.clone()
     })
 
-    let fovPerPixel = withCamera.fov/ withCamera.zoom / this.renderer.domElement.height;
-    fovPerPixel = fovPerPixel/180 * Math.PI;
-    let pixelSize =  Math.tan(fovPerPixel/2)*2;
     let viewProjectionMatrix = new Matrix4().multiplyMatrices(withCamera.projectionMatrix, viewInverse);
 
     let texTimes = Date.now();
-    let cameraDirection = new Vector3(0,0,1).transformDirection(withCamera.matrixWorld);
+    /*
     let textures = this.worldManager
       .findTexturesWithin(viewProjectionMatrix.clone(), cameraDirection,
                           planetRotation.clone().inverse(),
                           radius,
                           planetPosition, pixelSize);
-    let TM = Date.now() - texTimes;
-
+    
+                          let TM = Date.now() - texTimes;
     if(textures.length > 50)
       console.warn("So many textures", textures.length);
+*/
 
-    let renderTimeStart = Date.now();
+    this.lodMesh.material = this.lodCalculator;
+    this.renderer.setClearAlpha(0.0);
+    this.renderer.clearTarget(this.planetTilesTarget, true, true, true);
+    this.renderer.render(this.lodMesh, withCamera, this.planetTilesTarget);
+    this.renderer.setClearAlpha(1.0);
+
+    let textures = [];
+    //  { face: 0, lod:0, tile:0, s:0, t:0 },
+    //  { face: 1, lod:0, tile:0, s:0, t:0 },
+    //  { face: 2, lod:0, tile:0, s:0, t:0 },
+    //  { face: 3, lod:0, tile:0, s:0, t:0 },
+    //  { face: 4, lod:0, tile:0, s:0, t:0 },
+    //  { face: 5, lod:0, tile:0, s:0, t:0 }
+   // ]
+    
+    //hjif(false){
+      let renderTimeStart = Date.now();
+      this.renderer.readRenderTargetPixels(
+        this.planetTilesTarget, 0, 0,
+        TileSourceMapSize ,TileSourceMapSize, 
+        this.pixelsSource);
+
+      let renderTimeEnd = Date.now();
+
+      let intView = new DataView(this.pixelsSource.buffer);
+
+      let unique = [];
+      for(let i =0; i < TileSourceMapSize * TileSourceMapSize; ++i){
+        let uint = intView.getUint32(i*4);
+        if(uint === 0 || unique.indexOf(uint) !== -1) continue;
+        unique.push(uint);
+      }
+      for (let i =0; i< unique.length; ++i){
+        let uint = unique[i];
+        let faceLod = 255 - (uint & 0xff);
+        let lod = Math.floor(faceLod / 6);
+        let face = faceLod % 6;
+        let tile = (uint >> 8);
+        let division = Math.pow(2, lod);
+        let J = Math.floor(tile / division);
+        let I = tile % division;
+        let s = J / division;
+        let t = I / division;
+        textures.push({ s, t, lod, tile, face });
+        // console.log(face, lod, tile);
+      }
+      // console.log('>>>', unique, Date.now() - renderTimeStart, renderTimeEnd-renderTimeStart);
+
+    // }
+    
+
+    this.renderer.clearTarget(this.planetDiffuseColorTarget, true, true, true);
     textures.forEach(this.renderTexturesWithLOD(planet, withCamera));
-    let RT = Date.now() - renderTimeStart;
-    //console.log("times", TM, RT);
+    // let RT = Date.now() - renderTimeStart;
 
   }
 
@@ -383,7 +436,11 @@ export class PlanetRenderer{
       this.material.uniforms.shownFaces={value:this.visibleFaces[face]};
       this.material.uniforms.textureTypeAsColor={value:this._textureType};
       this.material.uniforms.fface={value:face};
+      this.lodMesh.material = this.material;
+      
       this.renderer.render(this.lodMesh, camera, this.planetDiffuseColorTarget);
+      // this.renderer.render(this.lodMesh, camera);
+      // this.renderer.render(this.lodMesh, camera);
     }
   }
 
@@ -399,9 +456,11 @@ export class PlanetRenderer{
 
   setupUniforms(values){
     for(let key in values){
-      this.material.uniforms[key] = {value: values[key]}
+      this.material.uniforms[key] = {value: values[key]};
+      this.lodCalculator.uniforms[key] = {value : values[key]};
     }
     this.material.needsUpdate = true;
+    this.lodCalculator.needsUpdate = true;
   }
 
   setupArray(){
@@ -413,9 +472,12 @@ export class PlanetRenderer{
   prepareArrays(){
     this.lodGeometry = getLodGeometry();
     this.lodMesh = new Mesh(this.lodGeometry, this.material);
+    // this.lodCalculatorMesh = new Mesh(this.lodGeometry, this.lodCalculator);
   }
+
 
   prepareProgram(){
     this.material = new LODMaterial();
+    this.lodCalculator = new LodCalculatorMaterial();
   }
 }

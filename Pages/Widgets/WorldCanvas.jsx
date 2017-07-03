@@ -299,8 +299,10 @@ export class WorldCanvas extends CanvasBase{
     let minRadius = 15e6;//planet.spatial.radius + 100e3 ;
 
     let pos = new Vector3(...planet.spatial.position);
+    let radius = planet.spatial.radius;
     let v1 = new Vector3(1.0, 0, 0);
     let v2 = new Vector3(0.0, 0, 1);
+    let v3 = new Vector3(0.0, 1, 0);
     let lookAt = pos.clone();
 
     let pi2 = Math.PI * 2;
@@ -309,10 +311,11 @@ export class WorldCanvas extends CanvasBase{
     phi = a - (Math.floor(phi) * pi2);
     let t = Math.abs(phi/pi2 - 0.5)*2;
 
-    let radius = maxRadius * t + (1-t)*minRadius;
+    // let radius = maxRadius * t + (1-t)*minRadius;
 
-    pos.add(v1.multiplyScalar(Math.cos(a)*radius));
-    pos.add(v2.multiplyScalar(Math.sin(a)*radius));
+    // pos.add(v1.multiplyScalar(Math.cos(a)*radius));
+    // pos.add(v2.multiplyScalar(Math.sin(a)*radius));
+    pos.add(v3.multiplyScalar(radius + 500.0));
     
     let o = new Object3D;
     o.position.copy(pos);

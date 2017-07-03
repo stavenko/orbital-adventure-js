@@ -12,6 +12,7 @@ import {ShaderChunk} from "three/src/renderers/shaders/ShaderChunk.js"
 ShaderChunk.getPerlinValue = require('../shaders/heightUtils/perlin3d.glsl');
 ShaderChunk.getHeightValue = require('../shaders/heightUtils/getHeightValue.glsl');
 ShaderChunk.calculateNormal = require('../shaders/heightUtils/calculateNormal.glsl');
+ShaderChunk.quaternion = require('../shaders/lod/quaternion.glsl');
 
 const VertexShader = require('../shaders/ScreenSpaceVertexShader.glsl')
 const normalMapShader = require('../shaders/normalMapShader.glsl')
@@ -37,6 +38,7 @@ export class SurfaceTextureGenerator{
     this.normalMapMaterial.needsUpdate = true;
   }
   isExists(forWorld, type, params){
+
     let {lod, face, tile} = params;
     let desc = `${lod}-${face}-${tile}`;
     let key = `${forWorld.uuid}.${type}.${desc}`;
@@ -99,8 +101,10 @@ export class SurfaceTextureGenerator{
       }
     }
     if(!foundFB){
+      let _t = Date.now();
       foundFB = this.createFramebuffer(type, params);
       pool.push(foundFB);
+      console.log("Time for framebuffer generation", Date.now() - _t);
     }
     return foundFB;
   }
