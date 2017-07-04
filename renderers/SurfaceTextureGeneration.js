@@ -27,7 +27,7 @@ export class SurfaceTextureGenerator{
     this.normalMapPool = [];
     this.notUsedCamera = new PerspectiveCamera;
     this.initScreenSpaceMesh();
-    this.normalMapMaterial = new RawShaderMaterial({
+    this.heightMapMaterial = new RawShaderMaterial({
       uniforms: { },
       vertexShader: VertexShader,
       fragmentShader: heightMapShader,
@@ -35,7 +35,7 @@ export class SurfaceTextureGenerator{
 
     });
     
-    this.normalMapMaterial.needsUpdate = true;
+    this.heightMapMaterial.needsUpdate = true;
   }
   isExists(forWorld, type, params){
 
@@ -70,7 +70,7 @@ export class SurfaceTextureGenerator{
 
   createFramebuffer(type){
     if(type == 'height'){
-      return new WebGLRenderTarget(512, 512, {
+      return new WebGLRenderTarget(256, 256, {
         type: THREE.FloatType,
         format: THREE.RBGAFormat,
         depthBuffer: false,
@@ -143,17 +143,14 @@ export class SurfaceTextureGenerator{
 
   generateTexture(forWorld, type, params){
     let target = this.getFramebuffer(type, params);
-    setTimeout(()=>{
-      this.setupMaterialAndUniforms(forWorld, type, params);
-      let _t = Date.now();
-      this.renderer.render(this.screenSpaceMesh, this.notUsedCamera, target);
-      console.log("Time for texture generation", Date.now() - _t);
-    }, 0)
+    this.setupMaterialAndUniforms(forWorld, type, params);
+    let _t = Date.now();
+    this.renderer.render(this.screenSpaceMesh, this.notUsedCamera, target);
     this.saveTexture(target, forWorld, type, params);
   }
 
   setupHeightMapUniforms(forWorld, params){
-    this.screenSpaceMesh.material = this.normalMapMaterial;
+    this.screenSpaceMesh.material = this.heightMapMaterial;
     if(!forWorld.texturesCache.permutationTable){
       forWorld.texturesCache.permutationTable = this.createPermutationTable(forWorld);
       forWorld.texturesCache.permutationTable.needsUpdate = true;

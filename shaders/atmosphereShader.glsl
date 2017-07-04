@@ -278,7 +278,6 @@ on the ground by the sun and sky visibility factors):
 
 
     vec3 kGroundAlbedo_ = texture2D(planetSurfaceColor, uv).rgb;
-    kGroundAlbedo_ = vec3(0.3, 0.5, 0.2);
 
     ground_radiance = kGroundAlbedo_ * (1.0 / PI) * (
         sun_irradiance * GetSunVisibility(point, sun_direction) +

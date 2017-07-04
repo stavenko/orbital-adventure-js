@@ -224,7 +224,7 @@ export class PlanetRenderer{
 
     let planetRotation = planet.initialQuaternion.clone();
     let rotationAngle = planet.time;
-    let quat = new Quaternion().setFromAxisAngle(northVector, rotationAngle/1000000);
+    let quat = new Quaternion().setFromAxisAngle(northVector, rotationAngle/1000000000);
     planetRotation = planetRotation.multiply(quat);
 
 
@@ -288,7 +288,6 @@ export class PlanetRenderer{
     //  { face: 5, lod:0, tile:0, s:0, t:0 }
    // ]
     
-    //hjif(false){
       let renderTimeStart = Date.now();
       this.renderer.readRenderTargetPixels(
         this.planetTilesTarget, 0, 0,
@@ -305,28 +304,29 @@ export class PlanetRenderer{
         if(uint === 0 || unique.indexOf(uint) !== -1) continue;
         unique.push(uint);
       }
+      let uniqueArray = new Uint32Array(unique);
       for (let i =0; i< unique.length; ++i){
         let uint = unique[i];
-        let faceLod = 255 - (uint & 0xff);
+        let faceLod = 255 - (uniqueArray[i] & 0xff);
         let lod = Math.floor(faceLod / 6);
         let face = faceLod % 6;
-        let tile = (uint >> 8);
+        let fb = (uniqueArray[i] >> 8) & 0xff;
+        let sb = (uniqueArray[i] >> 16) & 0xff;
+        let tb = (uniqueArray[i] >> 24) & 0xff;
+        let tile = (tb*256 + sb)*256 + fb;
+        
         let division = Math.pow(2, lod);
         let J = Math.floor(tile / division);
         let I = tile % division;
         let s = J / division;
         let t = I / division;
         textures.push({ s, t, lod, tile, face });
-        // console.log(face, lod, tile);
+        if(tile < 0 ) throw new Error("negative tile");
       }
-      // console.log('>>>', unique, Date.now() - renderTimeStart, renderTimeEnd-renderTimeStart);
-
-    // }
     
 
     this.renderer.clearTarget(this.planetDiffuseColorTarget, true, true, true);
     textures.forEach(this.renderTexturesWithLOD(planet, withCamera));
-    // let RT = Date.now() - renderTimeStart;
 
   }
 

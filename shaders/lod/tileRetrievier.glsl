@@ -75,7 +75,7 @@ int determineLod(vec3 lookupNormal, out float _distance){
   // vec2 st = getSt(lookupNormal, face);
   float facePixelCoefficient = 0.25;//   cos((PI/4.0) * abs(st.x)) * cos((PI/4.0) * abs(st.y));
   bool correctLodIsFound = false;
-  int correctLod = -1;
+  int correctLod = 12;
   for(int i = 0; i <= MAX_LOD; ++i) {
     float distanceAtLod = pow(float(12 - i)/12.0, 5.0);
     float texturePixelSize = pixelSizeAtLod(i);
@@ -94,16 +94,9 @@ int determineLod(vec3 lookupNormal, out float _distance){
       correctLodIsFound = true;
       _distance = distanceToSurface;
     }
-    /*
-    if( !correctLodIsFound && (lll > distanceAtLod)) {
-      correctLod = i;
-      correctLodIsFound = true;
-      _distance = distanceAtLod;
-    }
-    */
   } 
   _distance = (1.0 / 12.0)* maxDistance;
-  if(!correctLodIsFound) correctLod = 0;
+  // if(!correctLodIsFound) correctLod = 0;
   return correctLod;
 }
 
@@ -164,45 +157,9 @@ void main(){
   vec2 st = getSt(sphereLookupNormal, face);
 
   
-  // int correctLod = findLodInNormal(sphereLookupNormal);
-
-  // correctLod = 0;
-  // bool lodFound = false;
   float d = 0.0;
   int correctLod = determineLod(sphereLookupNormal, d);
 
-  /*
-  for(int L = 0; L < MAX_LOD; ++L){
-    int lowerLods = 0;
-    vec2 tile = findTile(st2uv(st), L);
-
-    for( int i = 0; i <3; ++i){
-      float fi =  float(i);
-      float s = fi / 2.0; 
-      for( int j = 0; j <3; ++j){
-        float fj =  float(j);
-        float t = fj / 2.0; 
-
-        vec2 newSt = tileCoordsToFaceCoords(tile, vec2(s, t), L);
-        vec3 normal = stToNormal(newSt, face);
-        int lod = findLodInNormal(normal);
-        if(lod > correctLod) ++lowerLods; 
-      }
-    }
-    if(!lodFound){
-      if(lowerLods < 8){
-        lodFound = true;
-        correctLod = L;
-      }
-    }
-  }
-  */
-
-
-
-  // mcn = normalize(sphereLookupNormal);
-  // face = determineFace(mcn);
-  // st = getSt(mcn, face);
   float division = pow(2.0, float(correctLod));
   vec2 tileSt = mod(st2uv(st), 1.0/division)  * division;
 
@@ -223,12 +180,6 @@ void main(){
   if(tileSt.y < borderLineWidth || tileSt.y > 1.0 - borderLineWidth)
     clr += vec3(0.5, 0.0, 0.0);
 
-  // vec3 centralNormalI = findMyCentralNormal(sphereNormal, 1);
 
-  
-  // gl_FragColor = vec4(clr, 1.0);
-  //gl_FragColor.rgb = vec3(d);
   gl_FragColor = packTile(tileNumber, face, correctLod); 
-  //vec4(vec3(float(tileNumber) / 16.0, 0.0, 1.0), 1.0);
-
 }

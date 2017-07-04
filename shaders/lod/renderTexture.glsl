@@ -28,6 +28,7 @@ vec3 oppoDirection = normalize(vec3(0.0, -1.0, 1.0));
 
 uniform vec3 someColor;
 varying vec3 sphereNormal;
+varying vec3 sphereLookupNormal;
 
 vec4 conjugate(vec4 q){
   return vec4(q.xyz * -1.0, q.w);
@@ -138,7 +139,7 @@ vec3 normalFromHeightMap(sampler2D heightMap, vec2 uv){
   float h12 = heightMapLookup(heightMap, uv+offsetV.yz);
   float pixelSize = calculatePixelSize();
 
-  vec3 v01 = normalize(sphereNormal * radius + north * pixelSize) +
+  vec3 v01 = normalize(sphereLookupNormal * radius + north * pixelSize) +
     (h21-h01) * planetMaxHeight;
 
 
@@ -169,23 +170,17 @@ vec4 FaceColor(int f){
 
 void main(){
 
-  // gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);
-  // return;
   int face = int(fface);
-  int nFace = determineFace(sphereNormal);
+  int nFace = determineFace(sphereLookupNormal);
   vec3 add = vec3(0.0);
-  // if(face == 0) add = vec3(0.3, 0.0, 0.0);
-  // if(face == 2) add = vec3(0.3, 0.3, 0.0);
-  //gl_FragColor = FaceColor(nFace); 
-  //return;
 
   if(nFace == face){
     if(shownFaces == 0){
-      gl_FragColor = vec4(0.0);
+      gl_FragColor = vec4(0.0, 0, 0, 0.0);
       return;
     }
 
-    vec2 st = (getSt(sphereNormal, face) + vec2(1.0,1.0)) / vec2(2.0,2.0);
+    vec2 st = (getSt(sphereLookupNormal, face) + vec2(1.0,1.0)) / vec2(2.0,2.0);
     if(!isWithinUV(st)){
       gl_FragColor = vec4(0.0, 0.0, 0.0, 0.00);
       return;
@@ -195,8 +190,8 @@ void main(){
     vec2 uv = mod(st, vec2(1.0/division)) / vec2(1.0/division);
 
     
-    float height = heightMapLookup(heightMap, uv, true);
-    //vec3 sphn = -1.0 * sphereNormal;
+    float height = heightMapLookup(heightMap, uv);
+    //vec3 sphn = -1.0 * sphereLookupNormal;
     //int ff = determineFace(sphn);
     //vec2 uvuv = 0.5 * (getSt(sphn, ff) + 1.0);
     vec3 textureNormal = texture2D(normalMap, uv.yx).xyz*2.0 - 1.0;
@@ -204,8 +199,8 @@ void main(){
 
     float light = clamp(dot(textureNormal, lightDirection), 0.0, 1.0);
     float oppoLight = clamp(dot(textureNormal, oppoDirection), 0.0, 1.0)*0.5;
-    // float nnn = dot(sphereNormal, lightDirection);
-    float pixelDiffuseColor = 0.5*(height + 1.0);
+    // float nnn = dot(sphereLookupNormal, lightDirection);
+    float pixelDiffuseColor = abs(height); // 0.5*(height + 1.0);
     if(textureTypeAsColor!= 0)
       pixelDiffuseColor = light + oppoLight;
 

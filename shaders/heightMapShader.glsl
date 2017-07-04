@@ -23,7 +23,7 @@ void main(){
   float a = getHeightValue(an, fLod, permutationTable, permutationTableSize);
   float h = getHeightValue(n, 0.0, permutationTable, permutationTableSize);
 
-  gl_FragColor = vec4(h);
+  gl_FragColor = vec4(r,g,b,a);
 
 }
 
