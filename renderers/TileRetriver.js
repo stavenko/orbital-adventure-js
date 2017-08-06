@@ -92,8 +92,8 @@ export class TileRetriver{
 
   findCameraFrustumPlanes(camera){
     const viewMatrix = new Matrix4().getInverse(camera.matrixWorld);
-    // viewMatrix.lookAt(new Vector3(0,0,0), new Vector3(-1, 0, 0), new Vector3(0,0,1));
     const matrix = new Matrix4().multiplyMatrices(camera.projectionMatrix, viewMatrix);
+    this.__cameraProj = matrix.clone();
     const elems = matrix.elements;
     const left = this.createPlane(
       elems[3] + elems[0], 
@@ -161,7 +161,7 @@ export class TileRetriver{
   }
 
   simpleLodAndNormal(camera, planetCenter, radius, planetRotation){
-    console.log('simple');
+    // console.log('simple');
     const surfaceNormal = planetCenter.clone().normalize().negate();
     const surfacePoint = surfaceNormal.clone().multiplyScalar(radius).add(planetCenter);
     const inverseRotation = planetRotation.clone().inverse();
@@ -233,7 +233,7 @@ export class TileRetriver{
   }
 
   lodAndNormalFromFrustumPlanes(camera, planet){
-    console.log('from planes'); // need to find arcs 
+    // console.log('from planes'); // need to find arcs 
     const planes = ['left', 'right', 'top', 'bottom'];
     let foundPoint  = null;
     let distance = Infinity;
@@ -270,7 +270,7 @@ export class TileRetriver{
 
   lodAndNormalFrom(planetCenterProjected, camera, planet){
 
-    console.log("complex", planetCenterProjected.x, planetCenterProjected.y);
+    // console.log("complex", planetCenterProjected.x, planetCenterProjected.y);
     const {planetCenter, radius, planetRotation} = planet;
     const dir = new Vector2(planetCenterProjected.x, planetCenterProjected.y);
     const R = {origin: new Vector2, dir};
@@ -350,8 +350,9 @@ export class TileRetriver{
     }
     const [closestNormal, closestLod] = this.findClosestNormalAndLod(camera, planet);
     const firstTile = this.getFirstTile(closestLod, closestNormal);
-    console.log(closestLod, closestNormal);
-    console.log(firstTile.tileCoords.x, firstTile.tileCoords.y);
+    // console.log(closestLod, closestNormal);
+    // console.log(firstTile.tileCoords.x, firstTile.tileCoords.y);
+    this.__camera = camera;
     const tiles = this.findAllTiles(camera, planet, firstTile);
     return tiles;
   }
@@ -366,9 +367,19 @@ export class TileRetriver{
 
   findAllTiles(camera, planet, firstTile) {
     this.resetCollectedTiles();
+    let __t = Date.now();
     this.pushTileWithNeiboursInFrustum(camera, planet, firstTile);
+    console.log('---', Date.now() - __t);
     this.splitLowerLodsToHalfs();
-    console.log("======================");
+    // console.log("======================");
+    let count = 0;
+    debugger;
+    for(const {lod, faceTileMap} of this.collectedTiles.values()){
+      for(const {tiles} of faceTileMap.values()){
+        count+=tiles.size;
+      }
+    }
+    console.log('collected tiles', count);
     return this.collectedTiles;
   }
 
@@ -422,6 +433,29 @@ export class TileRetriver{
       }
     }
   }
+  neigbourTiles(lod, face, J, I){
+    const max = Math.pow(2, lod) - 1;
+    const min = 0;
+    const neigbours = [];
+    for(let j = -1; j <= 1; ++j){
+      for(let i = -1; i <=1; ++i){
+        if(j === 0 && i === 0) continue;
+
+        const Jj = J + j;
+        const Ii = I + i;
+        if(Jj > max || Jj < min || Ii > max || Ii < min){
+          neigbours.push(this.faceShiftedTile(lod, face, Jj, Ii)); 
+        }else{
+          const tileCoords = [Jj, Ii];
+          const tile = cubeMap.calculateTile(tileCoords, lod);
+          if(Jj < 0 || Ii < 0) debugger;
+          neigbours.push({face, tile, tileCoords:cubeMap.vec2(Jj, Ii)});
+        }
+      }
+    }
+    return neigbours;
+
+  }
 
   faceShiftedTile(lod, face, J, I){
     const div = Math.pow(2, lod);
@@ -442,26 +476,30 @@ export class TileRetriver{
 
   getTileSphereCoords(face, tileCoords, lod, planet) {
     const div = Math.pow(2, lod);
-    const tileV = tileCoords.x / div;
-    const tileU = tileCoords.y / div;
+    const tileU = tileCoords.x / div;
+    const tileV = tileCoords.y / div;
     const duv = 1.0 / div;
-    const coords = [
+    let coords = [
       cubeMap.vec2(tileU, tileV) , 
       cubeMap.vec2(tileU + duv, tileV ), 
       cubeMap.vec2(tileU, tileV + duv ), 
       cubeMap.vec2(tileU + duv, tileV + duv )
-    ].map(uv => {
-      return cubeMap.st2Normal(cubeMap.uv2st(uv), face)
+    ]
+    coords = coords.map(uv => {
+      return new Vector3(...cubeMap.st2Normal(cubeMap.uv2st(uv), face))
+        .applyQuaternion(planet.planetRotation)
         .multiplyScalar(planet.radius)
         .add(planet.planetCenter);
     });
+
+    // const __va = coords.map(a => a.clone().project(this.__camera));
 
     return coords;
   }
 
   getArcPlane(arc, sphere) {
-    const n1 = arc[0].sub(sphere.center);
-    const n2 = arc[1].sub(sphere.center);
+    const n1 = arc[0].clone().sub(sphere.center);
+    const n2 = arc[1].clone().sub(sphere.center);
     const n = n1.cross(n2).normalize();
     return new Plane().setFromNormalAndCoplanarPoint(n, sphere.center.clone());
   }
@@ -491,17 +529,17 @@ export class TileRetriver{
   }
 
   arcWithinIntersection(arc, arcPlane, pointsOnSphere, sphere){
-    arc = arc.map(x => new Vector3(...x).sub(sphere.center));
+    // arc = arc.map(x => new Vector3(...x).sub(sphere.center));
     pointsOnSphere = pointsOnSphere.map(x => x.sub(sphere.center));
     const arcPlaneX = this.projectOnPlane(arcPlane, arc[0]).normalize();
     const arcPlaneY = arcPlaneX.clone().cross(arcPlane.normal).normalize();
-    const arc1v0 = arc[0];
-    const arc1v = arc[1];//.normalize();
+    const arc1v0 = arc[0].clone();
+    const arc1v = arc[1].clone(); //.normalize();
     const arc2v1 = pointsOnSphere[0];//.normalize();
     const arc2v2 = pointsOnSphere[1];//.normalize();
-    console.log(arc1v.clone().sub(arcPlane.coplanarPoint()).dot(arcPlane.normal), 
-                arc2v1.clone().sub(arcPlane.coplanarPoint()).dot(arcPlane.normal), 
-                arc2v2.clone().sub(arcPlane.coplanarPoint()).dot(arcPlane.normal));
+    //console.log(arc1v.clone().sub(arcPlane.coplanarPoint()).dot(arcPlane.normal), 
+    //            arc2v1.clone().sub(arcPlane.coplanarPoint()).dot(arcPlane.normal), 
+    //            arc2v2.clone().sub(arcPlane.coplanarPoint()).dot(arcPlane.normal));
     const arcPoint0 = [arc1v0.dot(arcPlaneX), arc1v0.dot(arcPlaneY), arc1v0.dot(arcPlane.normal)];
     const arcPoint1 = [arc1v.dot(arcPlaneX), arc1v.dot(arcPlaneY), arc1v.dot(arcPlane.normal)];
     const circlePoint1 = [arc2v1.dot(arcPlaneX), arc2v1.dot(arcPlaneY), arc2v1.dot(arcPlane.normal)];
@@ -511,7 +549,7 @@ export class TileRetriver{
     const angleToPoint1 = Math.atan2(circlePoint1[1], circlePoint1[0]);
     const angleToPoint2 = Math.atan2(circlePoint2[1], circlePoint2[0]);
     // debugger;
-    console.log(arcAngle, angleToPoint1, angleToPoint2)
+    // console.log(arcAngle, angleToPoint1, angleToPoint2)
 
     return this.checkIfPointWithinArc(0, arcAngle, angleToPoint1, angleToPoint2);
   }
@@ -537,16 +575,15 @@ export class TileRetriver{
       [cornerPoints[0], cornerPoints[1]],
       [cornerPoints[1], cornerPoints[2]],
       [cornerPoints[2], cornerPoints[3]],
-      [cornerPoints[3], cornerPoints[0]],
+      [cornerPoints[3], cornerPoints[0]]
     ]
+    const planeNames = ['left', 'right', 'top', 'bottom'];
     const sphere = {center: planet.planetCenter.clone(), radius: planet.radius};
-    console.log('-------------------------------');
-    for(const arc of arcs) {
-      console.log("-----arc ",arc[0], arc[1] );
-      for(const pl of ['left', 'right', 'top', 'bottom']){
-        const plane = this.frustumPlanes[pl];
+    for(let c = 0; c < arcs.length; ++c) {
+      const arc = arcs[c];
+      for(let p = 0; p < planeNames.length; ++p){
+        const plane = this.frustumPlanes[planeNames[p]];
         const checkResult = this.testArcPlaneIntersection(arc, plane, sphere);
-        console.log('check', pl, checkResult);
 
         if(checkResult){
           return true;
@@ -570,18 +607,21 @@ export class TileRetriver{
 
 
   pushTileWithNeiboursInFrustum(camera, planet, firstTile, deepness = 0) {
-    if(deepness > 2){
+    if(deepness > 3){
       return;
     }   
     const [J,I] = firstTile.tileCoords; // this.fromTile(firstTile.lod, firstTile.tile);
     this.putToResultingTiles(firstTile.face, firstTile.lod, firstTile.tile, firstTile.tileCoords);
 
-    for(let {face, tile, tileCoords} of this.neigbours(firstTile.lod, firstTile.face, J, I)) {
+    const __t = Date.now();
+    const _neighbors = this.neigbourTiles(firstTile.lod, firstTile.face, J, I);
+    for(let i = 0; i < _neighbors.length; ++i) {
+      let {face, tile, tileCoords} = _neighbors[i];
 
       if(this.tileCentralPointOnSameLod(face, firstTile.lod, tileCoords)){
         if(this.isIntersectedWithCameraFrustumPlanes(face, tileCoords, firstTile.lod, planet)){
           const nextTile = {face, tile, tileCoords, lod:firstTile.lod};
-          setTimeout(() => this.pushTileWithNeiboursInFrustum(camera, planet, nextTile, deepness + 1), 0);
+          this.pushTileWithNeiboursInFrustum(camera, planet, nextTile, deepness + 1);
         }
       } else {
         const nextTile = this.getTileOfUpperLod(face, firstTile.lod, tile);
@@ -591,6 +631,7 @@ export class TileRetriver{
         
       }
     }
+    // console.log('==loop==',deepness,  Date.now() - __t);
   
   }
 }
