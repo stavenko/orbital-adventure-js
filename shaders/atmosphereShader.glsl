@@ -25,7 +25,7 @@ uniform sampler2D irradianceTexture;
 uniform sampler2D planetSurfaceColor;
 uniform sampler2D tilesTexture;
 #define COMBINED_SCATTERING_TEXTURES
-// #define DEBUG
+#define DEBUG
 
 #include <AtmosphereUniforms>
 #include <AtmosphereConstructor>
@@ -341,7 +341,7 @@ void main() {
   vec4 color = computeColor(atmosphere);
 
 #ifdef DEBUG
-  color = texture2D(tilesTexture, uv);
+  color = texture2D(planetSurfaceColor, uv);
 #endif
 
   gl_FragColor = vec4(color.rgb, 1.0);

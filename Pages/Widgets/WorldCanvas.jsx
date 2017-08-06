@@ -74,7 +74,7 @@ const worldProps = {
       phisical:{
         density: 1,
         mass: 100,
-        atmosphereHeight: 60e3,
+        atmosphereHeight: 200e3,
         radius: 6378.1e3,
         dobsonUnit: 2.687e20,
         maxOzoneNumberDensity: 300 * 2.687e20 / 15000.0,
@@ -100,7 +100,7 @@ const worldProps = {
       },
       "spatial":{
         "position": [6.3781e6*3,0,13e9],
-        "north":[0,0.707,0.707],
+        "north": [0,0.707,0.707],
         "rotationSpeed": 2*Math.PI/(24*60*60),
         "radius": 6.3781e6
       }

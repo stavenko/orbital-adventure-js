@@ -1,3 +1,43 @@
+    //cubemap lookup
+    /*
+ major axis
+      direction     target	            		           sc     tc    ma
+      ----------    -------------------------------    ---    ---   ---
+       +rx	        TEXTURE_CUBE_MAP_POSITIVE_X_ARB    -rz    -ry   rx
+       -rx	        TEXTURE_CUBE_MAP_NEGATIVE_X_ARB    +rz    -ry   rx
+
+       +ry	        TEXTURE_CUBE_MAP_POSITIVE_Y_ARB    +rx    +rz   ry
+       -ry	        TEXTURE_CUBE_MAP_NEGATIVE_Y_ARB    +rx    -rz   ry
+       +rz	        TEXTURE_CUBE_MAP_POSITIVE_Z_ARB    +rx    -ry   rz
+       -rz	        TEXTURE_CUBE_MAP_NEGATIVE_Z_ARB    -rx    -ry   rz
+
+      s   =	( sc/|ma| + 1 ) / 2
+      t   =	( tc/|ma| + 1 ) / 2
+     */
+float heightMapLookup(sampler2D map, vec2 uv, bool a){
+  vec4 texel = texture2D(map, uv);
+  return texel.r;
+}
+
+vec2 getHeightUV(vec2 uv){
+  return mod(uv*vec2(2.0), vec2(1.0));
+}
+float texelLookup(vec4 texel, vec2 uv){
+  float x = floor(uv.x / 0.5);
+  float y = floor(uv.y / 0.5);
+  int t = int(x*2.0 + y);
+  if(t == 0) return texel.x;
+  if(t == 1) return texel.y;
+  if(t == 2) return texel.z;
+  if(t == 3) return texel.w;
+}
+
+float heightMapLookup(sampler2D map, vec2 uv){
+  vec2 nuv = getHeightUV(uv);
+  vec4 texel = texture2D(map, nuv);
+  return texelLookup(texel,uv);
+}
+
 int calculateTile(vec2 tileCoords, int lod){
   float division = pow(2.0, float(lod));
   float tile = tileCoords.y * division + tileCoords.x;

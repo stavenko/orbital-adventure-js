@@ -18,6 +18,8 @@ const VertexShader = require('../shaders/ScreenSpaceVertexShader.glsl')
 const normalMapShader = require('../shaders/normalMapShader.glsl')
 const heightMapShader = require('../shaders/heightMapShader.glsl')
 
+const TextureSize = 512;
+
 export class SurfaceTextureGenerator{
 
   constructor(renderer){
@@ -34,13 +36,12 @@ export class SurfaceTextureGenerator{
       transparent: false
 
     });
-    
     this.heightMapMaterial.needsUpdate = true;
   }
+    
   isExists(forWorld, type, params){
 
-    let {lod, face, tile} = params;
-    let desc = `${lod}-${face}-${tile}`;
+    let desc = this.getTextureKey(params);
     let key = `${forWorld.uuid}.${type}.${desc}`;
     let fb = get(this.textures, key);
     let isExists = !!fb && fb.key == key;
@@ -59,26 +60,37 @@ export class SurfaceTextureGenerator{
     return new DataTexture(f, 32, 16, THREE.RGBAFormat, THREE.FloatType);
   }
 
+  getTextureKey(params){
+    const base =  [params.lod, params.face, params.tile]
+    if (params.halfResolution) {
+      base.push("half");
+    }
+    return base.join('-');
+  }
+
   lookupTextures(forWorld, type, params){
-    let {lod, face, tile} = params;
-    let desc = `${lod}-${face}-${tile}`;
+    let {lod, face, tile, halfResolution} = params;
+    let desc = this.getTextureKey(params);
     let framebuffer = this.textures[forWorld.uuid][type][desc];
     let timestamp = Date.now();
     framebuffer.accessTime = timestamp;
     return framebuffer.texture;
   }
 
-  createFramebuffer(type){
+  createFramebuffer(type, halfResolution){
+    const width = TextureSize / (halfResolution ? 2 : 1);
+
     if(type == 'height'){
-      return new WebGLRenderTarget(256, 256, {
+      return new WebGLRenderTarget(width / 2, width / 2, {
         type: THREE.FloatType,
         format: THREE.RBGAFormat,
         depthBuffer: false,
         stencilBuffer: false,
       })
     }
+
     if(type == 'normal'){
-      return new WebGLRenderTarget(512, 512, {
+      return new WebGLRenderTarget(width, width, {
         type: THREE.FloatType,
         format: THREE.RBGAFormat,
         depthBuffer: false,
@@ -129,7 +141,7 @@ export class SurfaceTextureGenerator{
 
   saveTexture(fb, forWorld, type, params){
     let {lod, face, tile} = params;
-    let desc = `${lod}-${face}-${tile}`;
+    let desc = this.getTextureKey(params);
     let key = `${forWorld.uuid}.${type}.${desc}`;
     if(!this.textures[forWorld.uuid])
       this.textures[forWorld.uuid] = {};
@@ -158,8 +170,11 @@ export class SurfaceTextureGenerator{
     let uniforms = this.screenSpaceMesh.material.uniforms;
     uniforms.lod = {value: params.lod};
     uniforms.tile = {value: params.tile};
+    console.log('prepea', params.lod);
+    uniforms.tileJ = {value: params.tileCoords.x};
+    uniforms.tileI = {value: params.tileCoords.y};
     uniforms.face = {value: params.face};
-    console.log("prep", params.lod, params.face, params.tile);
+    uniforms.halfResolution = {value: params.halfResolution};
     uniforms.permutationTable = {value: forWorld.texturesCache.permutationTable};
     uniforms.permutationTableSize = {value: new Vector2(32,16)}
   }

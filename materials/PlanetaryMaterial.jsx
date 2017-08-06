@@ -1,3 +1,4 @@
+import * as THREE from 'three/src/constants.js';
 import {EventDispatcher} from 'three/src/core/EventDispatcher';
 import {ShaderMaterial} from 'three/src/materials/ShaderMaterial';
 import {RawShaderMaterial} from 'three/src/materials/RawShaderMaterial';
@@ -8,7 +9,7 @@ ShaderChunk.lodUtils = require('../shaders/lod/lodUtils.glsl');
 export function LodCalculatorMaterial(props){
   ShaderMaterial.call(this);
   this.type='LodCalculatorMaterial';
-  this.vertexShader = require('../shaders/lod/vertexShader.glsl');
+  this.vertexShader = require('../shaders/lod/lodDeterminerVertex.glsl');
   this.fragmentShader = require('../shaders/lod/tileRetrievier.glsl');
   this.uniforms = {}; 
   this.transparent = false;

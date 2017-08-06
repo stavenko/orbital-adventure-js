@@ -10,7 +10,7 @@ import isEqual from 'lodash/isEqual';
 import * as GeometryManager from '../GeometryManager.js';
 
 
-export function getLodGeometry(){
+export function getLodGeometry(n){
   let pg = new PlaneGeometry({
     normal:new Vector3(0,0,-1), 
     origin: new Vector3(0,0,0),
@@ -18,7 +18,7 @@ export function getLodGeometry(){
       x: new Vector3(1,0,0),
       y: new Vector3(0,1,0)
     }
-  }, 1, 1, 100);
+  }, 1, 1, n);
   return pg;
 }
 
@@ -353,8 +353,8 @@ export function PlaneGeometry(plane, sizex, sizey, steps=10){
   let positions = [];
   let faces = [];
   let incr = 0;
-  for(let i = 0; i< steps; ++i){
-    for(let j =0; j< steps; ++j){
+  for(let i = 0; i < steps; ++i){
+    for(let j =0; j < steps; ++j){
       let s = i/steps - 0.5;
       let t = j/steps - 0.5;
       let a = getIx(i,j);
@@ -365,7 +365,7 @@ export function PlaneGeometry(plane, sizex, sizey, steps=10){
       faces.push(a,c,d);
     }
   }
-  this.setIndex(new BufferAttribute(toArray(Uint16Array, faces), 1));
+  this.setIndex(new BufferAttribute(toArray(Uint32Array, faces), 1));
   this.addAttribute('position', new BufferAttribute(toArray(Float32Array, positions),3));
 
   function getP(s,t){

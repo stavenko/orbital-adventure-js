@@ -247,7 +247,7 @@ export class CanvasBase extends React.Component{
           if(!this.runningLoop)return;
 
           let spent = ts - this._prevTS;
-          console.log("tick", spent);
+          // console.log("tick", spent);
           this._prevTS = ts;
           window.requestAnimationFrame(tick)
         };
