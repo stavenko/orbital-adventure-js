@@ -359,6 +359,7 @@ export class TileRetriver{
   resetCollectedTiles(){
     this.tileFrustumCheckCache = new Map;
     this.collectedTiles = new Map;
+    this.__deepness = 0;
   }
 
 
@@ -367,6 +368,7 @@ export class TileRetriver{
     this.resetCollectedTiles();
     this.pushTileWithNeiboursInFrustum(camera, planet, firstTile);
     this.splitLowerLodsToHalfs();
+    console.log("======================");
     return this.collectedTiles;
   }
 
@@ -469,6 +471,10 @@ export class TileRetriver{
   }
 
 
+  isPointOnPlane(point, plane) {
+    const dot = plane.normal.dot(point);
+    return (dot - plane.constant) < 1e-10;
+  }
 
   checkIfPointWithinArc(a0, a1, b0, b1){
     const A = Math.max(a0, a1);
@@ -485,18 +491,21 @@ export class TileRetriver{
   }
 
   arcWithinIntersection(arc, arcPlane, pointsOnSphere, sphere){
-    arc = arc.map(x => new Vector3(...x));
-    // pointsOnSphere = pointsOnSphere.map(x => new Vector3(...x));
-    const arcPlaneX = this.projectOnPlane(arcPlane, arc[0].clone().sub(sphere.center).normalize());
+    arc = arc.map(x => new Vector3(...x).sub(sphere.center));
+    pointsOnSphere = pointsOnSphere.map(x => x.sub(sphere.center));
+    const arcPlaneX = this.projectOnPlane(arcPlane, arc[0]).normalize();
     const arcPlaneY = arcPlaneX.clone().cross(arcPlane.normal).normalize();
-    const arc1v = arc[1].clone().sub(sphere.center).normalize();
-    const arc2v1 = pointsOnSphere[0].clone().sub(sphere.center).normalize();
-    const arc2v2 = pointsOnSphere[1].clone().sub(sphere.center).normalize();
-    console.log(arc1v.dot(arcPlane.normal), arc2v1.dot(arcPlane.normal), arc2v2.dot(arcPlane.normal));
-    const arcPoint0 = [1, 0];
-    const arcPoint1 = [arc1v.dot(arcPlaneX), arc1v.dot(arcPlaneY)];
-    const circlePoint1 = [arc2v1.dot(arcPlaneX), arc2v1.dot(arcPlaneY)];
-    const circlePoint2 = [arc2v2.dot(arcPlaneX), arc2v2.dot(arcPlaneY)];
+    const arc1v0 = arc[0];
+    const arc1v = arc[1];//.normalize();
+    const arc2v1 = pointsOnSphere[0];//.normalize();
+    const arc2v2 = pointsOnSphere[1];//.normalize();
+    console.log(arc1v.clone().sub(arcPlane.coplanarPoint()).dot(arcPlane.normal), 
+                arc2v1.clone().sub(arcPlane.coplanarPoint()).dot(arcPlane.normal), 
+                arc2v2.clone().sub(arcPlane.coplanarPoint()).dot(arcPlane.normal));
+    const arcPoint0 = [arc1v0.dot(arcPlaneX), arc1v0.dot(arcPlaneY), arc1v0.dot(arcPlane.normal)];
+    const arcPoint1 = [arc1v.dot(arcPlaneX), arc1v.dot(arcPlaneY), arc1v.dot(arcPlane.normal)];
+    const circlePoint1 = [arc2v1.dot(arcPlaneX), arc2v1.dot(arcPlaneY), arc2v1.dot(arcPlane.normal)];
+    const circlePoint2 = [arc2v2.dot(arcPlaneX), arc2v2.dot(arcPlaneY), arc2v2.dot(arcPlane.normal)];
     const arcAngle = Math.atan2(arcPoint1[1], arcPoint1[0]);
      
     const angleToPoint1 = Math.atan2(circlePoint1[1], circlePoint1[0]);
@@ -531,10 +540,15 @@ export class TileRetriver{
       [cornerPoints[3], cornerPoints[0]],
     ]
     const sphere = {center: planet.planetCenter.clone(), radius: planet.radius};
+    console.log('-------------------------------');
     for(const arc of arcs) {
+      console.log("-----arc ",arc[0], arc[1] );
       for(const pl of ['left', 'right', 'top', 'bottom']){
         const plane = this.frustumPlanes[pl];
-        if(this.testArcPlaneIntersection(arc, plane, sphere)){
+        const checkResult = this.testArcPlaneIntersection(arc, plane, sphere);
+        console.log('check', pl, checkResult);
+
+        if(checkResult){
           return true;
         }
       }
@@ -553,24 +567,26 @@ export class TileRetriver{
     return this.tileFrustumCheckCache.get(hash);
   }
 
-  pushTileWithNeiboursInFrustum(camera, planet, firstTile) {
-    
+
+
+  pushTileWithNeiboursInFrustum(camera, planet, firstTile, deepness = 0) {
+    if(deepness > 2){
+      return;
+    }   
     const [J,I] = firstTile.tileCoords; // this.fromTile(firstTile.lod, firstTile.tile);
     this.putToResultingTiles(firstTile.face, firstTile.lod, firstTile.tile, firstTile.tileCoords);
 
     for(let {face, tile, tileCoords} of this.neigbours(firstTile.lod, firstTile.face, J, I)) {
-      console.log('------', firstTile.tileCoords, tileCoords);
-
 
       if(this.tileCentralPointOnSameLod(face, firstTile.lod, tileCoords)){
         if(this.isIntersectedWithCameraFrustumPlanes(face, tileCoords, firstTile.lod, planet)){
           const nextTile = {face, tile, tileCoords, lod:firstTile.lod};
-          this.pushTileWithNeiboursInFrustum(camera, planet, nextTile);
+          setTimeout(() => this.pushTileWithNeiboursInFrustum(camera, planet, nextTile, deepness + 1), 0);
         }
       } else {
         const nextTile = this.getTileOfUpperLod(face, firstTile.lod, tile);
         if(this.isIntersectedWithCameraFrustumPlanes(nextTile.face, nextTile.lod, nextTile.tile)) {
-          this.pushTileWithNeiboursInFrustum(camera, planet, nextTile);
+          this.pushTileWithNeiboursInFrustum(camera, planet, nextTile, deepness + 1);
         }
         
       }
