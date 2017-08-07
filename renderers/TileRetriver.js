@@ -525,7 +525,10 @@ export class TileRetriver{
     function btw(a, A, b) {
       return b > a && b <= A;
     }
-
+  }
+  checkIfAngleWithinArc(a, b, B) {
+    [b, B] = [b, B].sort();
+    return a > b && a <= B
   }
 
   arcWithinIntersection(arc, arcPlane, pointsOnSphere, sphere){
@@ -548,18 +551,23 @@ export class TileRetriver{
      
     const angleToPoint1 = Math.atan2(circlePoint1[1], circlePoint1[0]);
     const angleToPoint2 = Math.atan2(circlePoint2[1], circlePoint2[0]);
-    // debugger;
-    // console.log(arcAngle, angleToPoint1, angleToPoint2)
+    if(this.checkIfAngleWithinArc(angleToPoint1, 0, arcAngle)) {
+      return pointsOnSphere[0];
+    }
 
-    return this.checkIfPointWithinArc(0, arcAngle, angleToPoint1, angleToPoint2);
+    if(this.checkIfAngleWithinArc(angleToPoint2, 0, arcAngle)) {
+      return pointsOnSphere[1];
+    }
+
+    // return this.checkIfPointWithinArc(0, arcAngle, angleToPoint1, angleToPoint2);
   }
 
   testArcPlaneIntersection(arc, plane, sphere){
     const arcPlane = this.getArcPlane(arc, sphere);
     const planeIntersection = this.planeIntersection(arcPlane, plane);
-    if(!planeIntersection) return false;
+    if(!planeIntersection) return null;
     const intersections = this.lineSphereIntersection(planeIntersection, sphere, true);
-    if(!intersections) return false;
+    if(!intersections) return null;
     const pointsOnSphere = intersections.map(t => this.getLinePoint(t, planeIntersection));
     return this.arcWithinIntersection(arc, arcPlane, pointsOnSphere, sphere);
   }
@@ -583,14 +591,25 @@ export class TileRetriver{
       const arc = arcs[c];
       for(let p = 0; p < planeNames.length; ++p){
         const plane = this.frustumPlanes[planeNames[p]];
-        const checkResult = this.testArcPlaneIntersection(arc, plane, sphere);
-
-        if(checkResult){
+        const intersectedPoint = this.testArcPlaneIntersection(arc, plane, sphere);
+        if(!intersectedPoint) {
+          return false
+        }
+        if(this.pointWithinFrustum(intersectedPoint)){
           return true;
         }
       }
     }
     return false;
+  }
+
+  pointWithinFrustum(point) {
+    const screen = point.clone().project(this.__camera);
+    return near1(screen.x) && near1(screen.y);
+    
+    function near1(a){
+      return Math.abs(a) < 1.5;
+    }
   }
 
   isIntersectedWithCameraFrustumPlanes(face, tc, l, pl) {
