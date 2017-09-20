@@ -7,6 +7,9 @@ import * as cubeMap from '../math/cubeMap.js';
 
 const TextureSize = 512;
 export class TileRetriver{
+  constructor(){
+    cubeMap.tileMath();
+  }
 
   lineSphereIntersection(line, sphere, both = false){
     const pMinusC = line.origin.clone().sub(sphere.center);
@@ -47,25 +50,6 @@ export class TileRetriver{
     .multiplyScalar(a) 
     .add(p2a);
     return {origin, dir};
-  /*bool IntersectionOf2Planes(Plane3D p1, Plane3D p2, Line3D line)
-{
-    Vector3D d = Cross(p1.normal,p2.normal)
-    if (d.length() == 0) {
-        return false;
-    }
-    line.direction = d;
-    float s1, s2, a, b;
-    s1 = p1.d; // d from the plane equation
-    s2 = p2.d;
-    float n1n2dot = Dot(p1.normal, p2.normal);
-    float n1normsqr = Dot(p1.normal, p1.normal);
-    float n2normsqr = Dot(p2.normal, p2.normal);
-    a = (s2 * n1n2dot - s1 * n2normsqr) / (n1n2dot^2 - n1normsqr * n2normsqr);
-    b = (s1 * n1n2dot - s2 * n2normsqr) / (n1n2dot^2 - n1normsqr * n2normsqr);
-    line.p = a * p1.normal + b * p2.normal;
-    return true;
-}*/
-
   }
   tileSidePlaneIntersection(normal1, normal2, plane, spherePosition, sphereRadius) {
     
@@ -360,7 +344,6 @@ export class TileRetriver{
   resetCollectedTiles(){
     this.tileFrustumCheckCache = new Map;
     this.collectedTiles = new Map;
-    this.__deepness = 0;
   }
 
 
@@ -373,7 +356,6 @@ export class TileRetriver{
     this.splitLowerLodsToHalfs();
     // console.log("======================");
     let count = 0;
-    debugger;
     for(const {lod, faceTileMap} of this.collectedTiles.values()){
       for(const {tiles} of faceTileMap.values()){
         count+=tiles.size;
@@ -410,7 +392,10 @@ export class TileRetriver{
   putToResultingTiles(face, lod, tile, tileCoords){
     const lodData = this._getLodDescriptor(lod);
     const tileSet = this._getFaceTiles(lodData.faceTileMap, face);
+    if(tileSet.tiles.has(tile)) 
+      return false;
     tileSet.tiles.set(tile, tileCoords);
+    return true;
   }
 
   *neigbours(lod, face, J, I){
@@ -434,17 +419,18 @@ export class TileRetriver{
     }
   }
   neigbourTiles(lod, face, J, I){
-    const max = Math.pow(2, lod) - 1;
+    const div = Math.pow(2, lod) 
+    const max = div - 1;
     const min = 0;
     const neigbours = [];
     for(let j = -1; j <= 1; ++j){
-      for(let i = -1; i <=1; ++i){
+      for(let i = -1; i <= 1; ++i){
         if(j === 0 && i === 0) continue;
 
         const Jj = J + j;
         const Ii = I + i;
         if(Jj > max || Jj < min || Ii > max || Ii < min){
-          neigbours.push(this.faceShiftedTile(lod, face, Jj, Ii)); 
+          neigbours.push(this.faceShiftedTile(lod, face, [J, j], [I, i])); 
         }else{
           const tileCoords = [Jj, Ii];
           const tile = cubeMap.calculateTile(tileCoords, lod);
@@ -455,23 +441,70 @@ export class TileRetriver{
     }
     return neigbours;
 
+    function getBetter(I, max, min){
+      switch (true) {
+        case I > max: return I + 1e-12;
+        case I < min: return I - 1e-12;
+        default:
+          return I;
+      }
+    }
+
   }
 
-  faceShiftedTile(lod, face, J, I){
+  faceShiftedTile(lod, face, [J, j] , [I, i]){
     const div = Math.pow(2, lod);
-    const uv = cubeMap.vec2(J / div, I / div);
+
+    const uv = cubeMap.vec2(getV(J, j, div), getV(I, i, div));
     const normal = cubeMap.st2Normal(cubeMap.uv2st(uv), face).normalize();
     const newFace = cubeMap.determineFace(normal);
     const newSt   = cubeMap.st2uv(cubeMap.getSt(normal, newFace));
     const newJI = cubeMap.findTile(newSt, lod);
     const newTile = cubeMap.calculateTile(newJI, lod);
-    debugger;
     return {face: newFace, tile: newTile, tileCoords: newJI};
+
+    function getV(I, i, div){
+      const tw = 1 / div;
+      switch (true) {
+        case (I + i) < 0: {
+          console.log('too low');
+          const edge = 0;
+          const nextTileCenter = edge - tw/2;
+          return nextTileCenter;
+        }
+        case (I + i) > (div - 1): {
+          console.log('too high');
+          const edge = 1;
+          const nextTileCenter = edge + tw/2;
+          return nextTileCenter;
+        }
+        default: {
+          const edge = (I+i) / div;
+          const nextTileCenter = edge;
+          return nextTileCenter
+        }
+      }
+    }
 
   }
 
-  tileCentralPointOnSameLod(face, lod, tileCoords) {
-    return true;
+  getPlanetCoords(face, uv, planet){
+    return new Vector3(...cubeMap.st2Normal(cubeMap.uv2st(uv), face))
+      .normalize()
+      .applyQuaternion(planet.planetRotation)
+      .multiplyScalar(planet.radius)
+      .add(planet.planetCenter)
+  }
+
+  tileCentralPointOnSameLod(face, lod, tileCoords, planet) {
+    // return true;
+    const div = Math.pow(2, lod);
+    const tileU = tileCoords.x / div;
+    const tileV = tileCoords.y / div;
+    const duv = 0.5 / div;
+    const surfacePoint = this.getPlanetCoords(face, cubeMap.vec2(tileU + duv, tileV + duv), planet)
+    const tileCenterLod = this.calculateLodForPointOnSphere(surfacePoint, planet.radius, this.__camera);
+    return tileCenterLod === lod;
   }
 
   getTileSphereCoords(face, tileCoords, lod, planet) {
@@ -485,14 +518,8 @@ export class TileRetriver{
       cubeMap.vec2(tileU, tileV + duv ), 
       cubeMap.vec2(tileU + duv, tileV + duv )
     ]
-    coords = coords.map(uv => {
-      return new Vector3(...cubeMap.st2Normal(cubeMap.uv2st(uv), face))
-        .applyQuaternion(planet.planetRotation)
-        .multiplyScalar(planet.radius)
-        .add(planet.planetCenter);
-    });
-
-    // const __va = coords.map(a => a.clone().project(this.__camera));
+    const inv = planet.planetRotation.clone().inverse();
+    coords = coords.map(uv => this.getPlanetCoords(face, uv, planet));
 
     return coords;
   }
@@ -603,9 +630,41 @@ export class TileRetriver{
     return false;
   }
 
+  pointBetweenFrutumPlanes(point, ix){
+    const keys = ['left', 'right', 'top', 'bottom']
+    for(let i = 0; i < keys.length; ++i){
+      const pl = this.frustumPlanes[keys[i]]
+      const H = pl.normal.dot(point);
+      const ph = H - pl.constant;
+      if (ph < 0) {
+        //console.log('not ok', ph, ix)
+        return false;
+      } else {
+        //console.log( keys[i], ph, ' ok ' ,ix)
+      }
+
+    }
+    return true;
+  }
+
+  isWithinCameraFustum(face, tileCoords, lod, planet) {
+    const cornerPoints = this.getTileSphereCoords(face, tileCoords, lod, planet);
+    const ids = cornerPoints.filter((point, ix) => this.pointBetweenFrutumPlanes(point, ix));
+    if (ids.length > 0 ) {
+      return true;
+    }
+
+
+  }
+
   pointWithinFrustum(point) {
     const screen = point.clone().project(this.__camera);
-    return near1(screen.x) && near1(screen.y);
+    const near = near1(screen.x) && near1(screen.y);
+    if(near) {
+      console.log('vars--->', screen.x, screen.y);
+      console.log('vars--->', point.x, point.y, point.z);
+    }
+    return near;
     
     function near1(a){
       return Math.abs(a) < 1.5;
@@ -616,7 +675,8 @@ export class TileRetriver{
     const tile = {face, tileCoords:tc, lod:l};
     const hash = this.tileHash(tile);
     if(!this.tileFrustumCheckCache.has(hash)) {
-      const intersected = this.isIntersectedWithCameraFrustumPlanes_(face, tc, l, pl);
+      //const intersected = this.isIntersectedWithCameraFrustumPlanes_(face, tc, l, pl);
+      const intersected = this.isWithinCameraFustum(face, tc, l, pl);
       this.tileFrustumCheckCache.set(hash, intersected);
       return intersected;
     }
@@ -624,27 +684,45 @@ export class TileRetriver{
   }
 
 
+  getTileOfUpperLod(face, lod, tileCoords) {
+    const J = Math.floor(tileCoords.x / 2);
+    const I = Math.floor(tileCoords.y / 2);
+    const tile = this.toTile(lod - 1, J, I);
+    return {tile, face, tileCoords: cubeMap.vec2(J,I), lod: lod-1};
+  }
+
+  toTile(lod, I, J) {
+    const div = Math.pow(2, lod);
+    const max = div - 1;
+    const min = 0;
+    return Math.max(min, Math.min(J, max)) * div + Math.max(min, Math.min(I, max));
+    }
+
 
   pushTileWithNeiboursInFrustum(camera, planet, firstTile, deepness = 0) {
-    if(deepness > 3){
-      return;
-    }   
     const [J,I] = firstTile.tileCoords; // this.fromTile(firstTile.lod, firstTile.tile);
-    this.putToResultingTiles(firstTile.face, firstTile.lod, firstTile.tile, firstTile.tileCoords);
+    const isNew = this.putToResultingTiles(firstTile.face, firstTile.lod, firstTile.tile, firstTile.tileCoords)
+    if(!isNew) {
+      console.log(deepness, 'not new - return');
+      return;
+    }
+    if(deepness > 30) return;
+    console.log(deepness,' just putted: ', firstTile.face, firstTile.tileCoords.x, firstTile.tileCoords.y)
 
     const __t = Date.now();
     const _neighbors = this.neigbourTiles(firstTile.lod, firstTile.face, J, I);
     for(let i = 0; i < _neighbors.length; ++i) {
       let {face, tile, tileCoords} = _neighbors[i];
 
-      if(this.tileCentralPointOnSameLod(face, firstTile.lod, tileCoords)){
+      if(this.tileCentralPointOnSameLod(face, firstTile.lod, tileCoords, planet)){
         if(this.isIntersectedWithCameraFrustumPlanes(face, tileCoords, firstTile.lod, planet)){
           const nextTile = {face, tile, tileCoords, lod:firstTile.lod};
           this.pushTileWithNeiboursInFrustum(camera, planet, nextTile, deepness + 1);
         }
       } else {
-        const nextTile = this.getTileOfUpperLod(face, firstTile.lod, tile);
-        if(this.isIntersectedWithCameraFrustumPlanes(nextTile.face, nextTile.lod, nextTile.tile)) {
+        console.log("getHighe lod!")
+        const nextTile = this.getTileOfUpperLod(face, firstTile.lod, firstTile.tileCoords);
+        if(this.isIntersectedWithCameraFrustumPlanes(nextTile.face, nextTile.tileCoords, nextTile.lod, planet)) {
           this.pushTileWithNeiboursInFrustum(camera, planet, nextTile, deepness + 1);
         }
         

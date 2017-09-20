@@ -46,6 +46,7 @@ export class PlanetRenderer{
     this._screenSpaceMesh = this.initScreenSpaceMesh();
     this.__ww = 0;
     this.__zz = 0;
+    this.___someShit();
     this.pixelsSource = new Uint8Array(TileSourceMapSize * TileSourceMapSize *4 );
     this.planetSpheres = planets.planets.map((planet,ix)=>{
       let {spatial} = planet;
@@ -65,6 +66,27 @@ export class PlanetRenderer{
       depthBuffer: false,
       stencilBuffer: false
     })
+  }
+
+  ___someShit() {
+    const v = new Vector3(0.002, 0.003, 0.004);
+    const view = [ 0.963239971408044, -0.26302824444657114, 0.05463423931185677, 
+      0, 0.042454598550026486, 0.3498592394104325, 0.9358397938007924, 0, 
+      -0.26526659145807735, -0.8991188215261141, 0.3481651622918425, 
+      0, -0.00336512889067782, -0.0006014881716836106, -0.03161184970722086, 1];
+     const viewMatrix = new Matrix4().fromArray(view);
+
+     const proj =  [ 
+       1175.9625413238075, 0, 0, 0, 
+       0, 2339.8448341436406, 0, 0, 
+       0, 0, -100, 0, 
+       -0.013405309412218656, -0.16416751160442916, -0, 1 ]
+     const projMatrix = new Matrix4().fromArray(proj);
+
+     console.log(v.clone().applyMatrix4(viewMatrix).applyProjection(projMatrix));
+     debugger;
+    
+
   }
 
   clearing(){

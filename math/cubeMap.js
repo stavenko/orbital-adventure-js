@@ -113,6 +113,12 @@ export function determineFace(n){
     if(n.z > 0.0) return 4;
     else return 5;
   }
+  console.warn('select any');
+
+  if(n.x > 0.0) return 2;
+  else return 0;
+  
+  // these are absolutely equal impossible to choose
 }
 
 export function st2Normal(st, face){
@@ -155,4 +161,60 @@ export function calculateTile(tileCoords, lod){
   const tile = tileCoords[1] * division + tileCoords[0];
   return tile;
 
+}
+
+export function tileMath(){
+  const b = 1.001;
+  const B = 1.002;
+  for(let i = 0; i < 6; ++i){
+    console.log('face', i);
+
+    const pouz  = [vec2(b, 0), vec2(B, 0)];
+    console.log('positive overflow U, zero V');
+    printNewCoords(pouz, i);
+
+    const pouo  = [vec2(b, 1), vec2(B, 1)];
+    console.log('positive overflow U, 1 - V');
+    printNewCoords(pouo, i);
+
+    const nouz  = [vec2(-0.001, 0), vec2(-0.002, 0)];
+    console.log('negative overflow U, zero V');
+    printNewCoords(nouz, i);
+
+    const nouo  = [vec2(-.001, 1), vec2(-.002, 1)];
+    console.log('negative overflow U, 1 - V');
+    printNewCoords(nouo, i);
+
+
+
+
+
+    const povz  = [...pouz].map(l => l.reverse());
+    console.log('positive overflow V, zero U');
+    printNewCoords(povz, i);
+
+
+    const povo  = [...pouo].map(l => l.reverse());
+    console.log('positive overflow V, 1 - U');
+    printNewCoords(povo, i);
+
+    const novz  = [...nouz].map(l => l.reverse());
+    console.log('negative overflow V, zero U');
+    printNewCoords(novz, i);
+
+    const novo  = [...nouo].map(l => l.reverse());
+    console.log('positive overflow V, 1 - U');
+    printNewCoords(novo, i);
+  }
+
+  function printNewCoords(v, face){
+    for (let i = 0; i < v.length; ++i) {
+      const st = uv2st(v[i]);
+      const n = st2Normal(st, face);
+      const newFace = determineFace(n);
+      const newSt = getSt(n, newFace);
+      const newUV = st2uv(newSt);
+      console.log('new face', newFace,[...v[i]], [...newUV] );
+    }
+  }
 }
