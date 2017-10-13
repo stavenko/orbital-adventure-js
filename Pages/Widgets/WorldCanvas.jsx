@@ -1,5 +1,5 @@
 import {Camera} from '../../Camera.js';
-import {CanvasBase} from '../../Canvas.jsx'
+import {CanvasBase} from '../../Canvas.jsx';
 import {Mesh} from 'three/src/objects/Mesh';
 import {Object3D} from 'three/src/core/Object3D';
 import {Vector3} from 'three/src/math/Vector3';
@@ -15,26 +15,26 @@ import {PlanetRenderer} from '../../renderers/PlanetRenderer.js';
 import {WorldManager} from '../../materials/TextureManager.jsx';
 import planets from '../../planets.json';
 
-let ix = 0;
-function noiseSeed(){
-  let seed = [];
-  for(let i =0; i< 256; ++i){
-    seed[i] = Math.floor(Math.random()*256)
+const ix = 0;
+function noiseSeed() {
+  const seed = [];
+  for (let i = 0; i < 256; ++i) {
+    seed[i] = Math.floor(Math.random() * 256);
   }
   return seed;
 }
 
-function generateUUID(){
+function generateUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+    let r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
   });
 }
 
 const worldProps = {
   star: {
-    color: [1,1,0.9],
-    position: [0,0,0],
+    color: [1, 1, 0.9],
+    position: [0, 0, 0],
     mass: 2e30,
     radius: 1.4e9,
     angularRadius: 0.00935 / 2.0,
@@ -71,7 +71,7 @@ const worldProps = {
     {
       table: noiseSeed(),
       uuid: generateUUID(),
-      phisical:{
+      phisical: {
         density: 1,
         mass: 100,
         atmosphereHeight: 200e3,
@@ -88,7 +88,7 @@ const worldProps = {
         miePhaseFunctionG: 0.8,
         groundAlbedo: 0.1,
         has_ozone: true,
-        ozoneCrossSection:[
+        ozoneCrossSection: [
           1.18e-27, 2.182e-28, 2.818e-28, 6.636e-28, 1.527e-27, 2.763e-27, 5.52e-27,
           8.451e-27, 1.582e-26, 2.316e-26, 3.669e-26, 4.924e-26, 7.752e-26, 9.016e-26,
           1.48e-25, 1.602e-25, 2.139e-25, 2.755e-25, 3.091e-25, 3.5e-25, 4.266e-25,
@@ -98,40 +98,54 @@ const worldProps = {
           2.534e-26, 1.624e-26, 1.465e-26, 2.078e-26, 1.383e-26, 7.105e-27
         ]
       },
-      "spatial":{
-        "position": [6.3781e6*3,0,13e9],
-        "north": [0,0.707,0.707],
-        "rotationSpeed": 2*Math.PI/(24*60*60),
-        "radius": 6.3781e6
+      'spatial': {
+        'position': [6.3781e6 * 3, 0, 13e9],
+        'north': [0, 0.707, 0.707],
+        'rotationSpeed': 2 * Math.PI / (24 * 60 * 60),
+        'radius': 6.3781e6
       }
     } 
   ]
   
-}
+};
 
-export class WorldCanvas extends CanvasBase{
-  constructor(props){
-    super(props)
-    this._showFaces = [true, true, true, true, true, true]
+export class WorldCanvas extends CanvasBase {
+  constructor(props) {
+    super(props);
+    this._showFaces = [true, true, true, true, true, true];
     
   }
 
-  speedLookup(height){
-    if(height < 5) return 200;
-    if(height < 10) return 800;
-    if(height < 20) return 1600;
-    if(height < 60) return 7700;
-    if(height < 200) return 10000;
-    if(height < 1000) return 20000;
-    if(height < 10000) return 200000;
-     return 2000000;
+  speedLookup(height) {
+    if (height < 5) {
+      return 200;
+    }
+    if (height < 10) {
+      return 800;
+    }
+    if (height < 20) {
+      return 1600;
+    }
+    if (height < 60) {
+      return 7700;
+    }
+    if (height < 200) {
+      return 10000;
+    }
+    if (height < 1000) {
+      return 20000;
+    }
+    if (height < 10000) {
+      return 200000;
+    }
+    return 2000000;
 
 
   }
 
-  componentDidMount(){
+  componentDidMount() {
     super.componentDidMount();
-    this.renderingFunction = ()=>{};
+    this.renderingFunction = () => {};
     let fov = 45,
       aspect = this.nodeRect.width / this.nodeRect.height,
       near = 0.1,
@@ -163,153 +177,155 @@ export class WorldCanvas extends CanvasBase{
       this.startWorld(planets[0]);
       })*/
 
-    document.addEventListener('keydown',this.keyDown.bind(this));
+    document.addEventListener('keydown', this.keyDown.bind(this));
 
 
   }
 
-  keyDown(evt){
+  keyDown(evt) {
     let minDistance = Infinity;
     let planetRadius = null;
-    this.planets.planets.forEach(({spatial})=>{
-      let distance = new Vector3(...spatial.position).distanceTo(this.globalCameraOpts.position);
-      if(distance < minDistance){
+    this.planets.planets.forEach(({spatial}) => {
+      const distance = new Vector3(...spatial.position).distanceTo(this.globalCameraOpts.position);
+      if (distance < minDistance) {
         minDistance = distance;
         planetRadius = spatial.radius;
       }
-    })
+    });
 
     // let spdMul = Math.pow(minDistance / (planetRadius*3),2);
 
-    let x = new Vector3(1,0,0);
-    let y = new Vector3(0,1,0);
-    let z = new Vector3(0,0,1);
-    let a = Math.PI / 180;
-    let speed = this.speedLookup((minDistance-planetRadius)/1000);
-    console.log("minDistance: ", (minDistance-planetRadius)/1000, speed);
+    const x = new Vector3(1, 0, 0);
+    const y = new Vector3(0, 1, 0);
+    const z = new Vector3(0, 0, 1);
+    const a = Math.PI / 180;
+    const speed = this.speedLookup((minDistance - planetRadius) / 1000);
+    console.log('minDistance: ', (minDistance - planetRadius) / 1000, speed);
 
     console.log(evt.keyCode);
-    if(evt.keyCode >= 48 && evt.keyCode <= 57) {
-      let btn = evt.keyCode - 49;
+    if (evt.keyCode >= 48 && evt.keyCode <= 57) {
+      const btn = evt.keyCode - 49;
       this._showFaces[btn] = !this._showFaces[btn];
       this.planetRenderer.setVisibleFaces(this._showFaces);
 
       evt.preventDefault();
     }
 
-    if([106,107, 109,111].indexOf(evt.keyCode) != -1){
+    if ([106, 107, 109, 111].indexOf(evt.keyCode) != -1) {
       this.planetRenderer.doSomethingWithInput(evt.keyCode);
     }
 
-    if(evt.keyCode == 84){
-      this.planetRenderer.setFaceRendering()
+    if (evt.keyCode == 84) {
+      this.planetRenderer.setFaceRendering();
 
     }
 
-    if(evt.keyCode == 38){
-      this.turnCamera(x, a)
+    if (evt.keyCode == 38) {
+      this.turnCamera(x, a);
       evt.preventDefault();
     }
-    if(evt.keyCode == 40){
-      this.turnCamera(x, -a)
-      evt.preventDefault();
-    }
-
-    if(evt.keyCode == 37){
-      this.turnCamera(y, a)
-      evt.preventDefault();
-    }
-    if(evt.keyCode == 39){
-      this.turnCamera(y, -a)
+    if (evt.keyCode == 40) {
+      this.turnCamera(x, -a);
       evt.preventDefault();
     }
 
-    if(evt.keyCode == 87){
-      this.moveCamera(z.clone().negate(), speed )
+    if (evt.keyCode == 37) {
+      this.turnCamera(y, a);
+      evt.preventDefault();
+    }
+    if (evt.keyCode == 39) {
+      this.turnCamera(y, -a);
       evt.preventDefault();
     }
 
-    if(evt.keyCode == 83){
-      this.moveCamera(z, speed )
+    if (evt.keyCode == 87) {
+      this.moveCamera(z.clone().negate(), speed );
       evt.preventDefault();
     }
 
-    if(evt.keyCode == 81){
-      this.moveCamera(x.clone().negate(), speed )
+    if (evt.keyCode == 83) {
+      this.moveCamera(z, speed );
       evt.preventDefault();
     }
 
-    if(evt.keyCode == 69){
-      this.moveCamera(x, speed )
+    if (evt.keyCode == 81) {
+      this.moveCamera(x.clone().negate(), speed );
+      evt.preventDefault();
+    }
+
+    if (evt.keyCode == 69) {
+      this.moveCamera(x, speed );
       evt.preventDefault();
     }
 
   }
   
 
-  turnCamera(axis, angle){
-    let q = new Quaternion().setFromAxisAngle(axis, angle);
+  turnCamera(axis, angle) {
+    const q = new Quaternion().setFromAxisAngle(axis, angle);
     this.globalCameraOpts.quaternion.multiply(q);
   }
 
-  moveCamera(vector, speed){
-    let diff = vector.clone().applyQuaternion(this.globalCameraOpts.quaternion);
+  moveCamera(vector, speed) {
+    const diff = vector.clone().applyQuaternion(this.globalCameraOpts.quaternion);
     diff.multiplyScalar(speed);
     this.globalCameraOpts.position.add(diff);
 
   }
 
 
-  startWorld(planets){
+  startWorld(planets) {
     this.planets = planets;
-    let _planets = planets.planets;
-    for(let i = 0; i < _planets.length; ++i){
-      let planet = _planets[i];
+    const _planets = planets.planets;
+    for (let i = 0; i < _planets.length; ++i) {
+      const planet = _planets[i];
       planet.initialQuaternion = new Quaternion();
-      let axis = new Vector3(0,1,0).cross(new Vector3(...planet.spatial.north))
-      let angle = Math.asin(axis.length());
-      if(angle == 0) continue;
+      const axis = new Vector3(0, 1, 0).cross(new Vector3(...planet.spatial.north));
+      const angle = Math.asin(axis.length());
+      if (angle == 0) {
+        continue;
+      }
       axis.normalize();
       planet.initialQuaternion.setFromAxisAngle(axis, angle);
       planet.time = 0;
     }
-    let planet = planets.planets[0];
-    let p = new Vector3(...planet.spatial.position);
-    let n = new Vector3(0,0,1);
+    const planet = planets.planets[0];
+    const p = new Vector3(...planet.spatial.position);
+    const n = new Vector3(0, 0, 1);
     p.add(n.multiplyScalar(planet.spatial.radius + 100000));
     this.globalCameraOpts = {
       position: new Vector3, 
       lookAt: new Vector3, 
       quaternion: new Quaternion
-    }
-    if(planets.length > 1)
+    };
+    if (planets.length > 1) {
       this.setPosition(planets.planets[1]);
-    else{
+    } else {
       this.setPosition(planets.planets[0]);
     }
-    this.planetRenderer = new PlanetRenderer(this.camera,this.renderer, planets, this.globalCameraOpts, this.worldManager);
+    this.planetRenderer = new PlanetRenderer(this.camera, this.renderer, planets, this.globalCameraOpts, this.worldManager);
     this.startLoop(this.cameraChange(planets));
-    this.renderingFunction = ()=>{
+    this.renderingFunction = () => {
       this.planetRenderer.render();
-    }
+    };
   }
 
-  setPosition(planet){
-    let maxRadius = 15e6;//planet.spatial.radius + 1000e3;
-    let minRadius = 15e6;//planet.spatial.radius + 100e3 ;
+  setPosition(planet) {
+    const maxRadius = 15e6;//planet.spatial.radius + 1000e3;
+    const minRadius = 15e6;//planet.spatial.radius + 100e3 ;
 
-    let pos = new Vector3(...planet.spatial.position);
-    let radius = planet.spatial.radius;
-    let v1 = new Vector3(1.0, 0, 0);
-    let v2 = new Vector3(0.0, 0, 1);
-    let v3 = new Vector3(0.0, 1, 0);
-    let lookAt = pos.clone();
+    const pos = new Vector3(...planet.spatial.position);
+    const radius = planet.spatial.radius;
+    const v1 = new Vector3(1.0, 0, 0);
+    const v2 = new Vector3(0.0, 0, 1);
+    const v3 = new Vector3(0.0, 1, 0);
+    const lookAt = pos.clone();
 
-    let pi2 = Math.PI * 2;
-    let a  = 0;
+    const pi2 = Math.PI * 2;
+    const a = 0;
     let phi = a / pi2;
     phi = a - (Math.floor(phi) * pi2);
-    let t = Math.abs(phi/pi2 - 0.5)*2;
+    const t = Math.abs(phi / pi2 - 0.5) * 2;
 
     // let radius = maxRadius * t + (1-t)*minRadius;
 
@@ -317,38 +333,38 @@ export class WorldCanvas extends CanvasBase{
     // pos.add(v2.multiplyScalar(Math.sin(a)*radius));
     pos.add(v3.multiplyScalar(radius + 500.0));
     
-    let o = new Object3D;
+    const o = new Object3D;
     o.position.copy(pos);
-    o.lookAt(new Vector3(...planet.spatial.position))
+    o.lookAt(new Vector3(...planet.spatial.position));
     this.globalCameraOpts.position.copy(pos);
     this.globalCameraOpts.quaternion.copy(o.quaternion.inverse());
 
   }
 
-  cameraChange(planets){
-    return ts=>{
-      let _planets = this.planets.planets;
-      for(let i = 0; i < _planets.length; ++i){
-        let planet = _planets[i];
+  cameraChange(planets) {
+    return ts => {
+      const _planets = this.planets.planets;
+      for (let i = 0; i < _planets.length; ++i) {
+        const planet = _planets[i];
         planet.time = ts;
       }
-    }
+    };
   }
 
-  setupCamera(){
+  setupCamera() {
   }
 
-  componentWillUnmount(){
+  componentWillUnmount() {
     super.componentWillUnmount();
     this.stopLoop();
   }
 
-  prerender(){
+  prerender() {
     this.renderingFunction();
     return [false, true, true];
   }
 
-  renderScene(){
-    return []
+  renderScene() {
+    return [];
   }
 }

@@ -2,8 +2,8 @@ import {Quaternion} from 'three/src/math/Quaternion';
 import {Plane} from 'three/src/math/Plane';
 import {Vector3} from 'three/src/math/Vector3';
 
-export class PlaneModifier{
-  constructor(plane, fromEvent, ix, fromRay, constrain, editorMode){
+export class PlaneModifier {
+  constructor(plane, fromEvent, ix, fromRay, constrain, editorMode) {
     this.plane = plane;
     this.plane.normal = new Vector3(...this.plane.normal);
     this.plane.origin = new Vector3(...this.plane.origin);
@@ -15,63 +15,71 @@ export class PlaneModifier{
     this.fromEvent = fromEvent;
   }
 
-  move(toRay, e){
+  move(toRay, e) {
     this.to = toRay;
-    this.toEvent = e
+    this.toEvent = e;
   }
 
 
-  calculatPlaneProjection(v, plane){
-    let ps = plane.normal.clone().dot(v);
-    let pv = plane.normal.clone().multiplyScalar(ps); 
+  calculatPlaneProjection(v, plane) {
+    const ps = plane.normal.clone().dot(v);
+    const pv = plane.normal.clone().multiplyScalar(ps); 
     return v.clone().sub(pv);
   }
 
-  calculateVectorProjection(v, vector){
-    let nv = vector.clone().normalize();
-    let vs = nv.dot(v);
+  calculateVectorProjection(v, vector) {
+    const nv = vector.clone().normalize();
+    const vs = nv.dot(v);
     return nv.multiplyScalar(vs);
   }
 
-  calculateQuaternion(){
-    let rotPlane = new Plane().setFromNormalAndCoplanarPoint( this.constrain.axis.clone(), this.constrain.pivot.clone());
-    let from = this.from.intersectPlane(rotPlane).sub(this.constrain.pivot);
-    let to = this.to.intersectPlane(rotPlane).sub(this.constrain.pivot);
-    if(!to || !from) return console.warn('incorrect plane');
-    let angle = from.angleTo(to);
-    if(angle == 0) return new Quaternion();
-    let dirAxis = new Vector3().crossVectors(from,to).normalize();
+  calculateQuaternion() {
+    const rotPlane = new Plane().setFromNormalAndCoplanarPoint( this.constrain.axis.clone(), this.constrain.pivot.clone());
+    const from = this.from.intersectPlane(rotPlane).sub(this.constrain.pivot);
+    const to = this.to.intersectPlane(rotPlane).sub(this.constrain.pivot);
+    if (!to || !from) {
+      return console.warn('incorrect plane');
+    }
+    const angle = from.angleTo(to);
+    if (angle == 0) {
+      return new Quaternion();
+    }
+    const dirAxis = new Vector3().crossVectors(from, to).normalize();
     let dir = dirAxis.dot(this.constrain.axis.clone());
     dir = dir / Math.abs(dir);
     return new Quaternion().setFromAxisAngle(this.constrain.axis.clone(), angle * dir);
   }
 
-  movePoint(newPlane){
-    let {type, value} = this.constrain;
-    switch(type){
-      case 'plane':{
-        let pl = new Plane().setFromNormalAndCoplanarPoint(value.normal.clone(), value.origin.clone());
-        let from = this.from.intersectPlane(pl);
-        let to = this.to.intersectPlane(pl);
-        let diff = to.sub(from);
+  movePoint(newPlane) {
+    const {type, value} = this.constrain;
+    switch (type) {
+      case 'plane': {
+        const pl = new Plane().setFromNormalAndCoplanarPoint(value.normal.clone(), value.origin.clone());
+        const from = this.from.intersectPlane(pl);
+        const to = this.to.intersectPlane(pl);
+        const diff = to.sub(from);
         newPlane.origin.add(diff);
         break;
       }
-      case 'vector':{
-        let {vector, plane} = value;
-        let vPlane = new Plane().setFromNormalAndCoplanarPoint(plane.normal, plane.origin);
-        let from = this.from.intersectPlane(vPlane);
-        let to = this.to.intersectPlane(vPlane);
-        if(!to || !from) return console.warn('incorrect plane');
-        let diff = to.sub(from);
-        let projectedDiff = this.calculateVectorProjection(diff, vector);
+      case 'vector': {
+        const {vector, plane} = value;
+        const vPlane = new Plane().setFromNormalAndCoplanarPoint(plane.normal, plane.origin);
+        const from = this.from.intersectPlane(vPlane);
+        const to = this.to.intersectPlane(vPlane);
+        if (!to || !from) {
+          return console.warn('incorrect plane');
+        }
+        const diff = to.sub(from);
+        const projectedDiff = this.calculateVectorProjection(diff, vector);
         newPlane.origin.add(projectedDiff);
         break;
       }
 
-      case 'rotation':{
-        let q = this.calculateQuaternion();
-        if(!q) return;
+      case 'rotation': {
+        const q = this.calculateQuaternion();
+        if (!q) {
+          return;
+        }
         newPlane.normal.applyQuaternion(q);
         break;
       }
@@ -83,8 +91,8 @@ export class PlaneModifier{
 
   }
 
-  calculateNewPlane(){
-    let newPlane = Object.assign({}, this.plane, {
+  calculateNewPlane() {
+    const newPlane = Object.assign({}, this.plane, {
       origin: this.plane.origin.clone(),
       normal: this.plane.normal.clone()
     });
@@ -92,28 +100,28 @@ export class PlaneModifier{
     return newPlane;
   }
 
-  getPlane(){
-    let np =  this.calculateNewPlane();
-    return  np;
+  getPlane() {
+    const np = this.calculateNewPlane();
+    return np;
   }
 }
 
-export function getPlaneControls(plane){
-  let x = new Vector3(1,0,0);
-  let y = new Vector3(0,1,0);
-  let z = new Vector3(0,0,1);
-  let as = [x,y,z];
-  let bestAxis = as.map((c,ix)=>[c.dot(plane.normal),ix]).sort((a,b)=>a[0]-b[0]);
+export function getPlaneControls(plane) {
+  const x = new Vector3(1, 0, 0);
+  const y = new Vector3(0, 1, 0);
+  const z = new Vector3(0, 0, 1);
+  const as = [x, y, z];
+  const bestAxis = as.map((c, ix) => [c.dot(plane.normal), ix]).sort((a, b) => a[0] - b[0]);
   let X = bestAxis[0];
   X = as[X[1]].clone().sub(plane.normal.clone().multiplyScalar(X[0])).normalize();
-  let Y = new Vector3().crossVectors(plane.normal.clone(), X).normalize();
-  let O = plane.origin.clone();
-  let dist = 0.25;
-  return[
+  const Y = new Vector3().crossVectors(plane.normal.clone(), X).normalize();
+  const O = plane.origin.clone();
+  const dist = 0.25;
+  return [
     {
       point: X.clone().multiplyScalar(dist).add(O),
-      ix: 'x' ,
-      constrain:{
+      ix: 'x',
+      constrain: {
         type: 'rotation',
         pivot: O.clone(),
         axis: Y.clone()
@@ -122,7 +130,7 @@ export function getPlaneControls(plane){
     {
       point: X.clone().multiplyScalar(-dist).add(O),
       ix: 'x',
-      constrain:{
+      constrain: {
         type: 'rotation',
         pivot: O.clone(),
         axis: Y.clone()
@@ -131,7 +139,7 @@ export function getPlaneControls(plane){
     {
       point: Y.clone().multiplyScalar(dist).add(O),
       ix: 'y',
-      constrain:{
+      constrain: {
         type: 'rotation',
         pivot: O.clone(),
         axis: X.clone()
@@ -140,7 +148,7 @@ export function getPlaneControls(plane){
     {
       point: Y.clone().multiplyScalar(-dist).add(O),
       ix: 'y',
-      constrain:{
+      constrain: {
         type: 'rotation',
         pivot: O.clone(),
         axis: X.clone()
@@ -148,11 +156,11 @@ export function getPlaneControls(plane){
     },
     {
       point: O.clone(),
-      ix:'o',
-      constrain:{
-        type:'vector',
-        value:{
-          plane:{
+      ix: 'o',
+      constrain: {
+        type: 'vector',
+        value: {
+          plane: {
             origin: O.clone(),
             normal: Y.clone()
           },
@@ -161,7 +169,7 @@ export function getPlaneControls(plane){
       }
 
     }
-  ]
+  ];
 
   
 

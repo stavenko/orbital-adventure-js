@@ -1,25 +1,25 @@
-import React,{Component} from 'react';
+import React, {Component} from 'react';
 import {Page} from './MainPage.jsx';
 import {createStore} from 'redux';
 import {Provider, connect} from 'react-redux';
-import { Router, Route, IndexRoute, browserHistory, hashHistory } from 'react-router'
+import { Router, Route, IndexRoute, browserHistory, hashHistory } from 'react-router';
 import {rootReducer} from './reducers.js';
-import { syncHistoryWithStore } from 'react-router-redux'
+import { syncHistoryWithStore } from 'react-router-redux';
 import {CurveEditorWidget} from './Pages/CurveEditor.jsx';
 import {World} from './Pages/World.jsx';
 import {PartsEditor as PartsEditorWidget} from './Pages/PartsEditor.jsx';
 import {PathEditor as PathEditorWidget} from './Pages/PathEditor.jsx';
 import {ObjectEditor as ObjectEditorWidget} from './Pages/ObjectEditor.jsx';
 import * as PartsEditorActions from './actions/parts.js';
-import set from 'lodash/set'
+import set from 'lodash/set';
 
 import './css/style.scss';
 
-let storeState = createStore(rootReducer);
+const storeState = createStore(rootReducer);
 
 const history = syncHistoryWithStore(hashHistory, storeState);
 
-export function RootComponent(){
+export function RootComponent() {
   return <Provider store={storeState} >
     <Router history={history} >
       <Route path="/" component={Root}>
@@ -28,7 +28,7 @@ export function RootComponent(){
         <Route path="bar" component={Bar} />
       </Route>
     </Router>
-  </Provider>
+  </Provider>;
 }
 
 const Root = connect(
@@ -42,23 +42,23 @@ const ObjectEditor = connect(mapStateToProps, mapDispatchToProps)(ObjectEditorWi
 const PartsEditor = connect(mapStateToProps, mapDispatchToProps)(PartsEditorWidget);
 const WorldView = connect(mapStateToProps, mapDispatchToProps)(World);
 
-function Bar(props){
-  return <div> Im bar </div>
+function Bar(props) {
+  return <div> Im bar </div>;
 }
-function mapStateToProps(state){
+function mapStateToProps(state) {
   return state;
 }
-function mapDispatchToProps(dispatch){
-  let o = {partsEditor: PartsEditorActions}
-  let actions = {};
-  for(let actionCollection in o){
-    let actionsObj = o[actionCollection];
-    for(let name in actionsObj){
-      let fn = actionsObj[name];
-      if(typeof(fn) === 'function'){ 
-        set(actions, [actionCollection, name], function(){
+function mapDispatchToProps(dispatch) {
+  const o = {partsEditor: PartsEditorActions};
+  const actions = {};
+  for (const actionCollection in o) {
+    const actionsObj = o[actionCollection];
+    for (const name in actionsObj) {
+      const fn = actionsObj[name];
+      if (typeof (fn) === 'function') { 
+        set(actions, [actionCollection, name], function() {
           return dispatch(fn.apply(null, arguments));
-        })
+        });
       }
     }
   }

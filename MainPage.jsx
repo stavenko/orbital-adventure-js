@@ -1,10 +1,10 @@
-'use strict'
+'use strict';
 import React from 'react';
 import {Link, IndexLink} from 'react-router';
 
-import 'bootstrap-webpack'
+import 'bootstrap-webpack';
 
-export function Page(props){
+export function Page(props) {
   return <div className='root'>
     <div className='menu'>
       <Link to="editor" >editor</Link>
@@ -13,6 +13,6 @@ export function Page(props){
     <div className='scene'>
       {props.children}
     </div>
-  </div>
+  </div>;
 }
 

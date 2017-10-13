@@ -1,9 +1,9 @@
 import React from 'react';
 import {HullWidget} from './HullWidget.jsx';
 
-export function PartContents({part, state, actions}){
+export function PartContents({part, state, actions}) {
   return <div className='part-contents' > 
-    <HullWidget shape={part.shape} stage={part.stage}  {...{state, actions}} />
+    <HullWidget shape={part.shape} stage={part.stage} {...{state, actions}} />
 
     <div className='weilding'>
       weilds
@@ -12,6 +12,6 @@ export function PartContents({part, state, actions}){
       weilds
     </div>
     
-  </div>
+  </div>;
 
 }

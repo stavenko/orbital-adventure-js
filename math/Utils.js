@@ -1,9 +1,11 @@
-export function patchToWeights(part, patch){
-  let weights = {};
-  for( let key in patch){
-    if(typeof(patch[key])=='string' && part.pointIndex[patch[key]])
+export function patchToWeights(part, patch) {
+  const weights = {};
+  for ( const key in patch) {
+    if (typeof (patch[key]) === 'string' && part.pointIndex[patch[key]]) {
       weights[key] = part.pointIndex[patch[key]].clone();
-    else weights[key] = patch[key];
+    } else {
+      weights[key] = patch[key];
+    }
   }
   
   return weights;

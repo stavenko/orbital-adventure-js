@@ -4,48 +4,48 @@ import {Vector3} from 'three/src/math/Vector3';
 import {BufferGeometry} from 'three/src/core/BufferGeometry';
 import {BufferAttribute} from 'three/src/core/BufferAttribute';
 import {toArray} from './Math.js';
-import * as Quad from './QuadBezier.js'
-import * as Triangle from './TriangleBezier.js'
+import * as Quad from './QuadBezier.js';
+import * as Triangle from './TriangleBezier.js';
 import isEqual from 'lodash/isEqual';
 import * as GeometryManager from '../GeometryManager.js';
 
 
-export function getLodGeometry(n){
-  let pg = new PlaneGeometry({
-    normal:new Vector3(0,0,-1), 
-    origin: new Vector3(0,0,0),
-    basis:{
-      x: new Vector3(1,0,0),
-      y: new Vector3(0,1,0)
+export function getLodGeometry(n) {
+  const pg = new PlaneGeometry({
+    normal: new Vector3(0, 0, -1), 
+    origin: new Vector3(0, 0, 0),
+    basis: {
+      x: new Vector3(1, 0, 0),
+      y: new Vector3(0, 1, 0)
     }
   }, 1, 1, n);
   return pg;
 }
 
-export function PlaneCutGeometry(geometryDescriptor, planes){
+export function PlaneCutGeometry(geometryDescriptor, planes) {
   BufferGeometry.call(this);
   this.type = 'PlaneCutGeometry';
 
-  let geometry = GeometryManager.getOrCreateGeometry(geometryDescriptor);
-  if(!planes){
+  const geometry = GeometryManager.getOrCreateGeometry(geometryDescriptor);
+  if (!planes) {
     Object.assign(this.attributes, geometry.attributes);
     this.index = geometry.index;
     return;
   }
 
-  planes.forEach(plane=>{
-    let [intersected, deletedIx, deletedFa] = findFaces(geometry.index, geometry.attributes.position,plane);
-    let [newFaces, pointCircle] = cutFaces(geometry.attributes, intersected, plane);
-    let [attributeLists, indexList] = putNewFaces(newFaces, geometry.index, geometry.attributes);
-    let [newIndex, newArrays] = removeDeletedFaces(deletedIx, deletedFa, indexList, attributeLists, geometry.attributes, geometry.index);
+  planes.forEach(plane => {
+    const [intersected, deletedIx, deletedFa] = findFaces(geometry.index, geometry.attributes.position, plane);
+    const [newFaces, pointCircle] = cutFaces(geometry.attributes, intersected, plane);
+    const [attributeLists, indexList] = putNewFaces(newFaces, geometry.index, geometry.attributes);
+    const [newIndex, newArrays] = removeDeletedFaces(deletedIx, deletedFa, indexList, attributeLists, geometry.attributes, geometry.index);
 
-    let circleList = connectCircle(pointCircle);
+    const circleList = connectCircle(pointCircle);
     geometry.setIndex(new BufferAttribute(toArray(Uint16Array, newIndex), 1));
-    for(let k in newArrays){
-      let oldAttr = geometry.attributes[k];
-      geometry.addAttribute(k, new BufferAttribute(toArray(Float32Array,newArrays[k]), oldAttr.itemSize));
+    for (const k in newArrays) {
+      const oldAttr = geometry.attributes[k];
+      geometry.addAttribute(k, new BufferAttribute(toArray(Float32Array, newArrays[k]), oldAttr.itemSize));
     }
-  })
+  });
 
   this.setIndex(geometry.index);
   Object.assign(this.attributes, geometry.attributes);
@@ -54,331 +54,347 @@ export function PlaneCutGeometry(geometryDescriptor, planes){
 PlaneCutGeometry.prototype = Object.create(BufferGeometry.prototype);
 PlaneCutGeometry.prototype.constructor = BufferGeometry;
 
-function putNewFaces(newFaces,index, attributes) {
-  let count = attributes.position.count;
-  let additionalAttributes = {};
-  let unique = [];
-  let addIndex = [];
-  Object.keys(attributes).forEach(a=>additionalAttributes[a] = []);
-  newFaces.forEach(face=>{
-    let faceIx = face.map(pointData=>{
-      if(pointData.ix !== undefined) return pointData.ix;
+function putNewFaces(newFaces, index, attributes) {
+  const count = attributes.position.count;
+  const additionalAttributes = {};
+  const unique = [];
+  const addIndex = [];
+  Object.keys(attributes).forEach(a => additionalAttributes[a] = []);
+  newFaces.forEach(face => {
+    const faceIx = face.map(pointData => {
+      if (pointData.ix !== undefined) {
+        return pointData.ix;
+      }
       return pushPoint(pointData);
-    })
+    });
     addIndex.push(...faceIx);
   });
-  let returnable = {};
-  for(let key in attributes){
-    let array = mergeArrays(attributes[key].array, additionalAttributes[key]);
+  const returnable = {};
+  for (const key in attributes) {
+    const array = mergeArrays(attributes[key].array, additionalAttributes[key]);
     returnable[key] = array;
   }
-  let newIndex = mergeArrays(index.array, addIndex);
+  const newIndex = mergeArrays(index.array, addIndex);
   return [returnable, newIndex];
 
-  function pushPoint(pt){
-    let uniqueIx = unique.findIndex(p=>isEqual(p, pt));
-    if(uniqueIx === -1){
-      unique.push(pt)
+  function pushPoint(pt) {
+    const uniqueIx = unique.findIndex(p => isEqual(p, pt));
+    if (uniqueIx === -1) {
+      unique.push(pt);
       putInArrays(pt);
       return unique.length - 1 + count;
     }
     return uniqueIx + count;
   }
 
-  function putInArrays(pt){
-    for(let k in pt){
+  function putInArrays(pt) {
+    for (const k in pt) {
       additionalAttributes[k].push(...pt[k]);
     }
   }
 
 }
 
-function mergeArrays(array, list){
+function mergeArrays(array, list) {
   // let totalCount = array.length + list.length;
-  let newArray =[]; 
+  const newArray = []; 
   
-  for(let i =0; i< array.length; ++i){
+  for (let i = 0; i < array.length; ++i) {
     newArray.push(array[i]);
   }
-  for(let i=0;i <list.length; ++i){
+  for (let i = 0;i < list.length; ++i) {
     newArray.push(list[i]);
   }
   return newArray;
 }
 
-function removeDeletedFaces(deletedIx, deletedFa, index, arrays, attributes){
-  let deletion = new Map; // (positionId)=>decreaseShift
-  let newIndex = [];
-  let newArrays = {};
+function removeDeletedFaces(deletedIx, deletedFa, index, arrays, attributes) {
+  const deletion = new Map; // (positionId)=>decreaseShift
+  const newIndex = [];
+  const newArrays = {};
   let currentMinoring;
-    let was = 0;
-    let become = 0;
+  const was = 0;
+  const become = 0;
 
-  for(let i=0; i< (index.length/3); ++i){
-    let ix = i * 3;
-    if(deletedFa.has(ix)) continue;
-    newIndex.push(...index.slice(ix, ix+3).map(j=>{
-      let denom = deletedIx.findIndex(a=>j<a);
-      if(denom == -1) denom = deletedIx.length;
-       //else denom -= 1;
+  for (let i = 0; i < (index.length / 3); ++i) {
+    const ix = i * 3;
+    if (deletedFa.has(ix)) {
+      continue;
+    }
+    newIndex.push(...index.slice(ix, ix + 3).map(j => {
+      let denom = deletedIx.findIndex(a => j < a);
+      if (denom == -1) {
+        denom = deletedIx.length;
+      }
+      //else denom -= 1;
       return j - denom;
     }));
   }
 
-  for(let key in arrays){
+  for (const key in arrays) {
     newArrays[key] = [];
   }
-  let arrayCount = arrays.position.length / attributes.position.itemSize;
+  const arrayCount = arrays.position.length / attributes.position.itemSize;
 
-  for(let i=0; i< arrayCount; ++i){
+  for (let i = 0; i < arrayCount; ++i) {
     
-    if(deletedIx.indexOf(i) !== -1) continue;
+    if (deletedIx.indexOf(i) !== -1) {
+      continue;
+    }
 
-    for(let key in arrays){
-      let array = arrays[key];
-      let attr = attributes[key];
-      let ix = i * attr.itemSize;
-      newArrays[key].push(...array.slice(ix,ix + attr.itemSize))
+    for (const key in arrays) {
+      const array = arrays[key];
+      const attr = attributes[key];
+      const ix = i * attr.itemSize;
+      newArrays[key].push(...array.slice(ix, ix + attr.itemSize));
     }
   }
   return [newIndex, newArrays];
 
 }
 
-function findFaces(index, position, plane){
-  let intersectedFaces=[];
-  let deletedIndexes = new Set;
-  let deletedFaces = new Set;
-  let pa = position.array;
-  let ps = position.itemSize;
-  let o = plane.origin;
-  let n = plane.normal;
-  for(let i = 0; i < index.count; ++i){
-    let ix = i * 3;
-    let face = [...index.array.slice(ix,  ix+3)];
-    let vertices = face.map(j=> pa.slice(j*ps, j*ps + ps));
-    let dots = vertices.map(v=>[0,1,2].map(ix=>(v[ix]-o[ix])*n[ix]).reduce((a,v)=>a+v,0));
+function findFaces(index, position, plane) {
+  const intersectedFaces = [];
+  const deletedIndexes = new Set;
+  const deletedFaces = new Set;
+  const pa = position.array;
+  const ps = position.itemSize;
+  const o = plane.origin;
+  const n = plane.normal;
+  for (let i = 0; i < index.count; ++i) {
+    const ix = i * 3;
+    const face = [...index.array.slice(ix, ix + 3)];
+    const vertices = face.map(j => pa.slice(j * ps, j * ps + ps));
+    const dots = vertices.map(v => [0, 1, 2].map(ix => (v[ix] - o[ix]) * n[ix]).reduce((a, v) => a + v, 0));
     let hasDeleted = 0;
-    dots.forEach((dot,id)=>{
-      if(dot < 0) return;
+    dots.forEach((dot, id) => {
+      if (dot < 0) {
+        return;
+      }
       deletedIndexes.add(face[id]);
       ++hasDeleted;
-    })
-    if(hasDeleted > 0) {
-      if(hasDeleted < 3)
+    });
+    if (hasDeleted > 0) {
+      if (hasDeleted < 3) {
         intersectedFaces.push(face);
+      }
       deletedFaces.add(ix);
     }
   }
-  let deletedIx = [...deletedIndexes.entries()].map(a=>a[0]).sort((a,b)=>a-b);
-  return [intersectedFaces, deletedIx, deletedFaces]
+  const deletedIx = [...deletedIndexes.entries()].map(a => a[0]).sort((a, b) => a - b);
+  return [intersectedFaces, deletedIx, deletedFaces];
 }
 
 const indexes = [
   [],
   [0],
-  [0,1],
-  [0,1,2]
+  [0, 1],
+  [0, 1, 2]
 ];
 
-function vecDistance(a,b, s = 3){
-  return indexes[s].map(i=>Math.pow(a[i]-b[i],2)).reduce((a,b)=>a+b,0);
+function vecDistance(a, b, s = 3) {
+  return indexes[s].map(i => Math.pow(a[i] - b[i], 2)).reduce((a, b) => a + b, 0);
 }
 
-function vecEqual(a,b){
+function vecEqual(a, b) {
   // console.log(vecDistance(a,b));
-  return vecDistance(a,b) < 1e-4;
+  return vecDistance(a, b) < 1e-4;
 }
 
-function connectCircle(circle){
-  let first = circle.shift();
-  let list = [first.to, first.from];
-  while(circle.length !=0){
-    let way = 1;
+function connectCircle(circle) {
+  const first = circle.shift();
+  const list = [first.to, first.from];
+  while (circle.length != 0) {
+    const way = 1;
     let switchPair = false;
-    let last = list[list.length-1];
-    let nextIx = circle.findIndex(({from, to})=> vecEqual(from, last));
-    if(nextIx == -1){
-      nextIx = circle.findIndex(({from, to})=> vecEqual(to, last));
+    const last = list[list.length - 1];
+    let nextIx = circle.findIndex(({from, to}) => vecEqual(from, last));
+    if (nextIx == -1) {
+      nextIx = circle.findIndex(({from, to}) => vecEqual(to, last));
       switchPair = true;
-      console.log('switch pair +', nextIx)
+      console.log('switch pair +', nextIx);
     }
-    if(nextIx === -1) {
-      let first = list[0];
-      nextIx = circle.findIndex(({from, to})=> vecEqual(to, first));
-      let way = -1;
-      console.warn("other way", nextIx);
-      if(nextIx == -1){
-        nextIx = circle.findIndex(({from, to})=> vecEqual(from, first));
+    if (nextIx === -1) {
+      const first = list[0];
+      nextIx = circle.findIndex(({from, to}) => vecEqual(to, first));
+      const way = -1;
+      console.warn('other way', nextIx);
+      if (nextIx == -1) {
+        nextIx = circle.findIndex(({from, to}) => vecEqual(from, first));
         switchPair = true;
-        console.log('switch pair-', nextIx)
+        console.log('switch pair-', nextIx);
       }
 
     }
-    if(nextIx == -1)break;
+    if (nextIx == -1) {
+      break;
+    }
     console.log('---------------------------');
-    if(way > 0){
-      let [next] = circle.splice(nextIx, 1);
-      if(switchPair)
+    if (way > 0) {
+      const [next] = circle.splice(nextIx, 1);
+      if (switchPair) {
         list.push(next.from);
-      else
+      } else {
         list.push(next.to);
-    }else{
-      let [next] = circle.splice(nextIx, 1);
-      if(switchPair)
+      }
+    } else {
+      const [next] = circle.splice(nextIx, 1);
+      if (switchPair) {
         list.unshift(next.to);
-      else
+      } else {
         list.unshift(next.from);
+      }
     }
   }
   return list;
 
 }
 
-function cutFaces(attributes, intersectedFaces, plane){
-  let position = attributes.position;
-  let otherAttrs = Object.keys(attributes).filter(a=>a!='position');
-  let pa = position.array;
-  let ps = position.itemSize;
-  let o = plane.origin;
-  let n = plane.normal;
-  let newFaces = [];
-  let circle = [];
-  for(let i =0; i<intersectedFaces.length; ++i){
-    let face = intersectedFaces[i];
-    let vertices = face.map(j=> pa.slice(j*ps, j*ps + ps));
-    let ix = vertices.findIndex(v=>dotPlane(v, o, n) < 0);
-    let rFace = [ix, ix+1, ix+2].map(j=>face[j%3])
-    let [B, V0, V1] = rFace.map(j=> pa.slice(j*ps, j*ps + ps));
+function cutFaces(attributes, intersectedFaces, plane) {
+  const position = attributes.position;
+  const otherAttrs = Object.keys(attributes).filter(a => a != 'position');
+  const pa = position.array;
+  const ps = position.itemSize;
+  const o = plane.origin;
+  const n = plane.normal;
+  const newFaces = [];
+  const circle = [];
+  for (let i = 0; i < intersectedFaces.length; ++i) {
+    const face = intersectedFaces[i];
+    const vertices = face.map(j => pa.slice(j * ps, j * ps + ps));
+    const ix = vertices.findIndex(v => dotPlane(v, o, n) < 0);
+    const rFace = [ix, ix + 1, ix + 2].map(j => face[j % 3]);
+    const [B, V0, V1] = rFace.map(j => pa.slice(j * ps, j * ps + ps));
     // B now is below plane;
-    let V0upper = dotPlane(V0, o,n) > 0;
-    let V1upper = dotPlane(V1, o,n) > 0;
+    const V0upper = dotPlane(V0, o, n) > 0;
+    const V1upper = dotPlane(V1, o, n) > 0;
     
-    if(V0upper && V1upper){
-      let [e0, e1] = [V0, V1].map(v=>[0,1,2].map(j=>v[j]-B[j]))
-      let t1 = rayPlane(B, e0, o, n);
-      let t2 = rayPlane(B, e1, o, n);
+    if (V0upper && V1upper) {
+      const [e0, e1] = [V0, V1].map(v => [0, 1, 2].map(j => v[j] - B[j]));
+      const t1 = rayPlane(B, e0, o, n);
+      const t2 = rayPlane(B, e1, o, n);
 
-      let p1 = [0,1,2].map(j=>e0[j]*t1 + B[j]);
-      let p2 = [0,1,2].map(j=>e1[j]*t2 + B[j]);
-      newFaces.push([{ix:rFace[0]}, 
-                    Object.assign({position:p1}, lerpAttrs(t1, rFace[0], rFace[1])), 
-                    Object.assign({position:p2}, lerpAttrs(t1, rFace[0], rFace[2])) ]);
-      circle.push({from:p1, to:p2});
-    }else if(V0upper && !V1upper){
-      let e0 = [0,1,2].map(j=>V0[j]-B[j]);
-      let e1 = [0,1,2].map(j=>V1[j]-V0[j]);
-      let t1 = rayPlane(B, e0, o, n);
-      let t2 = rayPlane(V0, e1, o, n);
-      let p1 = [0,1,2].map(j=>e0[j]*t1+B[j]);
-      let p2 = [0,1,2].map(j=>e1[j]*t2+V0[j]);
-      newFaces.push([{ix:rFace[0]},
-                    Object.assign({position:p1}, lerpAttrs(t1,rFace[0], rFace[1])),
-                    Object.assign({position:p2}, lerpAttrs(t2,rFace[1], rFace[2]))])
-      newFaces.push([{ix:rFace[0]},
-                    Object.assign({position:p2}, lerpAttrs(t2,rFace[1], rFace[2])),
-                    {ix:rFace[2]}])
-      circle.push({from:p1, to:p2});
-    }else if(V1upper && !V0upper){
-      let e0 = [0,1,2].map(j=>V1[j]-V0[j]);
-      let e1 = [0,1,2].map(j=>V1[j]-B[j]);
-      let t1 = rayPlane(V0, e0, o, n);
-      let t2 = rayPlane(B, e1, o, n);
-      let p1 = [0,1,2].map(j=>e0[j]*t1 + V0[j]);
-      let p2 = [0,1,2].map(j=>e1[j]*t2 + B[j]);
-      newFaces.push([{ix:rFace[0]},
-                    Object.assign({position:p1}, lerpAttrs(t1,rFace[1], rFace[2] )),
-                    Object.assign({position:p2}, lerpAttrs(t2,rFace[0], rFace[2] ))
+      const p1 = [0, 1, 2].map(j => e0[j] * t1 + B[j]);
+      const p2 = [0, 1, 2].map(j => e1[j] * t2 + B[j]);
+      newFaces.push([{ix: rFace[0]}, 
+        Object.assign({position: p1}, lerpAttrs(t1, rFace[0], rFace[1])), 
+        Object.assign({position: p2}, lerpAttrs(t1, rFace[0], rFace[2])) ]);
+      circle.push({from: p1, to: p2});
+    } else if (V0upper && !V1upper) {
+      const e0 = [0, 1, 2].map(j => V0[j] - B[j]);
+      const e1 = [0, 1, 2].map(j => V1[j] - V0[j]);
+      const t1 = rayPlane(B, e0, o, n);
+      const t2 = rayPlane(V0, e1, o, n);
+      const p1 = [0, 1, 2].map(j => e0[j] * t1 + B[j]);
+      const p2 = [0, 1, 2].map(j => e1[j] * t2 + V0[j]);
+      newFaces.push([{ix: rFace[0]},
+        Object.assign({position: p1}, lerpAttrs(t1, rFace[0], rFace[1])),
+        Object.assign({position: p2}, lerpAttrs(t2, rFace[1], rFace[2]))]);
+      newFaces.push([{ix: rFace[0]},
+        Object.assign({position: p2}, lerpAttrs(t2, rFace[1], rFace[2])),
+        {ix: rFace[2]}]);
+      circle.push({from: p1, to: p2});
+    } else if (V1upper && !V0upper) {
+      const e0 = [0, 1, 2].map(j => V1[j] - V0[j]);
+      const e1 = [0, 1, 2].map(j => V1[j] - B[j]);
+      const t1 = rayPlane(V0, e0, o, n);
+      const t2 = rayPlane(B, e1, o, n);
+      const p1 = [0, 1, 2].map(j => e0[j] * t1 + V0[j]);
+      const p2 = [0, 1, 2].map(j => e1[j] * t2 + B[j]);
+      newFaces.push([{ix: rFace[0]},
+        Object.assign({position: p1}, lerpAttrs(t1, rFace[1], rFace[2] )),
+        Object.assign({position: p2}, lerpAttrs(t2, rFace[0], rFace[2] ))
 
-      ])
+      ]);
       newFaces.push([
-        {ix:rFace[0]}, 
-        {ix:rFace[1]}, 
-        Object.assign({position:p1}, lerpAttrs(t1,rFace[1], rFace[2] )),
+        {ix: rFace[0]}, 
+        {ix: rFace[1]}, 
+        Object.assign({position: p1}, lerpAttrs(t1, rFace[1], rFace[2] )),
       ]
-                   )
-      circle.push({from:p1, to:p2});
-    }else{
-      debugger;
+      );
+      circle.push({from: p1, to: p2});
+    } else {
+      
     }
   }
   return [newFaces, circle];
-  function lerpAttrs(t, fid, tid){
-    let vals = {};
-    otherAttrs.forEach(attr=>{
-      let attribute = attributes[attr];
-      let fix = fid * attribute.itemSize;
-      let tix = tid * attribute.itemSize;
-      let from = attribute.array.slice(fix, fix+attribute.itemSize);
-      let to = attribute.array.slice(fix, fix+attribute.itemSize);
-      let nums  = indexes[attribute.itemSize];
-      vals[attr] = nums.map(i=>(to[i]-from[i])*t+from[i])
-    })
+  function lerpAttrs(t, fid, tid) {
+    const vals = {};
+    otherAttrs.forEach(attr => {
+      const attribute = attributes[attr];
+      const fix = fid * attribute.itemSize;
+      const tix = tid * attribute.itemSize;
+      const from = attribute.array.slice(fix, fix + attribute.itemSize);
+      const to = attribute.array.slice(fix, fix + attribute.itemSize);
+      const nums = indexes[attribute.itemSize];
+      vals[attr] = nums.map(i => (to[i] - from[i]) * t + from[i]);
+    });
     return vals;
   }
 
 }
 
-function rayPlane(ro, e, o, n){
-  let u = [0,1,2].map(j=>n[j] * (o[j] - ro[j])).reduce((a,b)=>a+b);
-  let d = [0,1,2].map(j=>n[j] * e[j]).reduce((a,b)=>a+b);
+function rayPlane(ro, e, o, n) {
+  const u = [0, 1, 2].map(j => n[j] * (o[j] - ro[j])).reduce((a, b) => a + b);
+  const d = [0, 1, 2].map(j => n[j] * e[j]).reduce((a, b) => a + b);
   return u / d;
 
 }
 
-function dotPlane(v, o, n){
-  return [0,1,2].map(ix=>(v[ix]-o[ix])*n[ix]).reduce((a,b)=>a+b,0);
+function dotPlane(v, o, n) {
+  return [0, 1, 2].map(ix => (v[ix] - o[ix]) * n[ix]).reduce((a, b) => a + b, 0);
 }
 
-export function PlaneGeometry(plane, sizex, sizey, steps=10){
+export function PlaneGeometry(plane, sizex, sizey, steps = 10) {
   BufferGeometry.call(this);
-  this.type='PlaneGeometry';
-  let x = new Vector3(1,0,0);
-  let y = new Vector3(0,1,0);
-  let z = new Vector3(0,0,1);
-  let pn = new Vector3(...plane.normal);
-  let po = new Vector3(...plane.origin);
+  this.type = 'PlaneGeometry';
+  const x = new Vector3(1, 0, 0);
+  const y = new Vector3(0, 1, 0);
+  const z = new Vector3(0, 0, 1);
+  const pn = new Vector3(...plane.normal);
+  const po = new Vector3(...plane.origin);
 
-  let dots = [x,y,z].map(v=>v.dot(pn)).map((d,ix)=>[d,ix]).sort((a,b)=>b[0] - a[0]);
-  let best = [x,y,z][dots[0][1]];
+  const dots = [x, y, z].map(v => v.dot(pn)).map((d, ix) => [d, ix]).sort((a, b) => b[0] - a[0]);
+  const best = [x, y, z][dots[0][1]];
   let px, py;
-  if(!plane.basis){
+  if (!plane.basis) {
     px = best.sub(pn.clone().multiplyScalar(dots[0][0])).normalize(); 
     py = new Vector3().crossVectors(pn, px).normalize();
-  }else{
+  } else {
     px = plane.basis.x.clone();
     py = plane.basis.y.clone();
   }
-  let pIndex = {};
-  let positions = [];
-  let faces = [];
+  const pIndex = {};
+  const positions = [];
+  const faces = [];
   let incr = 0;
-  for(let i = 0; i < steps; ++i){
-    for(let j =0; j < steps; ++j){
-      let s = i/steps - 0.5;
-      let t = j/steps - 0.5;
-      let a = getIx(i,j);
-      let b = getIx(i,j+1);
-      let c = getIx(i+1,j+1);
-      let d = getIx(i+1,j);
-      faces.push(a,b,c);
-      faces.push(a,c,d);
+  for (let i = 0; i < steps; ++i) {
+    for (let j = 0; j < steps; ++j) {
+      const s = i / steps - 0.5;
+      const t = j / steps - 0.5;
+      const a = getIx(i, j);
+      const b = getIx(i, j + 1);
+      const c = getIx(i + 1, j + 1);
+      const d = getIx(i + 1, j);
+      faces.push(a, b, c);
+      faces.push(a, c, d);
     }
   }
   this.setIndex(new BufferAttribute(toArray(Uint32Array, faces), 1));
-  this.addAttribute('position', new BufferAttribute(toArray(Float32Array, positions),3));
+  this.addAttribute('position', new BufferAttribute(toArray(Float32Array, positions), 3));
 
-  function getP(s,t){
-    let p = new Vector3(...plane.origin);
-    p.add(px.clone().multiplyScalar(s*sizex));
-    p.add(py.clone().multiplyScalar(t*sizey));
+  function getP(s, t) {
+    const p = new Vector3(...plane.origin);
+    p.add(px.clone().multiplyScalar(s * sizex));
+    p.add(py.clone().multiplyScalar(t * sizey));
     return p;
   }
 
-  function getIx(i,j){
-    if(pIndex[`${i},${j}`])
+  function getIx(i, j) {
+    if (pIndex[`${i},${j}`]) {
       return pIndex[`${i},${j}`];
-    let pt = getP(i/steps - 0.5, j/steps - 0.5);
+    }
+    const pt = getP(i / steps - 0.5, j / steps - 0.5);
     positions.push(...pt.toArray());
     pIndex[`${i},${j}`] = incr++;
     return pIndex[`${i},${j}`];
@@ -388,71 +404,74 @@ export function PlaneGeometry(plane, sizex, sizey, steps=10){
 PlaneGeometry.prototype = Object.create(BufferGeometry.prototype);
 PlaneGeometry.prototype.constructor = BufferGeometry;
 
-export function QuadGeometry(tSteps, sSteps){
+export function QuadGeometry(tSteps, sSteps) {
   BufferGeometry.call(this);
   this.type = 'QuadGeometry';
-  this.parameters={ tSteps, sSteps };
-  let arrays = createQuadBezierGeometry(tSteps, sSteps);
+  this.parameters = { tSteps, sSteps };
+  const arrays = createQuadBezierGeometry(tSteps, sSteps);
 
-  if(arrays.index){
+  if (arrays.index) {
     this.setIndex(new BufferAttribute(arrays.index.array, 1));
   }
   delete arrays.index;
 
-  for(let k in arrays){
-    this.addAttribute(k, new BufferAttribute(arrays[k].array, arrays[k].size))
+  for (const k in arrays) {
+    this.addAttribute(k, new BufferAttribute(arrays[k].array, arrays[k].size));
   }
 }
 
 QuadGeometry.prototype = Object.create(BufferGeometry.prototype);
 QuadGeometry.prototype.constructor = BufferGeometry;
 
-export function RotationalPartGeometry(shape){
+export function RotationalPartGeometry(shape) {
   BufferGeometry.call(this);
-  let stepsPerPart = 10;
-  let I = shape.radialAmount*stepsPerPart + 1;
-  let G = new MultigeometryManager((i,j)=>`${i},${j}`);
-  let creatorTri = Triangle.patchGeometryCreator(G, {i:Infinity, j:stepsPerPart*shape.radialAmount+1});
-  let creatorQuad = Quad.patchGeometryCreator(G, {i:Infinity, j:stepsPerPart*shape.radialAmount+1});
-  for(let key in shape.patchIndex){
-    let patch = patchToWeights(shape, shape.patchIndex[key]);
-    let [i, j] = key.split(',').map(i=>parseInt(i));
+  const stepsPerPart = 10;
+  const I = shape.radialAmount * stepsPerPart + 1;
+  const G = new MultigeometryManager((i, j) => `${i},${j}`);
+  const creatorTri = Triangle.patchGeometryCreator(G, {i: Infinity, j: stepsPerPart * shape.radialAmount + 1});
+  const creatorQuad = Quad.patchGeometryCreator(G, {i: Infinity, j: stepsPerPart * shape.radialAmount + 1});
+  for (const key in shape.patchIndex) {
+    const patch = patchToWeights(shape, shape.patchIndex[key]);
+    const [i, j] = key.split(',').map(i => parseInt(i));
 
-    if(patch.length <= 10){
-      creatorTri(patch, {i,j});
-    }else{
-      creatorQuad(patch, {i,j});
+    if (patch.length <= 10) {
+      creatorTri(patch, {i, j});
+    } else {
+      creatorQuad(patch, {i, j});
     }
   }
   this.setIndex(new BufferAttribute(toArray(Uint16Array, G.faces), 1));
-  for(let b in G.arrays){
+  for (const b in G.arrays) {
     let size = 3;
-    if(b == 'uv') size = 2;
-    this.addAttribute(b, new BufferAttribute(toArray(Float32Array,G.arrays[b]), size));
+    if (b == 'uv') {
+      size = 2;
+    }
+    this.addAttribute(b, new BufferAttribute(toArray(Float32Array, G.arrays[b]), size));
   }
 
-  function check(){
-    G.posArray.forEach(([ixx,v])=>{
-      let fs = G.posArray.filter(vv=>{
+  function check() {
+    G.posArray.forEach(([ixx, v]) => {
+      const fs = G.posArray.filter(vv => {
         return (vv[1].distanceTo(v) < 0.0001 && ixx != vv[0]);
-      }).map(([ix, v])=>[ix,[v.x,v.y,v.z].map(f=>f.toFixed(2)).join(',')].join(':'))
-      if(fs.length > 0)
+      }).map(([ix, v]) => [ix, [v.x, v.y, v.z].map(f => f.toFixed(2)).join(',')].join(':'));
+      if (fs.length > 0) {
         console.log(ixx, fs);
-    })
+      }
+    });
   }
 }
 
 RotationalPartGeometry.prototype = Object.create(BufferGeometry.prototype);
 RotationalPartGeometry.prototype.constructor = BufferGeometry;
 
-export function TriangleBezierBufferGeometry(weights,uvStart, uvEnd, invert, sSteps){
+export function TriangleBezierBufferGeometry(weights, uvStart, uvEnd, invert, sSteps) {
   BufferGeometry.call(this);
-  let geometry = Triangle.getGeometryFromPatch(weights, uvStart, uvEnd, invert, sSteps);
+  const geometry = Triangle.getGeometryFromPatch(weights, uvStart, uvEnd, invert, sSteps);
 
-  let indices = toArray(Uint16Array, geometry.indices);
-  let positions = toArray(Float32Array, geometry.positions);
-  let normals = toArray(Float32Array, geometry.normals || []);
-  let uvs = toArray(Float32Array, geometry.uvs || []);
+  const indices = toArray(Uint16Array, geometry.indices);
+  const positions = toArray(Float32Array, geometry.positions);
+  const normals = toArray(Float32Array, geometry.normals || []);
+  const uvs = toArray(Float32Array, geometry.uvs || []);
 
   this.setIndex(new BufferAttribute(indices, 1));
   this.addAttribute('position', new BufferAttribute(positions, 3));
@@ -460,14 +479,14 @@ export function TriangleBezierBufferGeometry(weights,uvStart, uvEnd, invert, sSt
   this.addAttribute('uv', new BufferAttribute(uvs, 2));
 }
 
-export function QuadBezierBufferGeometry(weights,uvStart, uvEnd, tSteps, sSteps){
+export function QuadBezierBufferGeometry(weights, uvStart, uvEnd, tSteps, sSteps) {
   BufferGeometry.call(this);
-  let geometry = Quad.getGeometryFromPatch(weights, uvStart, uvEnd, tSteps);
+  const geometry = Quad.getGeometryFromPatch(weights, uvStart, uvEnd, tSteps);
 
-  let indices = toArray(Uint16Array, geometry.indices);
-  let positions = toArray(Float32Array, geometry.positions);
-  let normals = toArray(Float32Array, geometry.normals || []);
-  let uvs = toArray(Float32Array, geometry.uvs || []);
+  const indices = toArray(Uint16Array, geometry.indices);
+  const positions = toArray(Float32Array, geometry.positions);
+  const normals = toArray(Float32Array, geometry.normals || []);
+  const uvs = toArray(Float32Array, geometry.uvs || []);
 
   this.setIndex(new BufferAttribute(indices, 1));
   this.addAttribute('position', new BufferAttribute(positions, 3));
@@ -480,38 +499,39 @@ QuadBezierBufferGeometry.prototype.constructor = BufferGeometry;
 TriangleBezierBufferGeometry.prototype = Object.create(BufferGeometry.prototype);
 TriangleBezierBufferGeometry.prototype.constructor = BufferGeometry;
 
-function createQuadBezierGeometry(tSteps, sSteps){
-  let pointIndex = {};
+function createQuadBezierGeometry(tSteps, sSteps) {
+  const pointIndex = {};
   let position = [];
   let index = [];
-  let current = 0
+  let current = 0;
 
   const denom = sSteps + 1;
 
 
-  for(let i = 0; i < tSteps; ++i){
-    for(let j = 0; j < sSteps; ++j){
-      let lb = getPoint(i,j);
-      let lt = getPoint(i,j+1);
-      let rb = getPoint(i+1,j);
-      let rt = getPoint(i+1,j+1);
-      let face1 = [lb, lt, rt];
-      let face2 = [lb, rt, rb];
+  for (let i = 0; i < tSteps; ++i) {
+    for (let j = 0; j < sSteps; ++j) {
+      const lb = getPoint(i, j);
+      const lt = getPoint(i, j + 1);
+      const rb = getPoint(i + 1, j);
+      const rt = getPoint(i + 1, j + 1);
+      const face1 = [lb, lt, rt];
+      const face2 = [lb, rt, rb];
       index.push(...face1, ...face2);
     }
   }
 
   index = toArray(Uint16Array, index);
   position = toArray(Float32Array, position);
-  return {index: {array:index, size:1}, position: {array:position, size:3}}
+  return {index: {array: index, size: 1}, position: {array: position, size: 3}};
 
 
-  function getPoint(i,j){
-    let index = `${i},${j}`;
-    if(pointIndex[index]) return pointIndex[index];
-    else{
-      position.push(i/tSteps, j/sSteps, 0);
-      pointIndex[index] =  current++
+  function getPoint(i, j) {
+    const index = `${i},${j}`;
+    if (pointIndex[index]) {
+      return pointIndex[index];
+    } else {
+      position.push(i / tSteps, j / sSteps, 0);
+      pointIndex[index] = current++;
       return pointIndex[index];
     }
 

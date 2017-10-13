@@ -8,6 +8,7 @@
     "lodash": "^4.17.3"
   },
   "devDependencies": {
+    "@types/three": "^0.84.26",
     "babel": "^6.5.2",
     "babel-core": "^6.17.0",
     "babel-loader": "^6.2.5",

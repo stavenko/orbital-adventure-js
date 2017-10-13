@@ -1,7 +1,7 @@
 import React from 'react';
 
 import {Color} from 'three/src/math/Color';
-import {CanvasBase} from '../../Canvas.jsx'
+import {CanvasBase} from '../../Canvas.jsx';
 import {Mesh} from 'three/src/objects/Mesh';
 import {MeshBasicMaterial} from 'three/src/materials/MeshBasicMaterial';
 import {RawShaderMaterial} from 'three/src/materials/RawShaderMaterial';
@@ -14,8 +14,8 @@ import {Vector2} from 'three/src/math/Vector2';
 import {BoxBufferGeometry} from 'three/src/geometries/BoxBufferGeometry';
 import {SphereBufferGeometry} from 'three/src/geometries/SphereBufferGeometry';
 import {PointsMover} from '../../math/RotationalPointsMover.js';
-import * as RotationalShape from '../../math/RotationalShape.js'
-import * as THREE from 'three/src/constants'
+import * as RotationalShape from '../../math/RotationalShape.js';
+import * as THREE from 'three/src/constants';
 import * as Path from '../../math/Path.js';
 import {QuadBezierBufferGeometry,
   PlaneGeometry, 
@@ -27,13 +27,13 @@ import {Textures} from '../../Utils/TextureCache.js';
 import * as Quad from './../../math/QuadBezier.js';
 import {getPlaneControls, PlaneModifier} from './../../math/PlaneControls.js';
 
-export class PartDisplay extends CanvasBase{
-  constructor(props){
-    super(props)
+export class PartDisplay extends CanvasBase {
+  constructor(props) {
+    super(props);
   }
 
-  setupCamera(){
-    this.cameraZoom = 0.02/10;
+  setupCamera() {
+    this.cameraZoom = 0.02 / 10;
     
     this.camera.left *= this.cameraZoom;
     this.camera.right *= this.cameraZoom;
@@ -50,145 +50,156 @@ export class PartDisplay extends CanvasBase{
       new Color(0xff9900), new Color(0x00ff99), new Color(0x0099ff)
 
     ];
-    for(let i =0; i< 1000; ++i){
-      this.randomColors.push(new Color(Math.random(),Math.random(), Math.random()) );
+    for (let i = 0; i < 1000; ++i) {
+      this.randomColors.push(new Color(Math.random(), Math.random(), Math.random()) );
     }
   }  
 
-  getPath(){
-    let part = this.props.state.get('currentPart').toJS();
-    let pointList = ['1,0', '1,0+', '1,1-', '1,1'];
-    let points = RotationalShape.getPoints(part, pointList)
-      .filter(p=>p)
-      .map(p=>p.clone())
+  getPath() {
+    const part = this.props.state.get('currentPart').toJS();
+    const pointList = ['1,0', '1,0+', '1,1-', '1,1'];
+    const points = RotationalShape.getPoints(part, pointList)
+      .filter(p => p)
+      .map(p => p.clone());
     return Path.getGeometry([
       {command: 'moveTo', ...points[0]},
-      {command: 'curveTo', cp1:points[1], cp2:points[2], end:points[3]},
-    ])
+      {command: 'curveTo', cp1: points[1], cp2: points[2], end: points[3]},
+    ]);
   }
 
-  getControlPoints(){
-    let part = this.props.state.get('currentPart').toJS();
-    let pointList = ['1,0', '1,0+', '1,1-', '1,1', '2:111,0'];
-    return RotationalShape.getPoints(part.calculated, pointList).filter(p=>p).map((p,ix)=>{
+  getControlPoints() {
+    const part = this.props.state.get('currentPart').toJS();
+    const pointList = ['1,0', '1,0+', '1,1-', '1,1', '2:111,0'];
+    return RotationalShape.getPoints(part.calculated, pointList).filter(p => p).map((p, ix) => {
       let color;
-      if(ix == 4) color = new Color(0xf0ff00);
-      else if(ix == 1 || ix == 2) color = new Color(0xff00ff);
-
-      else color = new Color(0xff0000);
+      if (ix == 4) {
+        color = new Color(0xf0ff00);
+      } else if (ix == 1 || ix == 2) {
+        color = new Color(0xff00ff);
+      } else {
+        color = new Color(0xff0000);
+      }
       return {
         type: Mesh,
-        geometry: {type: BoxBufferGeometry, arguments:[1,1,1].map(x=>x*0.01)},
+        geometry: {type: BoxBufferGeometry, arguments: [1, 1, 1].map(x => x * 0.01)},
         material: {
-          type: MeshBasicMaterial, properties:{
+          type: MeshBasicMaterial, properties: {
             color
           }
         },
 
         position: new Vector3(p.x, p.y, p.z)
-      }
+      };
 
-    })
+    });
   }
 
-  splitAtS(s){
+  splitAtS(s) {
     this.props.actions.splitCurrentPartAtS(s);
   }
 
-  splitAtT(t){
+  splitAtT(t) {
     this.props.actions.splitCurrentPartAtT(t);
   }
 
-  onMeshMouseMove(e, intersects){
+  onMeshMouseMove(e, intersects) {
     this.sceneIntersection = intersects[0];
     this.scenePoint = intersects[0].point.clone();
     this.renderCanvas();
 
   }
 
-  moveControlPoint(ix, [from, to]){
-    let part = this.props.state.get('currentPart').toJS();
+  moveControlPoint(ix, [from, to]) {
+    const part = this.props.state.get('currentPart').toJS();
     RotationalShape.moveControlPoint(part.calculated, ix, from, to);
   }
 
-  getShape(){
+  getShape() {
     return this.props.state.get('currentPart').toJS();
   }
 
-  startDrag(ix, constrain, e,wv,ray){
-    let mode = this.props.state.getIn(['editorState', 'mode']);
-    if(mode == 'edit-slices' || mode == 'edit-radials' ){
+  startDrag(ix, constrain, e, wv, ray) {
+    const mode = this.props.state.getIn(['editorState', 'mode']);
+    if (mode == 'edit-slices' || mode == 'edit-radials' ) {
       this.setState({
         pointsMover: new PointsMover(
-          this.getShape(),e, ix, ray, constrain,
-          this.props.state.getIn(['editorState','mode'])) 
+          this.getShape(), e, ix, ray, constrain,
+          this.props.state.getIn(['editorState', 'mode'])) 
       });
-    }else if(mode =='plane-cutter'){
-      let part = this.props.state.get('currentPart').toJS();
-      let planeId = this.props.state.getIn(['editorState','selectedPlane']);
-      let planes = part.calculated.cuttingPlanes || [];
-      let plane = planes[planeId];
+    } else if (mode == 'plane-cutter') {
+      const part = this.props.state.get('currentPart').toJS();
+      const planeId = this.props.state.getIn(['editorState', 'selectedPlane']);
+      const planes = part.calculated.cuttingPlanes || [];
+      const plane = planes[planeId];
       this.setState({
-        pointsMover: new PlaneModifier(plane, e, ix, ray, constrain, this.props.state.getIn(['editorState','mode']))
-      })
+        pointsMover: new PlaneModifier(plane, e, ix, ray, constrain, this.props.state.getIn(['editorState', 'mode']))
+      });
 
     }
   }
 
-  finalizeDrag(){
-    let mode = this.props.state.getIn(['editorState', 'mode']).toJS();
-    if(mode == 'edit-slices' || mode == 'edit-radials' ){
-      this.props.actions.changePartPoints(this.state.pointsMover.getPointIndex())
-    }else if(mode == 'plane-cutter'){
-      let ix = this.props.state.getIn(['editorState', 'selectedPlane']).toJS();
-      this.props.actions.changePlane(ix, this.state.pointsMover.getPlane())
+  finalizeDrag() {
+    const mode = this.props.state.getIn(['editorState', 'mode']).toJS();
+    if (mode == 'edit-slices' || mode == 'edit-radials' ) {
+      this.props.actions.changePartPoints(this.state.pointsMover.getPointIndex());
+    } else if (mode == 'plane-cutter') {
+      const ix = this.props.state.getIn(['editorState', 'selectedPlane']).toJS();
+      this.props.actions.changePlane(ix, this.state.pointsMover.getPlane());
     }
 
   }
 
-  dragControlPoint(ray, e){
+  dragControlPoint(ray, e) {
     this.state.pointsMover.move(ray, e);
-    let mode = this.props.state.getIn(['editorState', 'mode']);
-    if(mode == 'edit-slices' || mode == 'edit-radials' ){
+    const mode = this.props.state.getIn(['editorState', 'mode']);
+    if (mode == 'edit-slices' || mode == 'edit-radials' ) {
       return this.props.actions.changePartPoints(this.state.pointsMover.getPointIndex());
-    }else if(mode == 'plane-cutter'){
-      let ix = this.props.state.getIn(['editorState', 'selectedPlane']);
+    } else if (mode == 'plane-cutter') {
+      const ix = this.props.state.getIn(['editorState', 'selectedPlane']);
       return this.props.actions.changePlane(ix, this.state.pointsMover.getPlane());
     }
   }
    
-  getControls(controlsArray, cpColor = new Color(0xff9900)){
-    return controlsArray.map(({point, ix, constrain})=>{
+  getControls(controlsArray, cpColor = new Color(0xff9900)) {
+    return controlsArray.map(({point, ix, constrain}) => {
       let c = cpColor.clone();
-      if(this.state.hovered == ix) {
+      if (this.state.hovered == ix) {
         c = new Color(0xff0000);
       }
       let geometry;
-      if(constrain.type!='rotation'){
-        geometry = {type:BoxBufferGeometry, arguments:[0.01, 0.01, 0.01]}
-      }else{
-        geometry = {type:SphereBufferGeometry, arguments:[0.03, 10, 10]}
+      if (constrain.type != 'rotation') {
+        geometry = {type: BoxBufferGeometry, arguments: [0.01, 0.01, 0.01]};
+      } else {
+        geometry = {type: SphereBufferGeometry, arguments: [0.03, 10, 10]};
       }
       return {
         type: Mesh,
         position: point.clone(),
-        onEnter: ()=>{this.setState({hovered:ix})},
-        onLeave: ()=>{this.setState({hovered:null})},
-        onDragEnds: ()=>{this.finalizeDrag()},
-        onDragStart:(a,b,c)=>this.startDrag(ix, constrain, a,b,c),
-        onDrag:(e, diff, vs, ray)=>{this.dragControlPoint(ray,e)},
+        onEnter: () => {
+          this.setState({hovered: ix});
+        },
+        onLeave: () => {
+          this.setState({hovered: null});
+        },
+        onDragEnds: () => {
+          this.finalizeDrag();
+        },
+        onDragStart: (a, b, c) => this.startDrag(ix, constrain, a, b, c),
+        onDrag: (e, diff, vs, ray) => {
+          this.dragControlPoint(ray, e);
+        },
         geometry,
-        material: {type:MeshLambertMaterial, properties:{
+        material: {type: MeshLambertMaterial, properties: {
           color: c,
           wireframe: false
         }}
-      }
+      };
     });
   }
 
-  onMeshMouseClick(e){
-    let editorState = this.props.state.get('editorState').toJS();
-    switch(editorState.mode){
+  onMeshMouseClick(e) {
+    const editorState = this.props.state.get('editorState').toJS();
+    switch (editorState.mode) {
       case 'cross-slicing':
         return this.splitAtS(this.sceneIntersection.uv.y);
       case 'radial-slicing':
@@ -197,31 +208,31 @@ export class PartDisplay extends CanvasBase{
     }
   }
 
-  renderCreatorScene(calculated){
-    let c = this.randomColors[0];
+  renderCreatorScene(calculated) {
+    const c = this.randomColors[0];
     return [{
-      type:Mesh,
-      geometry:{
+      type: Mesh,
+      geometry: {
         type: PlaneCutGeometry, 
-        arguments:[
+        arguments: [
           {
-            type:RotationalPartGeometry, 
-            arguments:[calculated],
-            id:'main-mesh'
+            type: RotationalPartGeometry, 
+            arguments: [calculated],
+            id: 'main-mesh'
           }, 
           calculated.cuttingPlanes
         ]},
-        position: new Vector3,
-        onMouseMove: this.onMeshMouseMove,
-        onMouseUp: this.onMeshMouseClick,
-        material:{
-          type: MeshLambertMaterial, properties:{
-            //color: c,
-            map: Textures.earthMap,
-            wireframe: false,
-            side: THREE.FrontSide
-          }
+      position: new Vector3,
+      onMouseMove: this.onMeshMouseMove,
+      onMouseUp: this.onMeshMouseClick,
+      material: {
+        type: MeshLambertMaterial, properties: {
+          //color: c,
+          map: Textures.earthMap,
+          wireframe: false,
+          side: THREE.FrontSide
         }
+      }
     }];
 
     /*return RotationalShape.getRotationalGeometry(calculated).map((attrs,ix)=>{
@@ -247,120 +258,127 @@ export class PartDisplay extends CanvasBase{
       }); */
   }
 
-  renderCurves(curveGeometries, withColor = new Color(0x9999ff)){
-    return curveGeometries.map(pos=>({
-      type:Line,
-      geometry: {position:pos},
+  renderCurves(curveGeometries, withColor = new Color(0x9999ff)) {
+    return curveGeometries.map(pos => ({
+      type: Line,
+      geometry: {position: pos},
       material: {
         type: LineDashedMaterial, 
-        properties:{
+        properties: {
           color: withColor,
-          wireframe:false
+          wireframe: false
         }
-        }
+      }
     }));
   }
 
-  planeMesh(plane){
-    let ix = this.props.state.getIn(['editorState', 'selectPlane']);
+  planeMesh(plane) {
+    const ix = this.props.state.getIn(['editorState', 'selectPlane']);
     return {
-      type:Mesh,
+      type: Mesh,
       geometry: {
-        type:PlaneGeometry, 
-        arguments:[plane, 1, 1], 
-        id:`plane-${ix}`
+        type: PlaneGeometry, 
+        arguments: [plane, 1, 1], 
+        id: `plane-${ix}`
       },
-      position: new Vector3(0,0,0),
-      material: {type:MeshBasicMaterial, properties:{
+      position: new Vector3(0, 0, 0),
+      material: {type: MeshBasicMaterial, properties: {
         color: new Color(0xffffff),
         wireframe: true
       }}
-    }
+    };
   }
 
-  renderEditorScene(calculated){
-    let editorState = this.props.state.get('editorState').toJS();
+  renderEditorScene(calculated) {
+    const editorState = this.props.state.get('editorState').toJS();
     let mainMeshes = this.renderCreatorScene(calculated);
 
-    let color = new Color(0x0000ff);
+    const color = new Color(0x0000ff);
     //
     let controlMeshes = [];
-    if(editorState.mode == 'edit-slices'){
+    if (editorState.mode == 'edit-slices') {
       controlMeshes = this.getControls(RotationalShape.getSliceControls(calculated));
       mainMeshes = this.renderCurves(RotationalShape.getCurves(calculated));
     }
-    if(editorState.mode == 'edit-radials'){
+    if (editorState.mode == 'edit-radials') {
       controlMeshes = this.getControls(RotationalShape.getRadialControls(calculated));
       mainMeshes = this.renderCurves(RotationalShape.getCurves(calculated));
     }
 
-    if(editorState.mode == 'plane-cutter'){
-      let planes = calculated.cuttingPlanes || [];
-      let plane = planes[editorState.selectedPlane];
-      if(plane){
-        let planeControls = getPlaneControls({
+    if (editorState.mode == 'plane-cutter') {
+      const planes = calculated.cuttingPlanes || [];
+      const plane = planes[editorState.selectedPlane];
+      if (plane) {
+        const planeControls = getPlaneControls({
           origin: new Vector3(...plane.origin),
           normal: new Vector3(...plane.normal)
-        })
+        });
         controlMeshes = [this.planeMesh(plane), ...this.getControls(planeControls)];
       }
     }
 
 
 
-    let meshes = [...mainMeshes, 
+    const meshes = [...mainMeshes, 
       ...controlMeshes,
-    ]
+    ];
 
-    if(this.sceneIntersection){
-      let s = this.sceneIntersection.uv.y;
-      let t = this.sceneIntersection.uv.x;
+    if (this.sceneIntersection) {
+      const s = this.sceneIntersection.uv.y;
+      const t = this.sceneIntersection.uv.x;
       let curve = [];
 
-      if(editorState.mode == 'cross-slicing')
+      if (editorState.mode == 'cross-slicing') {
         curve = RotationalShape.getLineAtS(calculated, s);
-      if(editorState.mode == 'radial-slicing')
-        curve =  RotationalShape.getLineAtT(calculated, t);
+      }
+      if (editorState.mode == 'radial-slicing') {
+        curve = RotationalShape.getLineAtT(calculated, t);
+      }
 
-      curve.forEach(({position})=>{
+      curve.forEach(({position}) => {
         meshes.push({
-          type:Line,
+          type: Line,
           geometry: {position},
           material: {
             type: LineBasicMaterial, 
-            properties:{color: new Color(0xff9900)
+            properties: {color: new Color(0xff9900)
             }}
-        })
-      })
+        });
+      });
 
       meshes.push({
         type: Mesh,
-        geometry: {type: BoxBufferGeometry, arguments:[1,1,1].map(x=>x*0.005)},
+        geometry: {type: BoxBufferGeometry, arguments: [1, 1, 1].map(x => x * 0.005)},
         material: {
-          type: MeshBasicMaterial, properties:{
+          type: MeshBasicMaterial, properties: {
             color: new Color(0x00ffff),
             side: THREE.DoubleSide,
-            wireframe:false
+            wireframe: false
           }
         },
         
         position: new Vector3().copy(this.sceneIntersection.point)
-      })
+      });
     }
     return meshes; 
 
   }
 
-  renderScene(){
-    if(!this.props.state.has('currentPart')) return [];
-    let part = this.props.state.get('currentPart').toJS();
-    if(!part.calculated) return [];
+  renderScene() {
+    if (!this.props.state.has('currentPart')) {
+      return [];
+    }
+    const part = this.props.state.get('currentPart').toJS();
+    if (!part.calculated) {
+      return [];
+    }
 
-    if(part.stage == 'rough'){
+    if (part.stage == 'rough') {
       return this.renderCreatorScene(part.calculated);
     }
-    if(part.stage =='precise')
+    if (part.stage == 'precise') {
       return this.renderEditorScene(part.calculated);
+    }
   }
 
 }

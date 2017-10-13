@@ -1,6 +1,8 @@
 import React from 'react';
-export function ExistPartsList({show, actions}){
-  if(!show) return null;
+export function ExistPartsList({show, actions}) {
+  if (!show) {
+    return null;
+  }
 
   return <div className='exist-part-list'>
     <div className='list'>
@@ -10,5 +12,5 @@ export function ExistPartsList({show, actions}){
       <a className='btn' onClick={actions.hideList}>cancel</a>
     </div>
 
-  </div>
+  </div>;
 }

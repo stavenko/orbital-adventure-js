@@ -1,5 +1,5 @@
-var webpack = require("webpack");
-var CopyWebpackPlugin = require('copy-webpack-plugin');
+const webpack = require('webpack');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 module.exports = {
   entry: './entry.jsx',
   devtool: 'source-map',
@@ -9,7 +9,7 @@ module.exports = {
         test: /\.(jsx|js)$/,
         loader: 'babel',
         exclude: /node_modules/,
-        babelrc:false,
+        babelrc: false,
         query: {
           presets: ['es2015', 'stage-0', 'react'],
         }
@@ -18,21 +18,22 @@ module.exports = {
       {
         test: /\/node_modules\/three\/.*js$/,
         loader: 'babel',
-        babelrc:false,
+        babelrc: false,
         query: {
           presets: ['es2015', 'stage-0', 'react'],
         }
 
       },
-      {test: /\.scss$/, loaders: ['style','css?-minimize', 'postcss', 'sass'] },
-      {test: /\.(woff|woff2)$/, loader: "url-loader"},
-      {test: /\.ttf$/, loader: "url-loader"},
+      {test: /\.ts$/, loader: 'ts-loader'},
+      {test: /\.scss$/, loaders: ['style', 'css?-minimize', 'postcss', 'sass'] },
+      {test: /\.(woff|woff2)$/, loader: 'url-loader'},
+      {test: /\.ttf$/, loader: 'url-loader'},
       {test: /\.jpe?g$/, loaders: ['url'] },
 
-      {test: /\.eot$/, loader: "file-loader"},
-      {test: /\.svg$/, loader: "file-loader"},
-      {test: /\.glsl$/, loader: "raw"},
-      {test: /\.json$/, loader: "json"},
+      {test: /\.eot$/, loader: 'file-loader'},
+      {test: /\.svg$/, loader: 'file-loader'},
+      {test: /\.glsl$/, loader: 'raw'},
+      {test: /\.json$/, loader: 'json'},
       {
         test: /\.styl/,
         // loader: 'css-loader!stylus-loader'
@@ -45,15 +46,15 @@ module.exports = {
     ]
   },
   plugins: [
-    new webpack.ProvidePlugin({$: "jquery", jQuery: "jquery"}),
+    new webpack.ProvidePlugin({$: 'jquery', jQuery: 'jquery'}),
 
   ],
   devServer: {
-    headers: { "Access-Control-Allow-Origin": "*" }
+    headers: { 'Access-Control-Allow-Origin': '*' }
   },
   output: {
     path: __dirname + '/build/app/',
-    publicPath: "/app/",
+    publicPath: '/app/',
     filename: 'application.js',
   }
 };
