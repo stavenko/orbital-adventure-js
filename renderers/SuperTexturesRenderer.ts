@@ -214,8 +214,8 @@ export class SuperTextureRenderer {
   }
 
   getMaxDistanceForLod(lod, planetRadius, fovFactor:number):number {
-    const normalized = Math.pow(2, lod) / MaxLodCoefficient;
-    return (1 - normalized) * this.getMaxLodDistance(planetRadius, fovFactor);
+    const normalized = Math.pow(2, MaxLod - lod) / MaxLodCoefficient;
+    return normalized * this.getMaxLodDistance(planetRadius, fovFactor);
   }
 
   getLodsArray(planet:Planet, globalPosition: THREE.Vector3, pixelFovRatio:number): Array<number> {
