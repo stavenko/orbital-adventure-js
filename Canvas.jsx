@@ -1,29 +1,43 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
-import {Scene} from 'three/src/scenes/Scene';
-import {PointLight} from 'three/src/lights/PointLight';
-import {AmbientLight} from 'three/src/lights/AmbientLight';
-import {WebGLRenderer} from 'three/src/renderers/WebGLRenderer';
-import {OrthographicCamera} from 'three/src/cameras/OrthographicCamera';
-import {PerspectiveCamera} from 'three/src/cameras/PerspectiveCamera';
-import {Raycaster} from 'three/src/core/Raycaster';
+// import ReactDOM from 'react-dom';
+// import {Scene} from 'three/src/scenes/Scene';
+// import {PointLight} from 'three/src/lights/PointLight';
+// import {AmbientLight} from 'three/src/lights/AmbientLight';
+// import {WebGLRenderer} from 'three/src/renderers/WebGLRenderer';
+// import {OrthographicCamera} from 'three/src/cameras/OrthographicCamera';
+// import {PerspectiveCamera} from 'three/src/cameras/PerspectiveCamera';
+// import {Raycaster} from 'three/src/core/Raycaster';
 // import {BufferGeometry} from 'three/src/core/BufferGeometry';
 // import {BufferAttribute} from 'three/src/core/BufferAttribute';
-import {Vector2} from 'three/src/math/Vector2';
-import {Vector3} from 'three/src/math/Vector3';
-import {AxisHelper} from 'three/src/extras/helpers/AxisHelper';
-import {Quaternion} from 'three/src/math/Quaternion';
-import {Matrix4} from 'three/src/math/Matrix4';
-import {Vector4} from 'three/src/math/Vector4';
+// import {Vector2} from 'three/src/math/Vector2';
+// import {Vector3} from 'three/src/math/Vector3';
+// import {Quaternion} from 'three/src/math/Quaternion';
+// import {Matrix4} from 'three/src/math/Matrix4';
+// import {Vector4} from 'three/src/math/Vector4';
 import {Camera} from './Camera.js';
-import isEqual from 'lodash/isEqual';
+// import isEqual from 'lodash/isEqual';
 import * as GeometryManager from './GeometryManager.js';
+import * as THREE from 'three';
+const Matrix4 = THREE.Matrix4;
+const Vector4 = THREE.Vector4;
+const Vector3 = THREE.Vector3;
+const Vector2 = THREE.Vector2;
+const Quaternion = THREE.Quaternion;
+const Scene = THREE.Scene;
+const PointLight = THREE.PointLight;
+const AmbientLight = THREE.AmbientLight;
+const WebGLRenderer = THREE.WebGLRenderer;
+const OrthographicCamera = THREE.OrthographicCamera;
+// const Camera = THREE.Camera;
+const Raycaster = THREE.Raycaster;
 
+/*
 const defaultParameters = {
   position: new Vector3,
   rotation: new Quaternion,
   scale: new Vector3(1, 1, 1)
-};
+  };
+  */
 
 export class CanvasBase extends React.Component {
   constructor(props) {
@@ -285,7 +299,7 @@ export class CanvasBase extends React.Component {
     const components = this.renderScene();
     this.updateLights();
     this.updateMeshes(this.scene, components);
-    this.scene.add(new AxisHelper(1));
+    this.scene.add(new THREE.AxisHelper(1));
     const flags = this.prerender();
     this.renderer.clear(...flags);
     this.renderer.render(this.scene, this.camera);

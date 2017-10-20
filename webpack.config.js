@@ -1,60 +1,97 @@
 const webpack = require('webpack');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
-module.exports = {
-  entry: './entry.jsx',
-  devtool: 'source-map',
-  module: {
-    loaders: [
-      {
-        test: /\.(jsx|js)$/,
-        loader: 'babel',
-        exclude: /node_modules/,
-        babelrc: false,
-        query: {
-          presets: ['es2015', 'stage-0', 'react'],
+// const CopyWebpackPlugin = require('copy-webpack-plugin');
+module.exports = function(precompileVars, isProduction) {
+  return {
+    entry: './entry.jsx',
+    devtool: 'source-map',
+    resolve: {
+      extensions: ['.ts', '.js']
+    },
+    module: {
+      rules: [
+        {
+          test: /\.(jsx|js)$/,
+          use: [
+            {
+              loader: 'babel-loader'
+            }
+          ],
+          exclude: /(node_modules)/,
+
+        },
+        {
+          test: /\.glsl$/,
+          use: 'raw-loader'
+        },
+        {
+          test: /\.scss$/,
+          use: [
+            {
+              loader: 'style-loader'
+            },
+            {
+              loader: 'css-loader',
+              options: {
+                sourceMap: !isProduction,
+                minimize: true
+              }
+            },
+            {
+              loader: 'postcss-loader',
+              options: {
+                sourceMap: !isProduction
+              }
+            },
+            {
+              loader: 'sass-loader',
+              options: {
+                sourceMap: !isProduction
+              }
+            },
+          ]
+        },
+        {
+          test: /\.(jpeg|jpg|png|gif)$/,
+          use: 'url-loader'
+        },
+        {
+          test: /\.ts$/,
+          use: [
+            { loader: 'ts-loader'}
+          ]
+        },
+        {
+          test: /\.svg$/,
+          issuer: /\.(js|jsx)$/,
+          use: [{
+            loader: 'svg-loader'
+          }]
+        },
+        {
+          test: /\.(woff2|woff|eot|ttf)$/,
+          use: {
+            loader: 'url-loader',
+            options: {
+              limit: 65000,
+            }
+          }
         }
+      ]
+    },
+    resolveLoader: {
+      modules: ['node_modules', './']
+    },
+    plugins: [
+      new webpack.ProvidePlugin({$: 'jquery', jQuery: 'jquery'}),
 
-      },
-      {
-        test: /\/node_modules\/three\/.*js$/,
-        loader: 'babel',
-        babelrc: false,
-        query: {
-          presets: ['es2015', 'stage-0', 'react'],
-        }
-
-      },
-      {test: /\.ts$/, loader: 'ts-loader'},
-      {test: /\.scss$/, loaders: ['style', 'css?-minimize', 'postcss', 'sass'] },
-      {test: /\.(woff|woff2)$/, loader: 'url-loader'},
-      {test: /\.ttf$/, loader: 'url-loader'},
-      {test: /\.jpe?g$/, loaders: ['url'] },
-
-      {test: /\.eot$/, loader: 'file-loader'},
-      {test: /\.svg$/, loader: 'file-loader'},
-      {test: /\.glsl$/, loader: 'raw'},
-      {test: /\.json$/, loader: 'json'},
-      {
-        test: /\.styl/,
-        // loader: 'css-loader!stylus-loader'
-        loaders: [
-          'style',
-          'css?modules&importLoaders=2&localIdentName=[name]__[local]__[hash:base64:6]',
-          'stylus'
-        ]
-      }
-    ]
-  },
-  plugins: [
-    new webpack.ProvidePlugin({$: 'jquery', jQuery: 'jquery'}),
-
-  ],
-  devServer: {
-    headers: { 'Access-Control-Allow-Origin': '*' }
-  },
-  output: {
-    path: __dirname + '/build/app/',
-    publicPath: '/app/',
-    filename: 'application.js',
-  }
+    ],
+    devServer: {
+      headers: { 'Access-Control-Allow-Origin': '*' }
+    },
+    output: {
+      path: __dirname + '/build/app/',
+      publicPath: '/app/',
+      filename: 'application.js',
+    }
+  };
 };

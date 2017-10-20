@@ -1,8 +1,8 @@
 import React from 'react';
 import {CanvasBase} from '../Canvas.jsx';
-import {BoxBufferGeometry} from 'three/src/geometries/BoxBufferGeometry';
 import {Mesh} from 'three/src/objects/Mesh';
 import {MeshBasicMaterial} from 'three/src/materials/MeshBasicMaterial';
+import * as THREE from 'three';
 
 
 export function ObjectEditor(props) {
@@ -50,7 +50,7 @@ const EditedObject = {
 class ObjectEditorImpl extends CanvasBase {
   constructor(props) {
     super(props);
-    const mesh = new Mesh(new BoxBufferGeometry(1, 1, 1), new MeshBasicMaterial({color: 0xff0000}));
+    const mesh = new Mesh(new THREE.BoxBufferGeometry(1, 1, 1), new MeshBasicMaterial({color: 0xff0000}));
     this.scene.add(mesh);
   }
 

@@ -1,13 +1,15 @@
 import {patchToWeights} from './Utils.js';
 import {MultigeometryManager} from './MultigeometryManager.js';
-import {Vector3} from 'three/src/math/Vector3';
-import {BufferGeometry} from 'three/src/core/BufferGeometry';
-import {BufferAttribute} from 'three/src/core/BufferAttribute';
 import {toArray} from './Math.js';
 import * as Quad from './QuadBezier.js';
 import * as Triangle from './TriangleBezier.js';
 import isEqual from 'lodash/isEqual';
 import * as GeometryManager from '../GeometryManager.js';
+import * as THREE from 'three';
+
+const BufferGeometry = THREE.BufferGeometry;
+const BufferAttribute = THREE.BufferAttribute;
+const Vector3 = THREE.Vector3;
 
 
 export function getLodGeometry(n) {
@@ -351,8 +353,8 @@ export function PlaneGeometry(plane, sizex, sizey, steps = 10) {
   const x = new Vector3(1, 0, 0);
   const y = new Vector3(0, 1, 0);
   const z = new Vector3(0, 0, 1);
-  const pn = new Vector3(...plane.normal);
-  const po = new Vector3(...plane.origin);
+  const pn = plane.normal.clone();
+  // const po = plane.origin.clone();
 
   const dots = [x, y, z].map(v => v.dot(pn)).map((d, ix) => [d, ix]).sort((a, b) => b[0] - a[0]);
   const best = [x, y, z][dots[0][1]];
@@ -384,7 +386,7 @@ export function PlaneGeometry(plane, sizex, sizey, steps = 10) {
   this.addAttribute('position', new BufferAttribute(toArray(Float32Array, positions), 3));
 
   function getP(s, t) {
-    const p = new Vector3(...plane.origin);
+    const p = plane.origin.clone(); // new Vector3(...plane.origin);
     p.add(px.clone().multiplyScalar(s * sizex));
     p.add(py.clone().multiplyScalar(t * sizey));
     return p;

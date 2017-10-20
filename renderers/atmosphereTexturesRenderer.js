@@ -7,19 +7,27 @@ import {
   lambdaR, lambdaG, lambdaB
 
 } from './AtmosphereConstants.js';
-import {BufferAttribute} from 'three/src/core/BufferAttribute';
-import {BufferGeometry} from 'three/src/core/BufferGeometry';
-import {Mesh} from 'three/src/objects/Mesh';
+// import {BufferAttribute} from 'three/src/core/BufferAttribute';
+//import {BufferGeometry} from 'three/src/core/BufferGeometry';
+// import {Mesh} from 'three/src/objects/Mesh';
 import {Matrix4} from 'three/src/math/Matrix4';
 import {Vector4} from 'three/src/math/Vector4';
 import {Vector3} from 'three/src/math/Vector3';
 import {Vector2} from 'three/src/math/Vector2';
 import {PerspectiveCamera} from 'three/src/cameras/PerspectiveCamera';
-import {Color} from 'three/src/math/Color';
-import * as THREE from 'three/src/constants';
-import {RawShaderMaterial} from 'three/src/materials/RawShaderMaterial';
-import {WebGLRenderTarget} from 'three/src/renderers/WebGLRenderTarget.js';
-import {ShaderChunk} from 'three/src/renderers/shaders/ShaderChunk.js';
+// import {Color} from 'three/src/math/Color';
+// import {RawShaderMaterial} from 'three/src/materials/RawShaderMaterial';
+// import {WebGLRenderTarget} from 'three/src/renderers/WebGLRenderTarget.js';
+// import {ShaderChunk} from 'three/src/renderers/shaders/ShaderChunk.js';
+import * as THREE from 'three';
+
+const BufferGeometry = THREE.BufferGeometry;
+const Mesh = THREE.Mesh;
+const ShaderChunk = THREE.ShaderChunk;
+const BufferAttribute = THREE.BufferAttribute;
+const RawShaderMaterial = THREE.RawShaderMaterial;
+const WebGLRenderTarget = THREE.WebGLRenderTarget;
+
 ShaderChunk.AtmosphereConstructor = require('../shaders/AtmosphereConstructor.glsl');
 ShaderChunk.AtmosphereUniforms = require('../shaders/AtmosphereUniforms.glsl');
 ShaderChunk.AtmosphereFunctions = require('../shaders/atmosphereFunctions.glsl');
@@ -66,15 +74,6 @@ export class AtmosphereTexturesRenderer {
     this.prepareShaders();
     this.initScreenSpaceMesh();
     this.textures = {};
-    threeRenderer.context.canvas.addEventListener('webglcontextlost', event => {
-      console.log('context lost');
-      event.preventDefault();
-    });
-
-    threeRenderer.context.canvas.addEventListener('webglcontextrestored', event => {
-      console.log('context restored');
-      event.preventDefault();
-    });
 
     const atmosphere = require('../shaders/atmosphereShader.glsl');
 

@@ -1,3 +1,13 @@
 {
-  "plugins": ["transform-es2015-destructuring"]
+  "env": {
+    "production": {
+      "plugins": ["transform-object-assign"],
+      "presets": ["es2017", "es2015"]
+    },
+    "edge": {
+      "plugins": ["transform-async-to-generator", "transform-es2015-modules-commonjs"]
+    }
+  },
+  "plugins": ["syntax-object-rest-spread", "transform-object-rest-spread"],
+  "presets": ["react"]
 }

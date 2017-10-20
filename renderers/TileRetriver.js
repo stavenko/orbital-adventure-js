@@ -3,12 +3,12 @@ import {Vector3} from 'three/src/math/Vector3';
 import {Matrix4} from 'three/src/math/Matrix4';
 import {Plane} from 'three/src/math/Plane';
 import {OrthographicCamera} from 'three/src/cameras/OrthographicCamera.js';
-import * as cubeMap from '../math/cubeMap.js';
+// import * as cubeMap from '../math/cubeMap.js';
 
 const TextureSize = 512;
 export class TileRetriver {
   constructor() {
-    cubeMap.tileMath();
+    // cubeMap.tileMath();
   }
 
   lineSphereIntersection(line, sphere, both = false) {
@@ -328,10 +328,10 @@ export class TileRetriver {
 
   getFirstTile(closestLod, closestNormal) {
     const lod = closestLod;
-    const face = cubeMap.determineFace(closestNormal);
-    const st = cubeMap.getSt(closestNormal.toArray(), face);
-    const tileCoords = cubeMap.findTile(cubeMap.st2uv(st), lod);
-    const tile = cubeMap.calculateTile(tileCoords, lod);
+    // const face = cubeMap.determineFace(closestNormal);
+    // const st = cubeMap.getSt(closestNormal.toArray(), face);
+    // const tileCoords = cubeMap.findTile(cubeMap.st2uv(st), lod);
+    // const tile = cubeMap.calculateTile(tileCoords, lod);
     return {tile, lod, face, tileCoords};
     
   }
@@ -424,11 +424,11 @@ export class TileRetriver {
           yield this.faceShiftedTile(lod, face, Jj, Ii); 
         } else {
           const tileCoords = [Jj, Ii];
-          const tile = cubeMap.calculateTile(tileCoords, lod);
+          // const tile = cubeMap.calculateTile(tileCoords, lod);
           if (Jj < 0 || Ii < 0) {
             
           }
-          yield {face, tile, tileCoords: cubeMap.vec2(Jj, Ii)};
+          // yield {face, tile, tileCoords: cubeMap.vec2(Jj, Ii)};
         }
       }
     }
@@ -450,11 +450,11 @@ export class TileRetriver {
           neigbours.push(this.faceShiftedTile(lod, face, [J, j], [I, i])); 
         } else {
           const tileCoords = [Jj, Ii];
-          const tile = cubeMap.calculateTile(tileCoords, lod);
+          // const tile = cubeMap.calculateTile(tileCoords, lod);
           if (Jj < 0 || Ii < 0) {
             
           }
-          neigbours.push({face, tile, tileCoords: cubeMap.vec2(Jj, Ii)});
+          // neigbours.push({face, tile, tileCoords: cubeMap.vec2(Jj, Ii)});
         }
       }
     }

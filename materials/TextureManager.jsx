@@ -1,7 +1,7 @@
 import * as THREE from 'three/src/constants.js';
 import {Vector3} from 'three/src/math/Vector3';
 import {Vector4} from 'three/src/math/Vector4';
-import ZipWorker from 'worker!../Utils/zip/zipWorker.js';
+import ZipWorker from 'worker-loader!../Utils/zip/zipWorker.js';
 import {DataTexture} from 'three/src/textures/DataTexture.js';
 
 const TextureSize = 512;

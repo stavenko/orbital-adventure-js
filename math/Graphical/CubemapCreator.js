@@ -1,5 +1,5 @@
 import * as THREE from 'three/src/constants.js';
-import {DataTexture} from 'three/src/textures/DataTexture.js';
+// import {DataTexture} from 'three/src/textures/DataTexture.js';
 import {CubeTexture} from 'three/src/textures/CubeTexture.js';
 
 const texelSize = 4;

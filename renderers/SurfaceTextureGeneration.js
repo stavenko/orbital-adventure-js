@@ -1,5 +1,5 @@
 import get from 'lodash/get';
-import * as THREE from 'three/src/constants';
+// import * as THREE from 'three/src/constants';
 import {Mesh} from 'three/src/objects/Mesh';
 import {BufferAttribute} from 'three/src/core/BufferAttribute';
 import {DataTexture} from 'three/src/textures/DataTexture';

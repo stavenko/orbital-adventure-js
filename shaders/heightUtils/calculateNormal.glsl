@@ -33,13 +33,26 @@ void calculateTileProperties(int face, int lod, int tile, out TileProperties tp)
   tp.t = float(tp.I) / float(division);
 }
 
-vec3 stToNormal(vec2 st, int face){
+vec3 uvToNormal(vec2 uv, int face){
 
-  float s = st.x;
-  float t = st.y;
+  float s = uv.x;
+  float t = uv.y;
 
   float ss = s * 2.0 - 1.0;
   float tt = t * 2.0 - 1.0;
+
+  if(face == 0) return vec3(-1.0, -tt, ss);// back
+  if(face == 1) return vec3(ss, -1.0, -tt); // left
+  if(face == 2) return vec3(1.0, -tt,-ss); // front
+  if(face == 3) return vec3(ss,  1.0, tt); // right
+  if(face == 4) return vec3(ss, -tt, 1.0); // top
+  if(face == 5) return vec3(-ss, -tt, -1.0); // bottom
+  return vec3(0.0);
+}
+vec3 stToNormal(vec2 st, int face){
+
+  float ss = st.x;
+  float tt = st.y;
 
   if(face == 0) return vec3(-1.0, -tt, ss);// back
   if(face == 1) return vec3(ss, -1.0, -tt); // left

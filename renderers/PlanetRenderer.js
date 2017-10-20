@@ -1,25 +1,27 @@
-import * as THREE from 'three/src/constants.js';
-import {WebGLRenderTarget} from 'three/src/renderers/WebGLRenderTarget.js';
-import {BufferGeometry} from 'three/src/core/BufferGeometry';
-import {BufferAttribute} from 'three/src/core/BufferAttribute';
-// import {DataTexture} from 'three/src/textures/DataTexture.js';
 import {Quaternion} from 'three/src/math/Quaternion';
 import {Matrix4} from 'three/src/math/Matrix4';
-// import {Vector4} from 'three/src/math/Vector4';
-import {Vector3} from 'three/src/math/Vector3';
-// import {Vector2} from 'three/src/math/Vector2';
 import {Color} from 'three/src/math/Color';
 import {Sphere} from 'three/src/math/Sphere';
 import {Ray} from 'three/src/math/Ray';
 import {Mesh} from 'three/src/objects/Mesh';
-import {LODMaterial, LodCalculatorMaterial} from '../materials/PlanetaryMaterial.jsx';
+import {Scene} from 'three/src/scenes/Scene';
+import {LODMaterial} from '../materials/PlanetaryMaterial.jsx';
 import {getLodGeometry} from '../math/Geometry.js';
 import {MeshBasicMaterial} from 'three/src/materials/MeshBasicMaterial';
-import {SphereBufferGeometry} from 'three/src/geometries/SphereBufferGeometry';
 import {AtmosphereTexturesRenderer} from './atmosphereTexturesRenderer.js';
-import {SurfaceTextureGenerator} from './SurfaceTextureGeneration.js';
 import {SuperTextureRenderer} from './SuperTexturesRenderer.ts';
-import {TileRetriver} from './TileRetriver.js';
+import * as THREE from 'three';
+
+const BufferGeometry = THREE.BufferGeometry;
+const BufferAttribute = THREE.BufferAttribute;
+const WebGLRenderTarget = THREE.WebGLRenderTarget;
+const ShaderChunk = THREE.ShaderChunk;
+const Vector3 = THREE.Vector3;
+
+ShaderChunk.getPerlinValue = require('../shaders/heightUtils/perlin3d.glsl');
+ShaderChunk.getHeightValue = require('../shaders/heightUtils/getHeightValue.glsl');
+ShaderChunk.calculateNormal = require('../shaders/heightUtils/calculateNormal.glsl');
+ShaderChunk.quaternion = require('../shaders/lod/quaternion.glsl');
 
 
 export const colors = [[0.5, 0.5, 0], [0.0, 1.0, 0.0], [0.3, 0.7, 1]];
@@ -33,10 +35,11 @@ export class PlanetRenderer {
     this.prepareProgram();
     this.prepareArrays();
     this.atmosphereRenderer = new AtmosphereTexturesRenderer(renderer); 
-    this.surfaceRenderer = new SurfaceTextureGenerator(renderer); 
-    this.superTextureRenderer = new SuperTextureRenderer(renderer);
+    //this.surfaceRenderer = new SurfaceTextureGenerator(renderer); 
+    this.__render = this.__render.bind(this);
+    this.superTextureRenderer = new SuperTextureRenderer(renderer, this.__render);
     this.planets = planets;
-    this.tileRetriver = new TileRetriver; 
+    // this.tileRetriver = new TileRetriver; 
     this.planets.planets.forEach(pl => pl.texturesCache = {});
     this.globalPosition = globalPosition;
     this.worldManager = worldManager;
@@ -46,14 +49,18 @@ export class PlanetRenderer {
     this.renderer.setClearAlpha(1);
     this._textureType = false;
     this._screenSpaceMesh = this.initScreenSpaceMesh();
+    this._screenSpaceScene = new Scene;
+    this._lodMeshScene = new Scene;
+    this._screenSpaceScene.add(this._screenSpaceMesh);
+    this._lodMeshScene.add(this.lodMesh);
     this.__ww = 0;
     this.__zz = 0;
     // this.___someShit();
     this.pixelsSource = new Uint8Array(TileSourceMapSize * TileSourceMapSize * 4 );
     this.planetSpheres = planets.planets.map((planet, ix) => {
       const {spatial} = planet;
-      const geometry = new SphereBufferGeometry(spatial.radius * 0.999, 100, 100);
-      const mesh = new Mesh(geometry, new MeshBasicMaterial({color: new Color(...colors[ix])}));
+      const geometry = new THREE.SphereBufferGeometry(spatial.radius * 0.999, 100, 100);
+      const mesh = new THREE.Mesh(geometry, new MeshBasicMaterial({color: new Color(...colors[ix])}));
       mesh.position.set(...spatial.position);
       mesh.updateMatrix();
       mesh.updateMatrixWorld();
@@ -108,7 +115,6 @@ export class PlanetRenderer {
     geom.setIndex(new BufferAttribute(ind, 1));
     const mesh = new Mesh(geom);
     mesh.frustumCulled = false;
-
     return mesh;
   }
 
@@ -149,9 +155,9 @@ export class PlanetRenderer {
     });
     const star = this.planets.star;
     sorted.forEach((planet, ix) => {
-      const mesh = this.planetSpheres[ix];
+      // const mesh = this.planetSpheres[ix];
       const planetProperties = {};
-      this.superTextureRendering(planet);
+      this.superTextureRendering(planet, camera);
       // this.renderLOD(planet, camera, planetProperties);
       this.renderAtmospehere(planet, camera, planetProperties, star);
       this.renderer.clear(false, true, true);
@@ -178,7 +184,7 @@ export class PlanetRenderer {
     
     material.uniforms.planetSurfaceColor = {value: this.planetDiffuseColorTarget.texture};
     this.renderer.clear(false, true, true);
-    this.renderer.render(this._screenSpaceMesh, camera);
+    this.renderer.render(this._screenSpaceScene, camera);
   }
 
   setupClipping(planet, withCamera) {
@@ -210,6 +216,7 @@ export class PlanetRenderer {
     const planetRotation = planet.initialQuaternion.clone();
     const rotationAngle = planet.time || 0;
     const quat = new Quaternion().setFromAxisAngle(northVector, rotationAngle / 1000000000);
+    return new Quaternion;
     return planetRotation.multiply(quat);
 
   }
@@ -564,26 +571,51 @@ export class PlanetRenderer {
     }
   }
 
+  __render(mesh, camera, fb = null) {
+    this.renderer.render(mesh, camera, fb);
+  } 
+
   superTextureRendering(planet, withCamera) {
     const globalPosition = this.globalPosition.position.clone();
     const planetRotation = this.calculatePlanetRotation(planet);
     const planetPosition = new Vector3(...planet.spatial.position).sub(globalPosition);
     const pixelFovRatio = (withCamera.fov / withCamera.zoom) / NormalFOV;
+    this.renderer.clearTarget(this.planetDiffuseColorTarget, true, true, true);
     const textures = this.superTextureRenderer.getTexturesDescriptorAt(planet, globalPosition, planetRotation, pixelFovRatio);
-    textures.map(td => {
+
+    textures.forEach((td, ix) => {
       const t = this.superTextureRenderer.getTexture(td);
-      const ufs = this.lodMesh.material.uniforms;
-      ufs.position = {value: planetPosition};
+      if (!t) return;
+      const lodMesh = this.lodMeshes[ix];
+      const randomCoord = this.___randoms[ix].clone();
+      const ufs = lodMesh.material.uniforms;
+      const material = lodMesh.material;
+      
+      ufs.planetPosition = {value: planetPosition};
       ufs.rotation = {value: planetRotation};
       ufs.heightMap = {value: t};
-      this.renderer.clearTarget(this.planetDiffuseColorTarget, true, true, true);
-      this.renderer.render(this.lodMesh, withCamera, this.planetDiffuseColorTarget);
-      debugger;
+      ufs.lod = {value: td.lod};
+      ufs.textureCenter = {value: td.coords.st.clone()}; 
+      ufs.face = {value: td.coords.face}; 
+      ufs.radius = {value: planet.spatial.radius};
+      ufs.textureHorizont = {value: td.textureSize}; 
+      ufs.basisS = {value: td.basisOfSurface[0]}; 
+      ufs.basisT = {value: td.basisOfSurface[1]}; 
+      ufs.myViewMatrix = {value: new Matrix4().getInverse(withCamera.matrixWorld)};
+      ufs.myProjectionMatrix = {value: withCamera.projectionMatrix.clone()};
+      ufs.logDepthBufC = {value: 2.0 / ( Math.log(withCamera.far + 1.0 ) / Math.LN2 )};
+      material.side = THREE.DoubleSide;
+      material.wireframe = true;
+      material.needsUpdate = true;
+      lodMesh.frustumCulled = false;
+
+      this.renderer.render(lodMesh, withCamera, this.planetDiffuseColorTarget);
     });
   }
 
 
   renderLOD(planet, withCamera, planetProperties) {
+    return;
 
     // let textures = this.determineTextureGPU(planet, withCamera, planetProperties);
     const cameraPosition = this.globalPosition.position.clone();
@@ -789,6 +821,7 @@ export class PlanetRenderer {
       .sub(cameraPosition);
   }
 
+  /*
 
   setupLodMaterialUniforms(material, planet, params) {
     const {s, t, lod, tile, face, tileCoords } = params;
@@ -807,8 +840,6 @@ export class PlanetRenderer {
     material.uniforms.tileCoordsI = {value: tileCoords.y};
     material.uniforms.halfResolution = {value: params.halfResolution};
     material.uniforms.fface = {value: face};
-    material.wireframe = true;
-    material.side = THREE.DoubleSide;
 
   }
 
@@ -834,7 +865,7 @@ export class PlanetRenderer {
       }
     };
   }
-
+*/
   prepareTexture(planet, params) {
     const {textureType, lod, face, tile} = params;
     if (textureType === 'specular' || textureType === 'color'
@@ -863,19 +894,31 @@ export class PlanetRenderer {
   }
 
   prepareArrays() {
-    const lowLodGeometry = getLodGeometry(50);
-    const highLodGeometry = getLodGeometry(256);
-    const halfLodGeometry = getLodGeometry(128);
+    // const lowLodGeometry = getLodGeometry(50);
+    const highLodGeometry = getLodGeometry(50);
+    //const halfLodGeometry = getLodGeometry(128);
+    this.lodMeshes = [
+      new Mesh(highLodGeometry.clone(), new LODMaterial()),
+      new Mesh(highLodGeometry.clone(), new LODMaterial()),
+      new Mesh(highLodGeometry.clone(), new LODMaterial())
+    ] ;
+    this.___randoms = [
+      new THREE.Vector2(-0.5, 0),
+      new THREE.Vector2(0.5, 0),
+      new THREE.Vector2(0, 0.5)
+
+    ]
     this.lodMesh = new Mesh(highLodGeometry, this.material);
-    this.lodMeshHalf = new Mesh(halfLodGeometry, this.material);
+    // this.lodMeshHalf = new Mesh(halfLodGeometry, this.material);
     this.lodMesh.frustumCulled = false;
-    this.lodMeshHalf.frustumCulled = false;
-    this.lodCalculatorMesh = new Mesh(lowLodGeometry, this.lodCalculator);
+    // this.lodMeshHalf.frustumCulled = false;
+    // this.lodCalculatorMesh = new Mesh(lowLodGeometry, this.lodCalculator);
   }
 
 
   prepareProgram() {
     this.material = new LODMaterial();
-    this.lodCalculator = new LodCalculatorMaterial();
+    // this.material.wireframe = true;
+    // this.lodCalculator = new LodCalculatorMaterial();
   }
 }

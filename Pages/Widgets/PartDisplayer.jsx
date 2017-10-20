@@ -11,8 +11,6 @@ import {LineBasicMaterial} from 'three/src/materials/LineBasicMaterial';
 import {LineDashedMaterial} from 'three/src/materials/LineDashedMaterial';
 import {Vector3} from 'three/src/math/Vector3';
 import {Vector2} from 'three/src/math/Vector2';
-import {BoxBufferGeometry} from 'three/src/geometries/BoxBufferGeometry';
-import {SphereBufferGeometry} from 'three/src/geometries/SphereBufferGeometry';
 import {PointsMover} from '../../math/RotationalPointsMover.js';
 import * as RotationalShape from '../../math/RotationalShape.js';
 import * as THREE from 'three/src/constants';

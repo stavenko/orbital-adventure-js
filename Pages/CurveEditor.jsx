@@ -8,9 +8,9 @@ import {Vector3} from 'three/src/math/Vector3';
 import {Color} from 'three/src/math/Color';
 import {Mesh} from 'three/src/objects/Mesh';
 import {MeshBasicMaterial} from 'three/src/materials/MeshBasicMaterial';
-import {BoxBufferGeometry} from 'three/src/geometries/BoxBufferGeometry';
 import {CanvasBase} from '../Canvas.jsx';
 import {Curve} from '../math/Curve.js';
+import * as THREE from 'three';
 
 export function CurveEditorWidget(props) {
   return <div style={{width: '100%', height: '40%'}}>
@@ -97,7 +97,7 @@ class CurveEditorWidgetImpl extends CanvasBase {
         new Color(0x0000ff);
       return {
         type: Mesh,
-        geometry: {type: BoxBufferGeometry, arguments: [20, 20, 20]},
+        geometry: {type: THREE.BoxBufferGeometry, arguments: [20, 20, 20]},
         material: {type: MeshBasicMaterial, properties: {color}},
         position: new Vector3(point.x, 
           point.y, 

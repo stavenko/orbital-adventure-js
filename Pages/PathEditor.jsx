@@ -6,8 +6,8 @@ import {LineBasicMaterial} from 'three/src/materials/LineBasicMaterial';
 import {Color} from 'three/src/math/Color';
 import {Mesh} from 'three/src/objects/Mesh';
 import {MeshBasicMaterial} from 'three/src/materials/MeshBasicMaterial';
-import {BoxBufferGeometry} from 'three/src/geometries/BoxBufferGeometry';
 import {Vector3} from 'three/src/math/Vector3';
+import * as THREE from 'three';
 export class PathEditor extends CanvasBase {
 
   constructor(props) {
@@ -55,7 +55,7 @@ export class PathEditor extends CanvasBase {
         color = new Color(0x0000ff);
       }
       return {type: Mesh,
-        geometry: {type: BoxBufferGeometry, arguments: [1, 1, 1]},
+        geometry: {type: THREE.BoxBufferGeometry, arguments: [1, 1, 1]},
         material: {type: MeshBasicMaterial, 
           properties: {color}},
         position: new Vector3(node.x, node.y, node.z),

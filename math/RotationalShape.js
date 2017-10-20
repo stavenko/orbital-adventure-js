@@ -393,7 +393,7 @@ export function getSliceControls(shape) {
 
 }
 
-export function moveControl(shape, control, from, to) {
+export function moveControlPoint(shape, control, from, to) {
 }
 
 export function createRotationalShape(props) {

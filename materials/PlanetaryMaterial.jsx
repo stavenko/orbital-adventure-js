@@ -1,8 +1,7 @@
-import * as THREE from 'three/src/constants.js';
-import {EventDispatcher} from 'three/src/core/EventDispatcher';
-import {ShaderMaterial} from 'three/src/materials/ShaderMaterial';
-import {RawShaderMaterial} from 'three/src/materials/RawShaderMaterial';
-import {ShaderChunk} from 'three/src/renderers/shaders/ShaderChunk.js';
+import * as THREE from 'three';
+const ShaderChunk = THREE.ShaderChunk;
+const ShaderMaterial = THREE.ShaderMaterial;
+const EventDispatcher = THREE.EventDispatcher;
 
 ShaderChunk.lodUtils = require('../shaders/lod/lodUtils.glsl');
 
@@ -18,15 +17,20 @@ export function LodCalculatorMaterial(props) {
 }
 Object.assign(LodCalculatorMaterial.prototype, EventDispatcher.prototype);
 
-export function LODMaterial(props) {
+export function LODMaterial() {
   ShaderMaterial.call(this);
   this.type = 'LODMaterial';
-  this.vertexShader = require('../shaders/lod/vertexShader.glsl');
-  this.fragmentShader = require('../shaders/lod/renderTexture.glsl');
+  this.vertexShader = require('../shaders/lod/super/superTextureVertexShader.glsl');
+  this.fragmentShader = require('../shaders/lod/super/superTextureFragmentShader.glsl');
+  // this.vertexShader = require('../shaders/lod/vertexShader.glsl');
+  // this.fragmentShader = require('../shaders/lod/renderTexture.glsl');
   this.uniforms = {}; 
   this.transparent = true;
   this.needsUpdate = true;
 
+  this.onBeforeCompile = () => {
+    console.log('on before compile');
+  };
 }
 
 Object.assign(LODMaterial.prototype, EventDispatcher.prototype);

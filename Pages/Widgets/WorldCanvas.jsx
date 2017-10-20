@@ -1,21 +1,22 @@
 import {Camera} from '../../Camera.js';
 import {CanvasBase} from '../../Canvas.jsx';
-import {Mesh} from 'three/src/objects/Mesh';
-import {Object3D} from 'three/src/core/Object3D';
-import {Vector3} from 'three/src/math/Vector3';
-import {Quaternion} from 'three/src/math/Quaternion';
-import {Textures} from '../../Utils/TextureCache.js';
-import {PerspectiveCamera} from 'three/src/cameras/PerspectiveCamera.js';
-import {MeshBasicMaterial} from 'three/src/materials/MeshBasicMaterial';
-import {BoxBufferGeometry} from 'three/src/geometries/BoxBufferGeometry';
-import {SphereBufferGeometry} from 'three/src/geometries/SphereBufferGeometry';
-import {getCubemap} from '../../math/Graphical/CubemapCreator.js';
-import {CubeMapMaterial} from '../../materials/PlanetaryMaterial.jsx';
+//import {Mesh} from 'three/src/objects/Mesh';
+//import {Object3D} from 'three/src/core/Object3D';
+//import {Vector3} from 'three/src/math/Vector3';
+//import {Quaternion} from 'three/src/math/Quaternion';
+//import {Textures} from '../../Utils/TextureCache.js';
+//import {PerspectiveCamera} from 'three/src/cameras/PerspectiveCamera.js';
+//import {MeshBasicMaterial} from 'three/src/materials/MeshBasicMaterial';
+// import {getCubemap} from '../../math/Graphical/CubemapCreator.js';
+// import {CubeMapMaterial} from '../../materials/PlanetaryMaterial.jsx';
 import {PlanetRenderer} from '../../renderers/PlanetRenderer.js';
 import {WorldManager} from '../../materials/TextureManager.jsx';
-import planets from '../../planets.json';
+// import planets from '../../planets.json';
+import * as THREE from 'three';
+const Vector3 = THREE.Vector3;
+const Quaternion = THREE.Quaternion;
 
-const ix = 0;
+// const ix = 0;
 function noiseSeed() {
   const seed = [];
   for (let i = 0; i < 256; ++i) {
@@ -26,7 +27,7 @@ function noiseSeed() {
 
 function generateUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    let r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
   });
 }
@@ -146,13 +147,13 @@ export class WorldCanvas extends CanvasBase {
   componentDidMount() {
     super.componentDidMount();
     this.renderingFunction = () => {};
-    let fov = 45,
+    const fov = 45,
       aspect = this.nodeRect.width / this.nodeRect.height,
       near = 0.1,
       far = 1000;
 
 
-    this.camera = new PerspectiveCamera(fov, aspect, near, far);
+    this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
     this.camera.position.z = -10;
 
     this.cameraHandler = new Camera(this.camera, this.refs.node);
@@ -186,7 +187,7 @@ export class WorldCanvas extends CanvasBase {
     let minDistance = Infinity;
     let planetRadius = null;
     this.planets.planets.forEach(({spatial}) => {
-      const distance = new Vector3(...spatial.position).distanceTo(this.globalCameraOpts.position);
+      const distance = new THREE.Vector3(...spatial.position).distanceTo(this.globalCameraOpts.position);
       if (distance < minDistance) {
         minDistance = distance;
         planetRadius = spatial.radius;
@@ -195,9 +196,9 @@ export class WorldCanvas extends CanvasBase {
 
     // let spdMul = Math.pow(minDistance / (planetRadius*3),2);
 
-    const x = new Vector3(1, 0, 0);
-    const y = new Vector3(0, 1, 0);
-    const z = new Vector3(0, 0, 1);
+    const x = new THREE.Vector3(1, 0, 0);
+    const y = new THREE.Vector3(0, 1, 0);
+    const z = new THREE.Vector3(0, 0, 1);
     const a = Math.PI / 180;
     const speed = this.speedLookup((minDistance - planetRadius) / 1000);
     console.log('minDistance: ', (minDistance - planetRadius) / 1000, speed);
@@ -211,49 +212,49 @@ export class WorldCanvas extends CanvasBase {
       evt.preventDefault();
     }
 
-    if ([106, 107, 109, 111].indexOf(evt.keyCode) != -1) {
+    if ([106, 107, 109, 111].indexOf(evt.keyCode) !== -1) {
       this.planetRenderer.doSomethingWithInput(evt.keyCode);
     }
 
-    if (evt.keyCode == 84) {
+    if (evt.keyCode === 84) {
       this.planetRenderer.setFaceRendering();
 
     }
 
-    if (evt.keyCode == 38) {
+    if (evt.keyCode === 38) {
       this.turnCamera(x, a);
       evt.preventDefault();
     }
-    if (evt.keyCode == 40) {
+    if (evt.keyCode === 40) {
       this.turnCamera(x, -a);
       evt.preventDefault();
     }
 
-    if (evt.keyCode == 37) {
+    if (evt.keyCode === 37) {
       this.turnCamera(y, a);
       evt.preventDefault();
     }
-    if (evt.keyCode == 39) {
+    if (evt.keyCode === 39) {
       this.turnCamera(y, -a);
       evt.preventDefault();
     }
 
-    if (evt.keyCode == 87) {
+    if (evt.keyCode === 87) {
       this.moveCamera(z.clone().negate(), speed );
       evt.preventDefault();
     }
 
-    if (evt.keyCode == 83) {
+    if (evt.keyCode === 83) {
       this.moveCamera(z, speed );
       evt.preventDefault();
     }
 
-    if (evt.keyCode == 81) {
+    if (evt.keyCode === 81) {
       this.moveCamera(x.clone().negate(), speed );
       evt.preventDefault();
     }
 
-    if (evt.keyCode == 69) {
+    if (evt.keyCode === 69) {
       this.moveCamera(x, speed );
       evt.preventDefault();
     }
@@ -282,7 +283,7 @@ export class WorldCanvas extends CanvasBase {
       planet.initialQuaternion = new Quaternion();
       const axis = new Vector3(0, 1, 0).cross(new Vector3(...planet.spatial.north));
       const angle = Math.asin(axis.length());
-      if (angle == 0) {
+      if (angle === 0) {
         continue;
       }
       axis.normalize();
@@ -311,37 +312,38 @@ export class WorldCanvas extends CanvasBase {
   }
 
   setPosition(planet) {
-    const maxRadius = 15e6;//planet.spatial.radius + 1000e3;
-    const minRadius = 15e6;//planet.spatial.radius + 100e3 ;
+    //const maxRadius = 15e6;//planet.spatial.radius + 1000e3;
+    //const minRadius = 15e6;//planet.spatial.radius + 100e3 ;
 
     const pos = new Vector3(...planet.spatial.position);
     const radius = planet.spatial.radius;
-    const v1 = new Vector3(1.0, 0, 0);
-    const v2 = new Vector3(0.0, 0, 1);
+    //const v1 = new Vector3(1.0, 0, 0);
+    //const v2 = new Vector3(0.0, 0, 1);
     const v3 = new Vector3(0.0, 1, 0);
-    const lookAt = pos.clone();
+    //const lookAt = pos.clone();
 
-    const pi2 = Math.PI * 2;
-    const a = 0;
-    let phi = a / pi2;
-    phi = a - (Math.floor(phi) * pi2);
-    const t = Math.abs(phi / pi2 - 0.5) * 2;
+    // const pi2 = Math.PI * 2;
+    // const a = 0;
+    // let phi = a / pi2;
+    // phi = a - (Math.floor(phi) * pi2);
+    //const t = Math.abs(phi / pi2 - 0.5) * 2;
 
     // let radius = maxRadius * t + (1-t)*minRadius;
 
     // pos.add(v1.multiplyScalar(Math.cos(a)*radius));
     // pos.add(v2.multiplyScalar(Math.sin(a)*radius));
-    pos.add(v3.multiplyScalar(radius + 500.0));
+    pos.add(v3.multiplyScalar(radius + 3000000.0));
     
-    const o = new Object3D;
+    const o = new THREE.Object3D;
     o.position.copy(pos);
     o.lookAt(new Vector3(...planet.spatial.position));
     this.globalCameraOpts.position.copy(pos);
+
     this.globalCameraOpts.quaternion.copy(o.quaternion.inverse());
 
   }
 
-  cameraChange(planets) {
+  cameraChange() {
     return ts => {
       const _planets = this.planets.planets;
       for (let i = 0; i < _planets.length; ++i) {
