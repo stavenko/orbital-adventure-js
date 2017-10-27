@@ -1,8 +1,8 @@
 uniform sampler2D heightMap;
 uniform int lod;
 
+varying vec2 textureCoords;
 vec3 gc(int i ){
-  return vec3(1.0, 0.0, 0.0);
 
   if(i == 0) return vec3(1.0, 0.0, 0.0);
   if(i == 1) return vec3(0.8, 0.0, 0.0);
@@ -22,9 +22,23 @@ vec3 gc(int i ){
 
 }
 
-void main() {
+const float px = 3.0;
 
-  vec2 uu = gl_FragCoord.xy / 1000.0;
-  vec4 t = texture2D(heightMap, uu);
-  gl_FragColor = vec4(gc(lod), 1.0);
+void main() {
+  
+  vec4 t = texture2D(heightMap, textureCoords);
+  float i = t.r; // (t.r + 1.0) / 2.0 ;
+  if(textureCoords.y  >  (2048.0 - px) / 2048.0 || textureCoords.y < px / 2048.0){
+    gl_FragColor.rgb = vec3(1.0);
+    gl_FragColor.a = 1.0;
+    return;
+  }
+  if(textureCoords.x  >  (2048.0 - px) / 2048.0 || textureCoords.x < px / 2048.0){
+    gl_FragColor.rgb = vec3(1.0);
+    gl_FragColor.a = 1.0;
+    return;
+  }
+
+  gl_FragColor = vec4(vec3(i), 1.0);
+
 }

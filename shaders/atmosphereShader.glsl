@@ -342,7 +342,7 @@ void main() {
 
 #ifdef DEBUG
   color = texture2D(planetSurfaceColor, uv);
-  color.b += 1.0;
+  // color.b += 1.0;
 #endif
 
   gl_FragColor = vec4(color.rgb, 1.0);

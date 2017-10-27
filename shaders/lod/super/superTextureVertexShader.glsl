@@ -13,8 +13,10 @@ uniform vec3 basisS;
 uniform vec3 basisT;
 uniform float logDepthBufC;
 #define EPSILON 1e-6
-#include <calculateNormal>
 #include <quaternion>
+#include <calculateNormal>
+
+varying vec2 textureCoords;
 
 void main() {
 
@@ -26,13 +28,9 @@ void main() {
     basisT * parametricCoords.y);
   vec3 sphereShiftedPoint = sphereSurfacePoint + spherePlaneShift;
 
+  textureCoords = (parametricCoords + vec2(1.0)) / 2.0;
+  vec4 lookupedHeight = texture2D(heightMap, textureCoords);
 
-  /*
-  vec3 planetRelatedPlanePosition = rotate(sphereSurfacePoint +
-     spherePlaneShift * textureHorizont, rotation);
-
-  vec3 rotatedSurfacePoint = rotate(sphereSurfacePoint, rotation);
-*/
   float spherePlaneDistance = length(parametricCoords) * textureHorizont;
   vec3 rotationAxis = normalize(cross(sphereSurfacePoint, sphereShiftedPoint));
 
@@ -40,7 +38,7 @@ void main() {
   vec4 rotationalQuat = fromAxisAngle(rotationAxis, planeArcAngle);
   vec3 planetRelatedPosition = rotate(gridPointNormal, rotationalQuat);
   planetRelatedPosition = rotate(planetRelatedPosition, rotation);
-  planetRelatedPosition *= radius;
+  planetRelatedPosition *= (radius) + 0.0 * lookupedHeight.r;
   planetRelatedPosition += planetPosition;
   mat4 pv1 = myProjectionMatrix * myViewMatrix;
 

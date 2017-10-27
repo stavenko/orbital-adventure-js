@@ -14,6 +14,10 @@ export class CubeCoords {
     this.st = st;
     this.face = f;
   }
+  getJI(grid:number) {
+    return this.st.clone().add(new Vector2(1,1)).multiplyScalar(0.5).multiplyScalar(grid-1);
+  }
+
 }
 
 export function cube2Normal(c: CubeCoords): Vector3 {

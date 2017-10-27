@@ -7,15 +7,15 @@ float fade(float t){
   return t*t*t*(t*(t*6.0-15.0)+10.0); 
 }
 
-float lookUp(sampler2D tex, float ix, vec2 dims_){
-  ix = 512.0 - ix;
-  vec2 dims = vec2(32.0, 16);
 
-  float x = floor(ix / dims.y);
-  float y = mod(ix, dims.y);
-  vec2 uv = vec2(x,y) / dims;
+float lookUp(sampler2D tex, float ix, vec2 dims_){
+  // ix = 512.0 - ix;
+  float x = floor(ix / dims_.y);
+  float y = mod(ix, dims_.y);
+  vec2 uv = vec2(x,y) / dims_;
   vec4 tx = texture2D(tex, uv);
   return tx.g;
+  // return getFromTex(tex, ix, dims_);
 }
 
 float permute(sampler2D t, vec2 d, vec3 xyz){
@@ -55,12 +55,21 @@ float getPerlinValue(sampler2D perm, vec2 permSize, vec3 normal){
   float x = normal.x - X; 
   float y = normal.y - Y; 
   float z = normal.z - Z; 
+  // Compute the fade curve value for each of x, y, z 
+  float  u = fade(x); 
+  float  v = fade(y); 
+  float  w = fade(z); 
 
-  // Wrap the integer cells at 255 (smaller integer period can be introduced here) 
-  //X = mod(X, 256.); 
-  //Y = mod(Y, 256.); 
-  //Z = mod(Z, 256.);
-  
+  /*
+  float A = lookUp(X) + Y;
+  float AA = lookUp(A) + Z;
+  float AB = lookUp(A + 1) + Z;
+  float B = lookUp(X + 1) + Y;
+  float BA = lookUp(B) + Z;
+  float BB = lookUp(B + 1) + Z;
+  */
+
+
   // Calculate a set of eight hashed gradient indices 
   int gi000 = int(permute(perm, permSize, vec3(X, Y, Z))); 
   int gi001 = int(permute(perm, permSize, vec3(X, Y, Z + 1.0))); 
@@ -71,24 +80,6 @@ float getPerlinValue(sampler2D perm, vec2 permSize, vec3 normal){
   int gi110 = int(permute(perm, permSize, vec3(X+1.0, Y + 1.0, Z))); 
   int gi111 = int(permute(perm, permSize, vec3(X+1.0, Y + 1.0, Z + 1.0))); 
 
-  // int gi001 = int(mod(float(perm[X+perm[Y+perm[Z+1]]]), 12.)); 
-  // int gi010 = int(mod(float(perm[X+perm[Y+1+perm[Z]]]), 12.)); 
-
-  //int gi011 = int(mod(float(perm[X+perm[Y+1+perm[Z+1]]]), 12.)); 
-  //int gi100 = int(mod(float(perm[X+1+perm[Y+perm[Z]]]), 12.)); 
-  //int gi101 = int(mod(float(perm[X+1+perm[Y+perm[Z+1]]]), 12.)); 
-  //int gi110 = int(mod(float(perm[X+1+perm[Y+1+perm[Z]]]), 12.)); 
-  // int gi111 = int(mod(float(perm[X+1+perm[Y+1+perm[Z+1]]]), 12.)); 
-  
-  // The gradients of each corner are now: 
-  // g000 = grad3[gi000]; 
-  // g001 = grad3[gi001]; 
-  // g010 = grad3[gi010]; 
-  // g011 = grad3[gi011]; 
-  // g100 = grad3[gi100]; 
-  // g101 = grad3[gi101]; 
-  // g110 = grad3[gi110]; 
-  // g111 = grad3[gi111]; 
   // Calculate noise contributions from each of the eight corners 
   float  n000= dot(grad3(gi000), vec3(x,     y,     z));
   float  n100= dot(grad3(gi100), vec3(x-1.0, y,     z));
@@ -98,10 +89,6 @@ float getPerlinValue(sampler2D perm, vec2 permSize, vec3 normal){
   float  n101= dot(grad3(gi101), vec3(x-1.0, y,     z-1.0));
   float  n011= dot(grad3(gi011), vec3(x,     y-1.0, z-1.0));
   float  n111= dot(grad3(gi111), vec3(x-1.0, y-1.0, z-1.0));
-  // Compute the fade curve value for each of x, y, z 
-  float  u = fade(x); 
-  float  v = fade(y); 
-  float  w = fade(z); 
   // float  Interpolate along x the contributions from each of the corners 
   float  nx00 = mix(n000, n100, u); 
   float  nx01 = mix(n001, n101, u); 

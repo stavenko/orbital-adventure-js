@@ -71,6 +71,21 @@ vec3 stToNormal(vec2 st, int lod, int tileJ, int tileI, int face) {
   return stToNormal(ST, face);
 }
 
+vec3 calculateNormal(vec3 basisS, vec3 basisT, vec2 st, int face, float radius, float horizont){
+  vec3 gridPointNormal = normalize(stToNormal(textureCenter, face));
+  vec3 sphereSurfacePoint = gridPointNormal * radius;
+
+  vec3 spherePlaneShift = textureHorizont * (basisS * st.x + basisT * st.y);
+  vec3 sphereShiftedPoint = sphereSurfacePoint + spherePlaneShift;
+
+  float spherePlaneDistance = length(st) * textureHorizont;
+  vec3 rotationAxis = normalize(cross(sphereSurfacePoint, sphereShiftedPoint));
+
+  float planeArcAngle = spherePlaneDistance / radius;
+  vec4 rotationalQuat = fromAxisAngle(rotationAxis, planeArcAngle);
+  return rotate(gridPointNormal, rotationalQuat);
+}
+
 vec3 calculateHeightNormal(int face, int lod, int tileJ, int tileI, vec2 glFragCoords){
   vec2 uv = glFragCoords / textureResolution;
   float division = pow(2.0, float(lod));

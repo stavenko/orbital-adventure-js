@@ -1,21 +1,5 @@
 import React from 'react';
-// import ReactDOM from 'react-dom';
-// import {Scene} from 'three/src/scenes/Scene';
-// import {PointLight} from 'three/src/lights/PointLight';
-// import {AmbientLight} from 'three/src/lights/AmbientLight';
-// import {WebGLRenderer} from 'three/src/renderers/WebGLRenderer';
-// import {OrthographicCamera} from 'three/src/cameras/OrthographicCamera';
-// import {PerspectiveCamera} from 'three/src/cameras/PerspectiveCamera';
-// import {Raycaster} from 'three/src/core/Raycaster';
-// import {BufferGeometry} from 'three/src/core/BufferGeometry';
-// import {BufferAttribute} from 'three/src/core/BufferAttribute';
-// import {Vector2} from 'three/src/math/Vector2';
-// import {Vector3} from 'three/src/math/Vector3';
-// import {Quaternion} from 'three/src/math/Quaternion';
-// import {Matrix4} from 'three/src/math/Matrix4';
-// import {Vector4} from 'three/src/math/Vector4';
 import {Camera} from './Camera.js';
-// import isEqual from 'lodash/isEqual';
 import * as GeometryManager from './GeometryManager.js';
 import * as THREE from 'three';
 const Matrix4 = THREE.Matrix4;
@@ -66,7 +50,6 @@ export class CanvasBase extends React.Component {
 
     const intersects = this.rayCaster.intersectObject( this.scene, true )
       .filter(m => m.object.userData.interactable);
-      // console.log(intersects);
     this.currentIntersections = intersects;
 
     if (intersects.length > 0) {
@@ -274,7 +257,7 @@ export class CanvasBase extends React.Component {
         }
 
         const spent = ts - this._prevTS;
-        // console.log("tick", spent);
+        console.log("tick", Math.round(1 / (spent / 1000)));
         this._prevTS = ts;
         window.requestAnimationFrame(tick);
       };

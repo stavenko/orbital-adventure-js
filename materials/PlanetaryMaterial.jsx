@@ -22,8 +22,6 @@ export function LODMaterial() {
   this.type = 'LODMaterial';
   this.vertexShader = require('../shaders/lod/super/superTextureVertexShader.glsl');
   this.fragmentShader = require('../shaders/lod/super/superTextureFragmentShader.glsl');
-  // this.vertexShader = require('../shaders/lod/vertexShader.glsl');
-  // this.fragmentShader = require('../shaders/lod/renderTexture.glsl');
   this.uniforms = {}; 
   this.transparent = true;
   this.needsUpdate = true;
